@@ -57,6 +57,9 @@ async function failAndPublish(
   error: unknown,
 ): Promise<void> {
   const message = safeFailureMessage(error);
+  // Log the real error server-side for debugging -- only the sanitized
+  // `message` above is ever stored on the job or published to the client.
+  console.error(`Job ${jobId} failed:`, error);
   await dependencies.failAndRefund(jobId, message);
   await dependencies.publish({
     jobId,
