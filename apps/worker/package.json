@@ -1,0 +1,16 @@
+{
+  "name": "@creative-ai/worker",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "pnpm build && node --test \"dist/*.test.js\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@creative-ai/db": "workspace:*",
+    "@creative-ai/modelark-client": "workspace:*",
+    "@creative-ai/shared-types": "workspace:*"
+  }
+}

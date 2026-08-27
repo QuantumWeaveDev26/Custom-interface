@@ -18,6 +18,18 @@ importers:
         specifier: 5.9.3
         version: 5.9.3
 
+  apps/worker:
+    dependencies:
+      '@creative-ai/db':
+        specifier: workspace:*
+        version: link:../../packages/db
+      '@creative-ai/modelark-client':
+        specifier: workspace:*
+        version: link:../../packages/modelark-client
+      '@creative-ai/shared-types':
+        specifier: workspace:*
+        version: link:../../packages/shared-types
+
   packages/db:
     dependencies:
       '@prisma/client':
