@@ -1,0 +1,21 @@
+{
+  "name": "creative-ai",
+  "private": true,
+  "packageManager": "pnpm@11.19.0",
+  "engines": {
+    "node": ">=20.19"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "test": "turbo run test",
+    "typecheck": "turbo run typecheck",
+    "db:generate": "pnpm --filter @creative-ai/db db:generate",
+    "db:validate": "pnpm --filter @creative-ai/db db:validate"
+  },
+  "devDependencies": {
+    "@types/node": "24.13.3",
+    "turbo": "2.10.12",
+    "typescript": "5.9.3"
+  }
+}
