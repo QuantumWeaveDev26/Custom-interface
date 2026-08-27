@@ -92,20 +92,22 @@ The Prisma schema uses the supplied Phase 1 models plus the approved Auth.js ada
 type SubmitImageJob = {
   type: "image";
   prompt: string;
-  size?: string;
-  outputFormat?: "png" | "jpeg";
 };
 
 type SubmitVideoJob = {
   type: "video";
   prompt: string;
-  resolution?: "480p" | "720p";
-  ratio?: string;
-  duration?: number;
 };
 ```
 
-The server trims prompts, rejects empty or excessively long values, rejects unsupported types and malformed optional fields, and constructs the ModelArk request itself. No browser-provided model, credit cost, user ID, status, external task ID, or storage location is accepted.
+The server trims prompts, rejects empty or excessively long values, rejects unsupported types and unknown fields, and constructs the ModelArk request itself. No browser-provided model, resolution, ratio, duration, image size, output format, credit cost, user ID, status, external task ID, or storage location is accepted.
+
+Flat Phase 1 credit costs are calibrated to one immutable server-side generation profile per type:
+
+- Image: one Seedream 5.0 Lite image, `size: "4K"`, `output_format: "png"`, `response_format: "url"`, `watermark: false`, and sequential generation disabled.
+- Video: Seedance 2.0 Fast, five seconds, `720p`, `21:9`, with all other provider options left at the same defaults used by the reference cost observation.
+
+These settings are constants in server-only worker configuration, not environment variables or request fields. If Phase 1 pricing or output settings change, the corresponding settings, model, and credit cost must change together. Custom generation settings require a future per-profile or per-model cost table and are outside Phase 1.
 
 The server resolves the model and cost from the corresponding environment pair. A serializable database transaction then:
 
@@ -116,7 +118,7 @@ The server resolves the model and cost from the corresponding environment pair. 
 
 Serializable-conflict errors are retried a small bounded number of times. Other failures return stable HTTP error responses without enqueueing.
 
-After commit, the route adds a BullMQ entry whose BullMQ `jobId` equals the database job ID. If enqueueing throws synchronously, a compensating database transaction changes the still-queued job to `failed`, restores its stored `creditsCost`, and creates `reason: "refund:<jobId>"`. The compensation is conditional and idempotent so it cannot refund twice.
+After commit, the route adds a BullMQ entry whose BullMQ `jobId` equals the database job ID and whose explicit `attempts` option is `1`. If enqueueing throws synchronously, a compensating database transaction changes the still-queued job to `failed`, restores its stored `creditsCost`, and creates `reason: "refund:<jobId>"`. The compensation is conditional and idempotent so it cannot refund twice.
 
 ## Crash-Window Recovery Sweep
 
@@ -150,7 +152,7 @@ The BullMQ payload contains only the database job ID. The processor reloads and 
 
 For image jobs:
 
-1. Mark the job `processing` and publish that state.
+1. Atomically claim the job by changing `queued` to `processing`, then publish that state.
 2. Call `createImage` exactly once; image generation does not poll.
 3. Reject a response-level ModelArk error or missing output.
 4. Download the returned URL or decode returned base64.
@@ -159,13 +161,13 @@ For image jobs:
 
 For video jobs:
 
-1. Mark the job `processing` and publish that state.
-2. If `externalTaskId` is absent, create the video task and persist its ID immediately.
-3. If `externalTaskId` is already present, resume retrieval/polling without creating a replacement task.
+1. Attempt to claim a queued job atomically by changing it to `processing`; a successful claim publishes that state and is allowed to create one provider task.
+2. After a successful claim, create the video task and persist its ID immediately.
+3. When the claim does not succeed because a recovered job is already `processing`, resume only if `externalTaskId` is present; otherwise fail/refund the ambiguous job without creating a provider task.
 4. Map ModelArk `queued` and `running` to internal processing, `succeeded` to completion, and `failed` or `cancelled` to failure.
 5. Download and upload the successful `video_url`, persist the asset, complete the job, and publish the result.
 
-Because generation calls incur real cost, BullMQ does not blindly recreate paid work. Video recovery resumes from the persisted external task ID. Phase 1 image generation has no provider task ID or idempotency key, so it is not automatically replayed after an ambiguous post-request crash.
+Because generation calls incur real cost, BullMQ does not blindly recreate paid work. Every enqueued generation job explicitly uses `attempts: 1`, which disables ordinary automatic retries. BullMQ can still recover a stalled active job after a worker crash, so the database claim is the second no-replay guard: a recovered image job that finds the database job already `processing` must fail and refund without calling `createImage` again. A recovered video job may resume only when `externalTaskId` is already durable; a `processing` video job without an external ID is ambiguous and must fail/refund rather than create a possibly duplicate provider task.
 
 Any terminal ModelArk error, content-filter rejection, timeout, download failure, or storage failure uses one conditional transaction to mark the job failed and refund the job's stored cost once. The UI receives a safe user-facing message; detailed server errors remain in logs.
 
@@ -193,7 +195,7 @@ Unauthenticated users see a sign-in page with email magic link as the primary ac
 
 - Current credit balance.
 - Image/video mode selection.
-- Prompt input and the small set of Phase 1 generation controls.
+- Prompt input; Phase 1 exposes no output-setting controls.
 - The server-resolved model label as informational text, never as an editable or submitted field.
 - Submission feedback and live queued/processing/complete/failed status.
 - The completed result when SSE reports an asset.
@@ -218,10 +220,9 @@ Implementation follows test-first red/green/refactor cycles. Tests compile with 
 
 - ModelArk routes, authentication headers, query names, synchronous image behavior, asynchronous terminal polling, errors, and timeouts.
 - Welcome-grant atomicity and required-email handling.
-- Submission validation, server-only model resolution, cost/model pair defaults, in-flight enforcement, insufficient balance, ledger reasons, enqueue compensation, and idempotent refund.
-- Worker image flow without polling, video create-then-poll, video resume without recreate, TOS persistence, content-filter failure, and refund-once behavior.
+- Submission validation, prompt-only closed request shapes, server-only model resolution, immutable generation profiles, cost/model/profile pair defaults, in-flight enforcement, insufficient balance, ledger reasons, explicit BullMQ `attempts: 1`, enqueue compensation, and idempotent refund.
+- Worker image flow without polling, atomic claim and no-replay behavior after an image stall, video create-then-poll, video resume only with a persisted external task ID, ambiguous video no-recreate behavior, TOS persistence, content-filter failure, and refund-once behavior.
 - Recovery sweep age threshold, queue-presence check, stable job ID, re-enqueue, and transient Redis behavior.
 - SSE subscribe-before-snapshot ordering, ownership, initial state, forwarded state, terminal cleanup, and heartbeat formatting.
 
 Final verification runs dependency installation, Prisma formatting/validation/generation, all tests, TypeScript checks, Turbo tasks, and a production Next.js build. Compose configuration is created and inspected, but PostgreSQL/Redis containers cannot be started on the current machine because Docker is unavailable. Live ModelArk, Resend, Google, and TOS calls require user credentials and are not invoked by automated tests.
-
