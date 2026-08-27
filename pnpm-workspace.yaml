@@ -7,3 +7,5 @@ allowBuilds:
   msgpackr-extract: false
   prisma: true
   tos-crc64-js: false
+minimumReleaseAgeExclude:
+  - bullmq@6.3.1

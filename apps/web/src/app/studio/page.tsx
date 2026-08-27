@@ -1,5 +1,8 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
+import { prisma } from "@creative-ai/db";
+import { IMAGE_MODEL, VIDEO_MODEL } from "@/server/config";
+import { StudioClient } from "./studio-client";
 
 export default async function StudioPage() {
   const session = await auth();
@@ -8,12 +11,16 @@ export default async function StudioPage() {
     redirect("/sign-in");
   }
 
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { creditBalance: true },
+  });
+
   return (
-    <div className="min-h-screen bg-white">
-      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-        <h1 className="text-3xl font-bold">Studio</h1>
-        <p className="mt-2 text-gray-600">Create AI-generated art</p>
-      </div>
-    </div>
+    <StudioClient
+      creditBalance={user?.creditBalance ?? 0}
+      imageModelLabel={IMAGE_MODEL}
+      videoModelLabel={VIDEO_MODEL}
+    />
   );
 }

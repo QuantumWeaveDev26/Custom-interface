@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { submitGenerationJob } from "@/server/jobs";
-import { InvalidJobRequest, InsufficientCreditsError, InFlightLimitError } from "@creative-ai/db";
+import { InsufficientCreditsError, InFlightLimitError } from "@creative-ai/db";
+import { InvalidJobRequest } from "@creative-ai/shared-types";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
@@ -11,7 +12,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await request.json();
+    const body: unknown = await request.json();
     const result = await submitGenerationJob(session.user.id, body);
 
     return NextResponse.json(result, { status: 201 });

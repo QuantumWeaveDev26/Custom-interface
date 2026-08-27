@@ -7,12 +7,9 @@ let queueInstance: Queue<GenerationJobPayload> | null = null;
 export function getQueue(): Queue<GenerationJobPayload> {
   if (queueInstance === null) {
     const redisUrl = process.env.REDIS_URL || "redis://localhost:6379";
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call
-    const redis = new (Redis as any)(redisUrl, {
-      maxRetriesPerRequest: null,
-    }) as any;
+    const connection = new Redis(redisUrl, { maxRetriesPerRequest: null });
     queueInstance = new Queue<GenerationJobPayload>(GENERATION_QUEUE_NAME, {
-      connection: redis,
+      connection,
     });
   }
   return queueInstance;

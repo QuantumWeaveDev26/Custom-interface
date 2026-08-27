@@ -1,4 +1,5 @@
 import NextAuth, { type NextAuthConfig } from "next-auth";
+import type { AdapterUser } from "next-auth/adapters";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import Google from "next-auth/providers/google";
 import Resend from "next-auth/providers/resend";
@@ -7,16 +8,38 @@ import { prisma, createUserWithWelcomeGrant } from "@creative-ai/db";
 
 const adapter = PrismaAdapter(prisma);
 
-// Wrap the adapter's createUser to add welcome-grant credits
+const INITIAL_CREDITS = parseInt(process.env.INITIAL_CREDITS || "100", 10);
+// Empty string (not undefined) so the module can be imported during build/typecheck
+// without live credentials; an actual Google sign-in attempt fails at request time
+// if these were never configured in the environment.
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID ?? "";
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET ?? "";
+
+// Wrap the adapter's createUser so a new user, the welcome-grant balance,
+// and the ledger entry are created atomically in one transaction.
 const createUserWithWelcomeGrantAdapter = {
   ...adapter,
-  createUser: async (user: any) => {
-    return await createUserWithWelcomeGrant({
-      email: user.email,
-      name: user.name ?? null,
-      emailVerified: user.emailVerified ?? null,
-      image: user.image ?? null,
-    });
+  createUser: async (user: Omit<AdapterUser, "id">) => {
+    const created = await prisma.$transaction((tx) =>
+      createUserWithWelcomeGrant(
+        {
+          user: {
+            create: async ({ data }) => tx.user.create({ data }),
+          },
+          creditLedgerEntry: {
+            create: async ({ data }) => tx.creditLedgerEntry.create({ data }),
+          },
+        },
+        {
+          email: user.email,
+          name: user.name ?? null,
+          emailVerified: user.emailVerified ?? null,
+          image: user.image ?? null,
+        },
+        INITIAL_CREDITS,
+      ),
+    );
+    return created as AdapterUser;
   },
 };
 
@@ -48,8 +71,8 @@ const config: NextAuthConfig = {
       },
     }),
     Google({
-      clientId: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      clientId: GOOGLE_CLIENT_ID,
+      clientSecret: GOOGLE_CLIENT_SECRET,
       allowDangerousEmailAccountLinking: true,
     }),
   ],

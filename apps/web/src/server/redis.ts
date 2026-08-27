@@ -1,14 +1,18 @@
 import Redis from "ioredis";
 
-let publisherInstance: any = null;
+function redisUrl(): string {
+  return process.env.REDIS_URL || "redis://localhost:6379";
+}
 
-export function getPublisher(): any {
+let publisherInstance: Redis | null = null;
+
+export function getPublisher(): Redis {
   if (publisherInstance === null) {
-    const redisUrl = process.env.REDIS_URL || "redis://localhost:6379";
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call
-    publisherInstance = new (Redis as any)(redisUrl, {
-      maxRetriesPerRequest: null,
-    }) as any;
+    publisherInstance = new Redis(redisUrl(), { maxRetriesPerRequest: null });
   }
   return publisherInstance;
+}
+
+export function createSubscriber(): Redis {
+  return new Redis(redisUrl(), { maxRetriesPerRequest: null });
 }

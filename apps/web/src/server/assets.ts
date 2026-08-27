@@ -1,23 +1,28 @@
-import { prismaStore } from "@creative-ai/db";
+import { prisma } from "@creative-ai/db";
+import { parseTosUrl } from "@creative-ai/shared-types";
 import { TosClient } from "@volcengine/tos-sdk";
-import { parseTosUrl } from "@creative-ai/worker/storage";
 
-export async function getSignedAssetUrl(assetId: string, userId: string): Promise<string> {
-  // Load asset from database
-  const asset = await prismaStore.asset.findUnique({ where: { id: assetId } });
+const SIGNED_URL_EXPIRY_SECONDS = 300;
 
-  if (!asset) {
-    throw new Error("Asset not found");
+export class AssetNotFoundError extends Error {
+  constructor() {
+    super("Asset not found");
+    this.name = "AssetNotFoundError";
+  }
+}
+
+export async function getSignedAssetUrl(
+  assetId: string,
+  userId: string,
+): Promise<string> {
+  const asset = await prisma.asset.findUnique({ where: { id: assetId } });
+
+  if (!asset || asset.userId !== userId) {
+    throw new AssetNotFoundError();
   }
 
-  if (asset.userId !== userId) {
-    throw new Error("Unauthorized");
-  }
-
-  // Parse the TOS URL
   const parsed = parseTosUrl(asset.storageUrl);
 
-  // Create TOS client
   const tosClient = new TosClient({
     accessKeyId: process.env.TOS_ACCESS_KEY || "",
     accessKeySecret: process.env.TOS_SECRET_KEY || "",
@@ -25,12 +30,10 @@ export async function getSignedAssetUrl(assetId: string, userId: string): Promis
     endpoint: process.env.TOS_ENDPOINT || "",
   });
 
-  // Generate signed URL valid for 15 minutes
-  const signedUrl = await tosClient.getPreSignedUrl({
+  return tosClient.getPreSignedUrl({
+    method: "GET",
     bucket: parsed.bucket,
     key: parsed.key,
-    expires: 15 * 60,
+    expires: SIGNED_URL_EXPIRY_SECONDS,
   });
-
-  return signedUrl;
 }

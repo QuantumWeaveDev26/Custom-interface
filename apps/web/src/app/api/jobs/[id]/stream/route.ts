@@ -1,107 +1,99 @@
 import { auth } from "@/auth";
 import { prismaStore } from "@creative-ai/db";
 import { NextRequest, NextResponse } from "next/server";
-import { getPublisher } from "@/server/redis";
+import { createSubscriber } from "@/server/redis";
+
+const HEARTBEAT_INTERVAL_MS = 30_000;
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> },
 ) {
-  try {
-    const session = await auth();
+  const session = await auth();
 
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-    const jobId = params.id;
+  const { id: jobId } = await params;
 
-    // Load job and verify ownership
-    const job = await prismaStore.job.findUnique({ where: { id: jobId } });
+  const job = await prismaStore.job.findUnique({ where: { id: jobId } });
 
-    if (!job) {
-      return NextResponse.json({ error: "Job not found" }, { status: 404 });
-    }
+  if (!job || job.userId !== session.user.id) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
 
-    if (job.userId !== session.user.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  const encoder = new TextEncoder();
+  const channel = `job:${jobId}`;
 
-    // Set up SSE response
-    const encoder = new TextEncoder();
-    let closed = false;
+  const readable = new ReadableStream({
+    async start(controller) {
+      let closed = false;
+      const subscriber = createSubscriber();
 
-    const readable = new ReadableStream({
-      async start(controller) {
-        // Send initial snapshot
+      const cleanup = () => {
+        if (closed) return;
+        closed = true;
+        clearInterval(heartbeat);
+        subscriber.off("message", onMessage);
+        void subscriber.quit();
+        try {
+          controller.close();
+        } catch {
+          // Already closed.
+        }
+      };
+
+      const onMessage = (subscribedChannel: string, message: string) => {
+        if (closed || subscribedChannel !== channel) return;
+        controller.enqueue(encoder.encode(`data: ${message}\n\n`));
+        try {
+          const event = JSON.parse(message) as { status?: string };
+          if (event.status === "complete" || event.status === "failed") {
+            cleanup();
+          }
+        } catch {
+          // Ignore malformed event payloads.
+        }
+      };
+
+      subscriber.on("message", onMessage);
+
+      // Subscribe before reading the snapshot so an event published between
+      // the two cannot be lost between the read and the subscription.
+      await subscriber.subscribe(channel);
+
+      const snapshot = await prismaStore.job.findUnique({ where: { id: jobId } });
+      if (snapshot) {
         controller.enqueue(
           encoder.encode(
             `data: ${JSON.stringify({
-              jobId: job.id,
-              status: job.status,
-              errorMessage: job.errorMessage,
-            })}\n\n`
-          )
+              jobId: snapshot.id,
+              status: snapshot.status,
+              errorMessage: snapshot.errorMessage,
+            })}\n\n`,
+          ),
         );
+        if (snapshot.status === "complete" || snapshot.status === "failed") {
+          cleanup();
+          return;
+        }
+      }
 
-        const publisher = getPublisher();
-        const channel = `job:${jobId}`;
+      const heartbeat = setInterval(() => {
+        if (closed) return;
+        controller.enqueue(encoder.encode(": heartbeat\n\n"));
+      }, HEARTBEAT_INTERVAL_MS);
 
-        publisher.subscribe(channel, (err: any) => {
-          if (err) {
-            console.error("Subscribe error:", err);
-            closed = true;
-            controller.close();
-          }
-        });
+      request.signal.addEventListener("abort", cleanup);
+    },
+  });
 
-        publisher.on("message", (subscribedChannel: string, message: string) => {
-          if (closed) return;
-          if (subscribedChannel === channel) {
-            controller.enqueue(encoder.encode(`data: ${message}\n\n`));
-
-            // Check if terminal status
-            try {
-              const event = JSON.parse(message);
-              if (event.status === "complete" || event.status === "failed") {
-                publisher.unsubscribe(channel);
-                closed = true;
-                controller.close();
-              }
-            } catch {
-              // Invalid JSON, continue
-            }
-          }
-        });
-
-        // Heartbeat every 30 seconds
-        const heartbeatInterval = setInterval(() => {
-          if (closed) {
-            clearInterval(heartbeatInterval);
-            return;
-          }
-          controller.enqueue(encoder.encode(": heartbeat\n\n"));
-        }, 30_000);
-
-        // Cleanup on abort
-        request.signal.addEventListener("abort", () => {
-          clearInterval(heartbeatInterval);
-          publisher.unsubscribe(channel);
-          closed = true;
-          controller.close();
-        });
-      },
-    });
-
-    return new NextResponse(readable, {
-      headers: {
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache",
-        Connection: "keep-alive",
-      },
-    });
-  } catch (error) {
-    console.error("SSE error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
-  }
+  return new NextResponse(readable, {
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache, no-transform",
+      Connection: "keep-alive",
+    },
+  });
 }
