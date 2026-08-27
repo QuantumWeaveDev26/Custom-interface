@@ -14,12 +14,22 @@ A Next.js + Node.js monorepo for building authenticated AI generation workflows 
 
 ### Environment Configuration
 
-1. Copy environment template:
+`.env.example` at the repo root is the canonical reference for every variable
+this project uses, but it is **not read automatically** — Next.js only loads
+`.env` files from its own app directory, and the plain Node worker has no
+`.env` loading unless the file exists locally. Copy it into **both** app
+directories with real values (keep the two in sync):
+
 ```bash
-cp .env.example .env.local
+cp .env.example apps/web/.env
+cp .env.example apps/worker/.env
 ```
 
-2. Fill in required values:
+(`apps/web/.env.example` and `apps/worker/.env.example` also exist as
+directory-scoped copies, trimmed to only the variables each app actually
+reads, if you'd rather start from those instead.)
+
+Fill in required values:
 - `ARK_API_KEY`: ModelArk API key
 - `ARK_BASE_URL`: ModelArk endpoint (default: `https://ark.ap-southeast.bytepluses.com/api/v3`)
 - `MODELARK_IMAGE_MODEL`: Image model ID (default: `seedream-5-0-lite-260128`)
@@ -52,9 +62,10 @@ npx prisma migrate deploy
 
 ### Development
 
-Start local services:
+Start local services (or use natively-installed PostgreSQL 16 and Redis 7 —
+see the setup guidance in this conversation if Docker isn't installed):
 ```bash
-docker-compose up -d  # Starts PostgreSQL and Redis
+docker compose -f infra/docker-compose.yml up -d  # Starts PostgreSQL and Redis
 ```
 
 Run dev servers (two terminals — the worker has no watch/dev mode, so rebuild
@@ -152,13 +163,13 @@ Phase 1 tests cover:
 ## Git Workflow
 
 Each task is a single commit:
-1. Task 1: Monorepo scaffold
-2. Task 2: Phase 1 contracts  
-3. Task 3: ModelArk client
-4. Task 4: Auth.js adapter & User welcome grant
-5. Task 5: Job submission & credit lifecycle
-6. Task 6: TOS storage, recovery, & worker runtime
-7. Task 7: Magic-link + Google authentication
+1. Task 1: Monorepo scaffold, database package, local infrastructure
+2. Task 2: Prompt-only shared contracts & fixed generation profiles
+3. Task 3: Typed ModelArk image and video client
+4. Task 4: Transactional credits and job state (packages/db)
+5. Task 5: No-replay image and resumable video worker processor
+6. Task 6: TOS storage, recovery sweep, and worker runtime
+7. Task 7: Magic-link + Google authentication (Auth.js, welcome grant)
 8. Task 8: Transactional job submission API
 9. Task 9: Job SSE + private asset access
 10. Task 10: Studio & gallery UI
