@@ -57,9 +57,12 @@ Start local services:
 docker-compose up -d  # Starts PostgreSQL and Redis
 ```
 
-Run dev servers:
+Run dev servers (two terminals — the worker has no watch/dev mode, so rebuild
+it after each change):
 ```bash
-pnpm dev            # Starts Next.js (port 3000) and worker
+pnpm --filter @creative-ai/web dev                                     # Next.js on :3000
+pnpm --filter @creative-ai/worker build && pnpm --filter @creative-ai/worker start  # BullMQ consumer
+
 pnpm test           # Run all tests
 pnpm typecheck      # Type validation
 pnpm build          # Production build
@@ -79,8 +82,8 @@ Next.js 15 frontend + API routes:
 - `/api/jobs` - Job submission with credit transactions
 - `/api/jobs/:id/stream` - Server-sent events for job status
 - `/api/assets/:id` - Private asset access (signed TOS URLs)
-- `/studio` - Generation interface (placeholder in Phase 1)
-- `/gallery` - Asset gallery (placeholder in Phase 1)
+- `/studio` - Prompt submission with live SSE status and result rendering
+- `/gallery` - Private grid of the signed-in user's generated assets
 
 ### apps/worker
 Standalone Node.js BullMQ consumer:
@@ -158,7 +161,7 @@ Each task is a single commit:
 7. Task 7: Magic-link + Google authentication
 8. Task 8: Transactional job submission API
 9. Task 9: Job SSE + private asset access
-10. Task 10: Studio & gallery placeholders
+10. Task 10: Studio & gallery UI
 11. Task 11: README & verification
 
 Verify with:
