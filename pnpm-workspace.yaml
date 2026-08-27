@@ -4,4 +4,6 @@ packages:
 allowBuilds:
   '@prisma/client': true
   '@prisma/engines': true
+  msgpackr-extract: false
   prisma: true
+  tos-crc64-js: false
