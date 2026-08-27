@@ -23,9 +23,18 @@ importers:
       '@auth/prisma-adapter':
         specifier: ^2.4.1
         version: 2.11.3(@prisma/client@6.19.3(prisma@6.19.3(typescript@5.9.3))(typescript@5.9.3))
+      '@creative-ai/agents':
+        specifier: workspace:*
+        version: link:../../packages/agents
       '@creative-ai/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@creative-ai/modelark-client':
+        specifier: workspace:*
+        version: link:../../packages/modelark-client
+      '@creative-ai/prompt-library':
+        specifier: workspace:*
+        version: link:../../packages/prompt-library
       '@creative-ai/shared-types':
         specifier: workspace:*
         version: link:../../packages/shared-types

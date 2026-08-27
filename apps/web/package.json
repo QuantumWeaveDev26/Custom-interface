@@ -9,11 +9,14 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "tsc -p tsconfig.test.json && node --test dist-test/app/studio/studio-state.test.js"
+    "test": "tsc -p tsconfig.test.json && node --test dist-test/app/studio/studio-state.test.js dist-test/app/director/director-state.test.js"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.4.1",
+    "@creative-ai/agents": "workspace:*",
     "@creative-ai/db": "workspace:*",
+    "@creative-ai/modelark-client": "workspace:*",
+    "@creative-ai/prompt-library": "workspace:*",
     "@creative-ai/shared-types": "workspace:*",
     "@volcengine/tos-sdk": "^2.9.1",
     "bullmq": "6.3.1",

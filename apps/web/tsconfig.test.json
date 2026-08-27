@@ -6,5 +6,10 @@
     "declaration": false,
     "declarationMap": false
   },
-  "include": ["src/app/studio/studio-state.ts", "src/app/studio/studio-state.test.ts"]
+  "include": [
+    "src/app/studio/studio-state.ts",
+    "src/app/studio/studio-state.test.ts",
+    "src/app/director/director-state.ts",
+    "src/app/director/director-state.test.ts"
+  ]
 }
