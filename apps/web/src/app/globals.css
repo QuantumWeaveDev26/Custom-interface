@@ -1,0 +1,15 @@
+@import "tailwindcss";
+
+* {
+  @apply box-border;
+}
+
+html,
+body {
+  @apply h-full m-0 p-0;
+}
+
+body {
+  @apply bg-white text-gray-900;
+  font-family: system-ui, -apple-system, sans-serif;
+}
