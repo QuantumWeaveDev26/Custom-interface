@@ -15,7 +15,14 @@ export async function POST(request: NextRequest) {
     const body: unknown = await request.json();
     const result = await submitGenerationJob(session.user.id, body);
 
-    return NextResponse.json(result, { status: 201 });
+    return NextResponse.json(
+      {
+        jobId: result.job.id,
+        status: result.job.status,
+        creditsCost: result.job.creditsCost,
+      },
+      { status: 201 },
+    );
   } catch (error) {
     if (error instanceof InvalidJobRequest) {
       return NextResponse.json({ error: error.message }, { status: 400 });
