@@ -45,6 +45,7 @@ const createUserWithWelcomeGrantAdapter = {
 
 const config: NextAuthConfig = {
   adapter: createUserWithWelcomeGrantAdapter,
+  secret: process.env.NEXTAUTH_SECRET ?? "",
   session: { strategy: "database" },
   providers: [
     Resend({
