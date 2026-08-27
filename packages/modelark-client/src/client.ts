@@ -1,5 +1,7 @@
 import { ModelArkHttpError, ModelArkTimeoutError } from "./errors.js";
 import type {
+  ChatCompletionRequest,
+  ChatCompletionResponse,
   CreateContentGenerationTaskRequest,
   CreateContentGenerationTaskResponse,
   GenerateImagesRequest,
@@ -42,6 +44,9 @@ export interface ModelArkClient {
     taskId: string,
     options?: PollVideoTaskOptions,
   ): Promise<GetContentGenerationTaskResponse>;
+  createChatCompletion(
+    params: ChatCompletionRequest,
+  ): Promise<ChatCompletionResponse>;
 }
 
 function defaultSleep(milliseconds: number): Promise<void> {
@@ -187,6 +192,19 @@ export function createModelArkClient(config: ModelArkClientConfig): ModelArkClie
     throw new ModelArkTimeoutError(taskId, timeoutMs);
   }
 
+  async function createChatCompletion(
+    params: ChatCompletionRequest,
+  ): Promise<ChatCompletionResponse> {
+    return requestJson<ChatCompletionResponse>(
+      "createChatCompletion",
+      "/chat/completions",
+      {
+        method: "POST",
+        body: JSON.stringify(params),
+      },
+    );
+  }
+
   return {
     createImage,
     createVideoTask,
@@ -194,5 +212,6 @@ export function createModelArkClient(config: ModelArkClientConfig): ModelArkClie
     listVideoTasks,
     deleteVideoTask,
     pollVideoTaskUntilDone,
+    createChatCompletion,
   };
 }

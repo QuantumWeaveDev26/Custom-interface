@@ -128,3 +128,51 @@ export interface ImagesResponse {
   usage?: GenerateImagesUsage;
   error?: { code: string; message: string };
 }
+
+export type ChatMessageRole = "system" | "user" | "assistant" | "tool";
+
+export interface ChatMessage {
+  role: ChatMessageRole;
+  content: string;
+}
+
+export interface JsonSchemaResponseFormat {
+  type: "json_schema";
+  json_schema: {
+    name: string;
+    schema: Record<string, unknown>;
+    strict?: boolean;
+  };
+}
+
+export interface ChatCompletionRequest {
+  model: string;
+  messages: ChatMessage[];
+  response_format?: JsonSchemaResponseFormat;
+  temperature?: number;
+  max_tokens?: number;
+}
+
+export interface ChatCompletionChoiceMessage {
+  role: string;
+  content: string;
+}
+
+export interface ChatCompletionChoice {
+  index: number;
+  message: ChatCompletionChoiceMessage;
+  finish_reason: string;
+}
+
+export interface ChatCompletionUsage {
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+}
+
+export interface ChatCompletionResponse {
+  id: string;
+  model: string;
+  choices: ChatCompletionChoice[];
+  usage?: ChatCompletionUsage;
+}

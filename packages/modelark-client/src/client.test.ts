@@ -1,10 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import {
-  createModelArkClient,
-  type ModelArkClient,
-} from "./client.js";
+import { createModelArkClient } from "./client.js";
 import { ModelArkHttpError, ModelArkTimeoutError } from "./errors.js";
 import type {
   GetContentGenerationTaskResponse,
@@ -271,11 +268,36 @@ test("pollVideoTaskUntilDone throws a typed timeout using injected time", async 
   assert.equal(requestCount, 2);
 });
 
-test("the public client surface contains no Phase 2 chat method", () => {
-  const client: ModelArkClient = createModelArkClient({
+test("createChatCompletion posts to the chat completions endpoint", async () => {
+  const calls: Array<{ input: string; init?: RequestInit }> = [];
+  const expected = {
+    id: "chatcmpl-123",
+    model: "seed-2-1",
+    choices: [
+      {
+        index: 0,
+        message: { role: "assistant", content: '{"shots":[]}' },
+        finish_reason: "stop",
+      },
+    ],
+  };
+  const client = createModelArkClient({
     apiKey: "secret-key",
-    fetch: asFetch(async () => jsonResponse({})),
+    baseUrl: BASE_URL,
+    fetch: asFetch(async (input, init) => {
+      calls.push({ input: String(input), ...(init === undefined ? {} : { init }) });
+      return jsonResponse(expected);
+    }),
   });
+  const request = {
+    model: "seed-2-1",
+    messages: [{ role: "user" as const, content: "plan a shot" }],
+  };
 
-  assert.equal("chatCompletion" in client, false);
+  const result = await client.createChatCompletion(request);
+
+  assert.deepEqual(result, expected);
+  assert.equal(calls[0]?.input, `${BASE_URL}/chat/completions`);
+  assert.equal(calls[0]?.init?.method, "POST");
+  assert.equal(calls[0]?.init?.body, JSON.stringify(request));
 });
