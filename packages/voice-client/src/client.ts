@@ -64,33 +64,62 @@ export function createVoiceClient(config: VoiceClientConfig): VoiceClient {
     const contentType = response.headers.get("content-type") ?? "";
     const buffer = await response.arrayBuffer();
 
-    // Confirmed live: BytePlus Voice's Content-Type header says "text/plain" even
-    // when the body is genuinely JSON -- don't trust the header, try JSON first
-    // regardless of what it claims, and only fall back to raw bytes if that fails.
-    const text = new TextDecoder().decode(buffer);
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(text);
-    } catch {
-      parsed = undefined;
-    }
-
-    if (typeof parsed === "object" && parsed !== null) {
-      const body = parsed as { code?: unknown; message?: unknown; data?: unknown };
-      if (typeof body.code === "number" && body.code !== 0) {
-        throw new VoiceApiError(body.code, typeof body.message === "string" ? body.message : "");
-      }
-      if (typeof body.data === "string" && body.data.length > 0) {
-        return { audio: base64ToBytes(body.data), contentType: "audio/mpeg" };
-      }
-      throw new VoiceResponseShapeError(contentType, JSON.stringify(body).slice(0, 500));
-    }
-
+    // A content type that genuinely says audio/* is trusted immediately, before
+    // attempting to interpret the body as text/JSON at all.
     if (contentType.startsWith("audio/")) {
       return { audio: new Uint8Array(buffer), contentType };
     }
 
-    throw new VoiceResponseShapeError(contentType, text.slice(0, 500));
+    // Confirmed live: despite the "unidirectional" endpoint name, the body is
+    // NDJSON (newline-delimited JSON), not one JSON value -- a run of chunks
+    // {code:0, data:"<base64>"} to concatenate, then a {code:0, data:null}
+    // marker, then a final {code:20000000, data:null} completion marker.
+    // Content-Type also says "text/plain" even though the body is JSON lines.
+    const text = new TextDecoder().decode(buffer);
+    const lines = text.split("\n").map((line) => line.trim()).filter((line) => line.length > 0);
+
+    if (lines.length === 0) {
+      throw new VoiceResponseShapeError(contentType, text.slice(0, 500));
+    }
+
+    const chunks: Uint8Array[] = [];
+    for (const line of lines) {
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(line);
+      } catch {
+        throw new VoiceResponseShapeError(contentType, text.slice(0, 500));
+      }
+      if (typeof parsed !== "object" || parsed === null) {
+        throw new VoiceResponseShapeError(contentType, text.slice(0, 500));
+      }
+
+      const body = parsed as { code?: unknown; message?: unknown; data?: unknown };
+      if (typeof body.data === "string" && body.data.length > 0) {
+        chunks.push(base64ToBytes(body.data));
+        continue;
+      }
+      // A line with no data is either a benign end-of-stream marker (observed
+      // codes 0 and 20000000) or a genuine API-level error -- only the latter
+      // has a code outside that confirmed pair, so only that throws.
+      if (typeof body.code === "number" && body.code !== 0 && body.code !== 20_000_000) {
+        throw new VoiceApiError(body.code, typeof body.message === "string" ? body.message : "");
+      }
+    }
+
+    if (chunks.length === 0) {
+      throw new VoiceResponseShapeError(contentType, text.slice(0, 500));
+    }
+
+    const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+    const audio = new Uint8Array(totalLength);
+    let offset = 0;
+    for (const chunk of chunks) {
+      audio.set(chunk, offset);
+      offset += chunk.length;
+    }
+
+    return { audio, contentType: "audio/mpeg" };
   }
 
   async function requestJson<T>(

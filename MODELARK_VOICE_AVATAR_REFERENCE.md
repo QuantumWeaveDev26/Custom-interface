@@ -111,38 +111,53 @@ Notes on the confirmed shape:
   variant, not the WebSocket streaming one — good, matches this project's existing
   synchronous-image / async-task patterns rather than needing new streaming plumbing.
 
-**Response shape — CONFIRMED via a real live call** (curl with a real API key, response
-saved and inspected directly, 2026-08-28):
+**Response shape — CONFIRMED via real live calls** (curl with a real API key, response
+saved and inspected directly, 2026-08-28 — first with a short prompt, then re-confirmed
+with a longer prompt that exposed the full shape):
 
 ```
 HTTP/1.1 200 OK
 Content-Type: text/plain; charset=utf-8
 ```
+
+The body is **NDJSON (newline-delimited JSON)**, not a single JSON value — a short prompt
+happens to produce exactly one line, which is why the first test call looked like a plain
+`{code, message, data}` object. A longer prompt produced **10 separate lines**: a run of
+`{code:0, data:"<base64 chunk>"}` objects to concatenate (8 chunks observed), then a
+`{code:0, data:null}` end-of-audio marker, then a final
+`{code:20000000, message:"OK", data:null}` completion marker. Each line is independently
+valid JSON; splitting on `\n` and parsing line-by-line is required — `JSON.parse()` on the
+whole body throws `Unexpected non-whitespace character after JSON`.
+
 ```json
-{
-  "code": 0,
-  "message": "",
-  "data": "<base64-encoded MP3 bytes>"
-}
+{"code":0,"message":"","data":"<base64-encoded MP3 chunk 1>"}
+{"code":0,"message":"","data":"<base64-encoded MP3 chunk 2>"}
+{"code":0,"message":"","data":null}
+{"code":20000000,"message":"OK","data":null}
 ```
 
-Critical gotcha: **the `Content-Type` header lies** — it says `text/plain`, not
-`application/json`, even though the body is genuinely JSON. Any implementation that
-branches on `Content-Type` to decide whether to JSON-parse will silently mishandle this
-correctly-working response. `code: 0` decoded successfully to valid MP3 bytes (verified:
-starts with the `ID3` tag signature). Non-zero `code` values are presumed to indicate an
-API-level error (with `message` describing it) even though the HTTP status is 200, based
-on this field-naming convention — not yet observed directly since the test call
-succeeded, but implement defensively for it.
+Critical gotchas:
+1. **The `Content-Type` header lies** — it says `text/plain`, not `application/json`, even
+   though the body is genuinely JSON(-lines). Any implementation that branches on
+   `Content-Type` to decide whether to JSON-parse will silently mishandle this
+   correctly-working response.
+2. **The body may be multiple JSON lines, not one JSON value.** Concatenate the base64
+   `data` from every line that has one (each chunk decodes to valid MP3 bytes when
+   reassembled in order — verified: starts with the `ID3` tag signature). Lines with
+   `data: null` and `code` equal to `0` or `20000000` are benign markers, not errors.
+3. A non-zero `code` value outside that confirmed pair (`0`, `20000000`) on a line with no
+   `data` indicates a genuine API-level error (with `message` describing it) even though
+   the HTTP status is 200.
 
 **Still not confirmed:**
-- The exact non-zero `code` values and what they mean (only `code: 0` observed)
+- The exact non-zero error `code` values and what they mean (only `0` and the `20000000`
+  completion marker observed so far)
 - Full list of valid `speaker` IDs and `X-Api-Resource-Id` values beyond the one example
   (`seed-tts-2.0`) — check Voice Library for the speaker list; there may be other
   resource IDs for different quality/language tiers.
 - Whether `tts/create` (Audio generation), `tts/voice_clone` (Voice Replication), and
-  `auc/bigmodel/submit`/`query` (Speech-to-Text) share this exact `{code, message, data}`
-  envelope, or differ — only `tts/unidirectional` has been live-verified so far.
+  `auc/bigmodel/submit`/`query` (Speech-to-Text) share this exact NDJSON/`{code, message,
+  data}` shape, or differ — only `tts/unidirectional` has been live-verified so far.
 
 **Implementation note:** since this uses different auth (`x-api-key` + a separate key)
 and a different base URL/host (`voice.ap-southeast-1.bytepluses.com`, not

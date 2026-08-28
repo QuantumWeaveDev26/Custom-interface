@@ -192,6 +192,38 @@ test("decodes a real-world response: Content-Type text/plain with a JSON {code,m
   assert.deepEqual(Array.from(result.audio), [73, 68, 51]);
 });
 
+test("decodes a real NDJSON response: multiple audio-data lines plus benign end markers", async () => {
+  // Confirmed live against the real API 2026-08-28 with a longer prompt: the body is
+  // newline-delimited JSON -- a run of {code:0, data:"<base64>"} chunks to concatenate,
+  // then a {code:0, data:null} marker, then a final {code:20000000, data:null} completion
+  // marker. Neither marker line carries data and neither should throw.
+  const chunk1 = Buffer.from([1, 2]).toString("base64");
+  const chunk2 = Buffer.from([3, 4, 5]).toString("base64");
+  const body = [
+    JSON.stringify({ code: 0, message: "", data: chunk1 }),
+    JSON.stringify({ code: 0, message: "", data: chunk2 }),
+    JSON.stringify({ code: 0, message: "", data: null }),
+    JSON.stringify({ code: 20_000_000, message: "OK", data: null }),
+  ].join("\n");
+
+  const client = createVoiceClient({
+    apiKey: "secret-key",
+    fetch: asFetch(async () =>
+      new Response(body, { status: 200, headers: { "Content-Type": "text/plain; charset=utf-8" } }),
+    ),
+  });
+
+  const result = await client.createSpeech({
+    req_params: {
+      text: "hi",
+      speaker: "voice-1",
+      audio_params: { format: "mp3", sample_rate: 24000 },
+    },
+  });
+
+  assert.deepEqual(Array.from(result.audio), [1, 2, 3, 4, 5]);
+});
+
 test("throws VoiceApiError when the response envelope has a non-zero code", async () => {
   const client = createVoiceClient({
     apiKey: "secret-key",
