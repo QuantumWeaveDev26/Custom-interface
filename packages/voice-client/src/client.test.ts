@@ -103,6 +103,28 @@ test("decodes a JSON response with base64 audio data", async () => {
   assert.deepEqual(Array.from(result.audio), [10, 20, 30]);
 });
 
+test("decodes createAudioGeneration's real-world response: application/json with the clip under \"audio\"", async () => {
+  // Confirmed live 2026-08-28: tts/create is a genuinely different envelope from
+  // tts/unidirectional -- real application/json (the header doesn't lie here), one
+  // JSON object, with the base64 clip under "audio" instead of "data".
+  const audioBytes = new Uint8Array([73, 68, 51]); // "ID3" -- real MP3 tag signature
+  const base64 = Buffer.from(audioBytes).toString("base64");
+  const client = createVoiceClient({
+    apiKey: "secret-key",
+    fetch: asFetch(async () =>
+      Response.json({ audio: base64 }, { headers: { "Content-Type": "application/json; charset=utf-8" } }),
+    ),
+  });
+
+  const result = await client.createAudioGeneration({
+    model: "seed-audio-1.0",
+    text_prompt: "A dramatic announcer voice",
+    audio_config: { format: "mp3", sample_rate: 48000 },
+  });
+
+  assert.deepEqual(Array.from(result.audio), [73, 68, 51]);
+});
+
 test("throws VoiceResponseShapeError on an unrecognized JSON shape", async () => {
   const client = createVoiceClient({
     apiKey: "secret-key",

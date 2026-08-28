@@ -205,12 +205,30 @@ Notes:
 - `text_prompt` (not `text`) — this endpoint expects a richer descriptive prompt that can
   include tone/emotion/style direction and slash-command timestamps (per the playground's
   own description), not just the literal sentence to speak.
-- The sample's curl command pipes the response through `python3 -m json.tool` (a JSON
-  pretty-printer) — strong indirect evidence the response **is JSON**, not raw audio
-  bytes, unlike the `tts/unidirectional` endpoint's unconfirmed shape. Exact response
-  field names still need a live test call (same as the basic TTS endpoint).
 - The curl sample includes `--max-time 300`, suggesting generation can take up to 5
   minutes for longer prompts — worth a generous client-side timeout.
+
+**Response shape — CONFIRMED via a real live call** (2026-08-28, via the app's own worker
+against a real job): a genuinely different envelope from `tts/unidirectional`, despite
+being the same product family:
+
+```
+HTTP/1.1 200 OK
+Content-Type: application/json; charset=utf-8
+```
+```json
+{ "audio": "<base64-encoded MP3 bytes>" }
+```
+
+Two concrete differences from `tts/unidirectional`/createSpeech, both of which broke the
+first implementation attempt:
+1. **The `Content-Type` header is accurate here** — it genuinely says `application/json`
+   (unlike `tts/unidirectional`, which lies and says `text/plain`).
+2. **The base64 clip is under `audio`, not `data`.** Reusing the same response parser for
+   both endpoints requires checking both field names.
+- Single JSON object, not NDJSON (at least for the prompt length tested so far) — worth
+  re-checking with a very long `text_prompt` the same way the NDJSON behavior was found
+  on `tts/unidirectional`.
 
 ---
 

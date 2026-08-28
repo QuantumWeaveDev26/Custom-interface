@@ -94,9 +94,16 @@ export function createVoiceClient(config: VoiceClientConfig): VoiceClient {
         throw new VoiceResponseShapeError(contentType, text.slice(0, 500));
       }
 
-      const body = parsed as { code?: unknown; message?: unknown; data?: unknown };
+      // tts/unidirectional (createSpeech) carries each chunk under "data"; tts/create
+      // (createAudioGeneration) is a genuinely different envelope -- one JSON object,
+      // real application/json, with the whole clip under "audio" instead.
+      const body = parsed as { code?: unknown; message?: unknown; data?: unknown; audio?: unknown };
       if (typeof body.data === "string" && body.data.length > 0) {
         chunks.push(base64ToBytes(body.data));
+        continue;
+      }
+      if (typeof body.audio === "string" && body.audio.length > 0) {
+        chunks.push(base64ToBytes(body.audio));
         continue;
       }
       // A line with no data is either a benign end-of-stream marker (observed
