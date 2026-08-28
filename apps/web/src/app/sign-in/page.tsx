@@ -1,5 +1,4 @@
 import { signIn } from "@/auth";
-import { redirect } from "next/navigation";
 
 export default function SignInPage() {
   async function handleEmailSignIn(formData: FormData) {
@@ -19,20 +18,30 @@ export default function SignInPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-12 sm:px-6 lg:px-8">
-      <div className="w-full max-w-md space-y-8">
-        <div className="text-center">
-          <h2 className="text-3xl font-bold tracking-tight text-gray-900">
-            Sign in to Creative AI
-          </h2>
-          <p className="mt-2 text-sm text-gray-600">
-            Create and explore AI-generated art
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[var(--bg)] px-4 py-12">
+      <div
+        className="pointer-events-none absolute -top-40 left-1/2 h-[36rem] w-[36rem] -translate-x-1/2 rounded-full opacity-20 blur-[120px]"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle, var(--accent-from), var(--accent-via) 45%, transparent 70%)",
+        }}
+        aria-hidden="true"
+      />
+
+      <div className="relative w-full max-w-sm">
+        <div className="mb-8 flex flex-col items-center text-center">
+          <span className="gradient-ring mb-4 h-10 w-10 rounded-2xl" aria-hidden="true" />
+          <h1 className="text-2xl font-semibold tracking-tight text-[var(--text)]">
+            Sign in to <span className="gradient-text">Creative AI</span>
+          </h1>
+          <p className="mt-2 text-sm text-[var(--text-muted)]">
+            Create images, video, and voice with AI
           </p>
         </div>
 
-        <form action={handleEmailSignIn} className="space-y-4">
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+        <div className="card p-6">
+          <form action={handleEmailSignIn} className="space-y-3">
+            <label htmlFor="email" className="block text-xs font-medium text-[var(--text-muted)]">
               Email address
             </label>
             <input
@@ -41,36 +50,31 @@ export default function SignInPage() {
               type="email"
               autoComplete="email"
               required
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm"
+              className="input-field"
               placeholder="you@example.com"
             />
+            <button type="submit" className="btn-primary w-full">
+              Continue with email
+            </button>
+          </form>
+
+          <div className="relative my-5">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-[var(--border)]" />
+            </div>
+            <div className="relative flex justify-center text-xs">
+              <span className="bg-[var(--surface)] px-2 text-[var(--text-faint)]">
+                Or continue with
+              </span>
+            </div>
           </div>
 
-          <button
-            type="submit"
-            className="w-full rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-          >
-            Continue with email
-          </button>
-        </form>
-
-        <div className="relative">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-gray-300"></div>
-          </div>
-          <div className="relative flex justify-center text-sm">
-            <span className="bg-gray-50 px-2 text-gray-500">Or continue with</span>
-          </div>
+          <form action={handleGoogleSignIn}>
+            <button type="submit" className="btn-secondary w-full">
+              Google
+            </button>
+          </form>
         </div>
-
-        <form action={handleGoogleSignIn}>
-          <button
-            type="submit"
-            className="w-full rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-          >
-            Google
-          </button>
-        </form>
       </div>
     </div>
   );

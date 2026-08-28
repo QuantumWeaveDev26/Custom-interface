@@ -144,14 +144,14 @@ export function DirectorClient() {
   }, []);
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-12">
-      <h1 className="text-3xl font-bold">Director</h1>
-      <p className="mt-1 text-sm text-gray-600">
+    <div className="mx-auto max-w-3xl px-4 py-10 sm:py-14">
+      <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Director</h1>
+      <p className="mt-1 text-sm text-[var(--text-muted)]">
         Describe a scene in one line; the director agent breaks it into a shot list.
       </p>
 
       <form onSubmit={handlePlan} className="mt-6 space-y-3">
-        <label htmlFor="brief" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="brief" className="block text-xs font-medium text-[var(--text-muted)]">
           Creative brief
         </label>
         <textarea
@@ -163,23 +163,26 @@ export function DirectorClient() {
           maxLength={500}
           required
           placeholder="A lone traveler crosses a vast desert at sunset..."
-          className="w-full rounded border border-gray-300 p-3 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-black disabled:opacity-50"
+          className="input-field resize-none"
         />
         <button
           type="submit"
           disabled={state.phase === "planning" || state.brief.trim().length === 0}
-          className="rounded bg-black px-4 py-2 text-sm font-medium text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-black disabled:opacity-50"
+          className="btn-primary gap-2"
         >
+          {state.phase === "planning" && <span className="spinner" aria-hidden="true" />}
           {state.phase === "planning" ? "Planning..." : "Plan Shots"}
         </button>
       </form>
 
       {state.phase === "failed" && (
-        <p className="mt-4 text-sm text-red-600">{state.errorMessage}</p>
+        <div className="card border-[var(--danger)]/30 mt-4 p-4">
+          <p className="text-sm text-[var(--danger)]">{state.errorMessage}</p>
+        </div>
       )}
 
       {state.phase === "planned" && (
-        <div className="mt-8 space-y-4">
+        <div className="mt-8 grid gap-4 sm:grid-cols-2">
           {state.shots.map((shot, index) => {
             const shotGeneration = generation[index] ?? IDLE_GENERATION;
             const busy =
@@ -188,41 +191,42 @@ export function DirectorClient() {
               shotGeneration.phase === "processing";
 
             return (
-              <div key={index} className="rounded border border-gray-200 p-4">
+              <div key={index} className="card p-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                  <span className="rounded-full bg-[var(--surface-hover)] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">
                     Shot {index + 1}
                   </span>
-                  <span className="text-xs text-gray-500">
+                  <span className="text-xs text-[var(--text-faint)]">
                     {shot.cameraLabel} &middot; {shot.durationSeconds}s
                   </span>
                 </div>
-                <p className="mt-2 text-sm text-gray-900">{shot.description}</p>
+                <p className="mt-3 text-sm text-[var(--text)]">{shot.description}</p>
 
                 <button
                   type="button"
                   onClick={() => generateShot(index, shot)}
                   disabled={busy}
-                  className="mt-3 rounded bg-gray-900 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+                  className="btn-secondary mt-4 w-full gap-2 !py-2 text-xs"
                 >
+                  {busy && <span className="spinner h-3 w-3" aria-hidden="true" />}
                   {busy ? "Working..." : "Generate This Shot"}
                 </button>
 
-                {shotGeneration.phase === "queued" && (
-                  <p className="mt-2 text-xs text-gray-600">Queued...</p>
-                )}
-                {shotGeneration.phase === "processing" && (
-                  <p className="mt-2 text-xs text-gray-600">Processing...</p>
+                {(shotGeneration.phase === "queued" || shotGeneration.phase === "processing") && (
+                  <p className="mt-2 flex items-center gap-1.5 text-xs text-[var(--text-muted)]">
+                    <span className="spinner h-3 w-3 text-[var(--accent-via)]" aria-hidden="true" />
+                    {shotGeneration.phase === "queued" ? "Queued..." : "Rendering..."}
+                  </p>
                 )}
                 {shotGeneration.phase === "failed" && (
-                  <p className="mt-2 text-xs text-red-600">{shotGeneration.errorMessage}</p>
+                  <p className="mt-2 text-xs text-[var(--danger)]">{shotGeneration.errorMessage}</p>
                 )}
                 {shotGeneration.phase === "complete" && shotGeneration.assetUrl && (
                   <video
                     src={shotGeneration.assetUrl}
                     controls
                     preload="metadata"
-                    className="mt-2 max-w-full rounded"
+                    className="mt-3 w-full rounded-lg"
                   />
                 )}
               </div>

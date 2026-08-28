@@ -117,29 +117,35 @@ export function StudioClient({
         : voiceModelLabel;
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-12">
-      <h1 className="text-3xl font-bold">Studio</h1>
-      <p className="mt-1 text-sm text-gray-600">Credit balance: {creditBalance}</p>
-
-      <div className="mt-6 flex gap-2" role="radiogroup" aria-label="Generation mode">
-        {MODES.map((mode) => (
-          <button
-            key={mode}
-            type="button"
-            role="radio"
-            aria-checked={state.mode === mode}
-            disabled={isBusy}
-            onClick={() => dispatch({ type: "SET_MODE", mode })}
-            className={`rounded px-4 py-2 text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-black disabled:opacity-50 ${
-              state.mode === mode ? "bg-black text-white" : "bg-gray-100 text-gray-800"
-            }`}
-          >
-            {MODE_LABELS[mode]}
-          </button>
-        ))}
+    <div className="mx-auto max-w-2xl px-4 py-10 sm:py-14">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Studio</h1>
+        <span className="flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs font-medium text-[var(--text-muted)]">
+          <span className="gradient-ring h-2 w-2 rounded-full" aria-hidden="true" />
+          {creditBalance} credits
+        </span>
       </div>
 
-      <p className="mt-2 text-xs text-gray-500">Model: {modelLabel}</p>
+      <div className="mt-6 card p-1.5">
+        <div className="flex gap-1" role="radiogroup" aria-label="Generation mode">
+          {MODES.map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              role="radio"
+              aria-checked={state.mode === mode}
+              disabled={isBusy}
+              data-active={state.mode === mode}
+              onClick={() => dispatch({ type: "SET_MODE", mode })}
+              className="pill flex-1"
+            >
+              {MODE_LABELS[mode]}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <p className="mt-3 text-xs text-[var(--text-faint)]">Model: {modelLabel}</p>
 
       {state.mode === "voice" && (
         <div className="mt-3 flex gap-2" role="radiogroup" aria-label="Voice style">
@@ -150,10 +156,14 @@ export function StudioClient({
               role="radio"
               aria-checked={state.voiceStyle === style}
               disabled={isBusy}
+              data-active={state.voiceStyle === style}
               onClick={() => dispatch({ type: "SET_VOICE_STYLE", voiceStyle: style })}
-              className={`rounded px-3 py-1.5 text-xs font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-black disabled:opacity-50 ${
-                state.voiceStyle === style ? "bg-black text-white" : "bg-gray-100 text-gray-800"
-              }`}
+              className="pill !px-3 !py-1.5 text-xs"
+              style={
+                state.voiceStyle !== style
+                  ? { background: "var(--surface)", border: "1px solid var(--border)" }
+                  : undefined
+              }
             >
               {style === "standard" ? "Standard" : "Expressive"}
             </button>
@@ -161,8 +171,8 @@ export function StudioClient({
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="mt-4 space-y-3">
-        <label htmlFor="prompt" className="block text-sm font-medium text-gray-700">
+      <form onSubmit={handleSubmit} className="mt-5 space-y-3">
+        <label htmlFor="prompt" className="block text-xs font-medium text-[var(--text-muted)]">
           {state.mode === "voice" ? "Text to speak" : "Prompt"}
         </label>
         <textarea
@@ -180,24 +190,31 @@ export function StudioClient({
                 : "Type the words you want spoken aloud..."
               : "Describe what you want to create..."
           }
-          className="w-full rounded border border-gray-300 p-3 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-black disabled:opacity-50"
+          className="input-field resize-none"
         />
         <button
           type="submit"
           disabled={isBusy || state.prompt.trim().length === 0}
-          className="rounded bg-black px-4 py-2 text-sm font-medium text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-black disabled:opacity-50"
+          className="btn-primary w-full gap-2"
         >
+          {isBusy && <span className="spinner" aria-hidden="true" />}
           {isBusy ? "Working..." : "Generate"}
         </button>
       </form>
 
       <div className="mt-6" aria-live="polite">
-        {state.phase === "queued" && <p className="text-sm text-gray-600">Queued...</p>}
-        {state.phase === "processing" && (
-          <p className="text-sm text-gray-600">Processing...</p>
+        {(state.phase === "queued" || state.phase === "processing") && (
+          <div className="card flex items-center gap-3 p-4">
+            <span className="spinner text-[var(--accent-via)]" aria-hidden="true" />
+            <p className="text-sm text-[var(--text-muted)]">
+              {state.phase === "queued" ? "Queued..." : "Generating..."}
+            </p>
+          </div>
         )}
         {state.phase === "failed" && (
-          <p className="text-sm text-red-600">{state.errorMessage}</p>
+          <div className="card border-[var(--danger)]/30 p-4">
+            <p className="text-sm text-[var(--danger)]">{state.errorMessage}</p>
+          </div>
         )}
         {state.phase === "complete" &&
           state.assets.map((asset) => {
@@ -207,19 +224,15 @@ export function StudioClient({
                   key={asset.id}
                   src={asset.url}
                   alt="Generated result"
-                  className="mt-2 max-w-full rounded"
+                  className="card w-full object-cover"
                 />
               );
             }
             if (asset.type === "audio") {
               return (
-                <audio
-                  key={asset.id}
-                  src={asset.url}
-                  controls
-                  preload="metadata"
-                  className="mt-2 w-full"
-                />
+                <div key={asset.id} className="card p-4">
+                  <audio src={asset.url} controls preload="metadata" className="w-full" />
+                </div>
               );
             }
             return (
@@ -228,7 +241,7 @@ export function StudioClient({
                 src={asset.url}
                 controls
                 preload="metadata"
-                className="mt-2 max-w-full rounded"
+                className="card w-full"
               />
             );
           })}

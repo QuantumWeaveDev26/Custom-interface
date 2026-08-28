@@ -1,5 +1,26 @@
 @import "tailwindcss";
 
+@theme inline {
+  --font-sans: var(--font-inter), system-ui, -apple-system, sans-serif;
+}
+
+:root {
+  --bg: #08090d;
+  --bg-elevated: #0f1117;
+  --surface: #13151c;
+  --surface-hover: #191c25;
+  --border: #23262f;
+  --border-strong: #34384470;
+  --text: #f4f4f6;
+  --text-muted: #9ca0ac;
+  --text-faint: #63666f;
+  --accent-from: #8b5cf6;
+  --accent-via: #d946ef;
+  --accent-to: #f97316;
+  --danger: #f87171;
+  --success: #34d399;
+}
+
 * {
   @apply box-border;
 }
@@ -10,6 +31,97 @@ body {
 }
 
 body {
-  @apply bg-white text-gray-900;
-  font-family: system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+::selection {
+  background: var(--accent-via);
+  color: white;
+}
+
+/* Reusable design-system utility classes -- kept here instead of duplicated
+   Tailwind strings in every page so the visual language stays consistent. */
+
+.gradient-text {
+  background-image: linear-gradient(90deg, var(--accent-from), var(--accent-via), var(--accent-to));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.gradient-ring {
+  background-image: linear-gradient(135deg, var(--accent-from), var(--accent-via), var(--accent-to));
+}
+
+.btn-primary {
+  @apply inline-flex items-center justify-center rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition-all duration-150;
+  background-image: linear-gradient(90deg, var(--accent-from), var(--accent-via));
+  box-shadow: 0 1px 0 0 rgba(255, 255, 255, 0.08) inset, 0 8px 20px -8px rgba(217, 70, 239, 0.45);
+}
+.btn-primary:hover:not(:disabled) {
+  filter: brightness(1.08);
+  box-shadow: 0 1px 0 0 rgba(255, 255, 255, 0.1) inset, 0 10px 24px -6px rgba(217, 70, 239, 0.55);
+}
+.btn-primary:disabled {
+  @apply cursor-not-allowed opacity-40;
+  filter: grayscale(0.4);
+}
+
+.btn-secondary {
+  @apply inline-flex items-center justify-center rounded-xl border px-5 py-2.5 text-sm font-medium transition-colors duration-150;
+  background: var(--surface);
+  border-color: var(--border);
+  color: var(--text);
+}
+.btn-secondary:hover:not(:disabled) {
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
+}
+.btn-secondary:disabled {
+  @apply cursor-not-allowed opacity-40;
+}
+
+.card {
+  border-radius: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.input-field {
+  @apply w-full rounded-xl px-4 py-3 text-sm outline-none transition-colors duration-150;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+.input-field::placeholder {
+  color: var(--text-faint);
+}
+.input-field:focus {
+  border-color: var(--accent-via);
+  box-shadow: 0 0 0 3px rgba(217, 70, 239, 0.15);
+}
+.input-field:disabled {
+  @apply cursor-not-allowed opacity-50;
+}
+
+.pill {
+  @apply inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-medium transition-all duration-150;
+  color: var(--text-muted);
+}
+.pill[data-active="true"] {
+  color: white;
+  background-image: linear-gradient(90deg, var(--accent-from), var(--accent-via));
+  box-shadow: 0 6px 16px -6px rgba(217, 70, 239, 0.5);
+}
+.pill[data-active="false"]:hover:not(:disabled) {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+.pill:disabled {
+  @apply cursor-not-allowed opacity-50;
+}
+
+.spinner {
+  @apply inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent;
 }
