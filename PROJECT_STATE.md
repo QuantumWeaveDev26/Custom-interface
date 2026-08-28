@@ -165,6 +165,11 @@ reference docs; this is the index.
   ```
 - The BytePlus docs site is a JS-rendered SPA. Plain HTTP fetching returns
   navigation chrome only. Use a real browser tool to read it.
+- **Never run `pnpm build` while `next dev` is running.** Both write
+  `apps/web/.next`. The production build stomps the dev server's artifacts, and
+  the symptom is bizarre: the app serves with *no CSS at all* and unrelated
+  pages throw `MODULE_NOT_FOUND`. Recovery: stop dev, `rm -rf apps/web/.next`,
+  start dev again. Cost an hour of false debugging once.
 
 ---
 
