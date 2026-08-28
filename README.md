@@ -229,3 +229,18 @@ See `BUILD_PLAN.md` for the full plan and current blockers. Summary:
   has local docker-compose only; nothing is deployed anywhere yet
 - **CI** — no pipeline yet; all verification is manual and local
 - **API route tests** — current web tests cover state reducers only
+
+## Granting yourself credits (dev)
+
+Until Phase 4 billing exists, credits can only be added with this script. It
+writes the balance change and a ledger entry in one transaction, so the ledger
+stays a complete audit trail:
+
+```bash
+cd packages/db
+DATABASE_URL="postgresql://..." node scripts/grant-credits.mjs you@example.com 500
+```
+
+Grants are recorded with `reason: "dev_grant"`, deliberately distinct from
+`"topup"` — that reason is reserved for real paid top-ups so Phase 4 revenue
+reporting stays accurate (see `ARCHITECTURE.md` §8).

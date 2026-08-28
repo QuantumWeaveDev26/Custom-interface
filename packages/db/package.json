@@ -16,7 +16,8 @@
     "test": "pnpm build && node --test \"dist/*.test.js\"",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "db:generate": "prisma generate --schema prisma/schema.prisma",
-    "db:validate": "prisma validate --schema prisma/schema.prisma"
+    "db:validate": "prisma validate --schema prisma/schema.prisma",
+    "grant-credits": "node scripts/grant-credits.mjs"
   },
   "dependencies": {
     "@creative-ai/shared-types": "workspace:*",
