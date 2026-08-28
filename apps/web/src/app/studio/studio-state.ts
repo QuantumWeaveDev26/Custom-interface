@@ -1,5 +1,12 @@
+import type {
+  ImageSize,
+  VideoRatio,
+  VideoResolution,
+} from "@creative-ai/shared-types";
+
 export type StudioMode = "image" | "video" | "voice";
 export type VoiceStyle = "standard" | "expressive";
+export type { ImageSize, VideoRatio, VideoResolution };
 
 export interface StudioAsset {
   id: string;
@@ -19,16 +26,26 @@ export interface StudioState {
   mode: StudioMode;
   prompt: string;
   voiceStyle: VoiceStyle;
+  imageSize: ImageSize;
+  resolution: VideoResolution;
+  ratio: VideoRatio;
+  durationSeconds: number;
   phase: StudioPhase;
   jobId: string | null;
   errorMessage: string | null;
   assets: readonly StudioAsset[];
 }
 
+// Defaults mirror the previously hardcoded profiles, so a user who touches
+// nothing gets exactly what they got before these controls existed.
 export const INITIAL_STUDIO_STATE: StudioState = {
   mode: "image",
   prompt: "",
   voiceStyle: "standard",
+  imageSize: "4K",
+  resolution: "720p",
+  ratio: "21:9",
+  durationSeconds: 5,
   phase: "idle",
   jobId: null,
   errorMessage: null,
@@ -39,6 +56,10 @@ export type StudioAction =
   | { type: "SET_MODE"; mode: StudioMode }
   | { type: "SET_PROMPT"; prompt: string }
   | { type: "SET_VOICE_STYLE"; voiceStyle: VoiceStyle }
+  | { type: "SET_IMAGE_SIZE"; imageSize: ImageSize }
+  | { type: "SET_RESOLUTION"; resolution: VideoResolution }
+  | { type: "SET_RATIO"; ratio: VideoRatio }
+  | { type: "SET_DURATION"; durationSeconds: number }
   | { type: "SUBMIT_START" }
   | { type: "SUBMIT_ERROR"; message: string }
   | { type: "JOB_QUEUED"; jobId: string }
@@ -60,6 +81,14 @@ export function studioReducer(
       return { ...state, prompt: action.prompt };
     case "SET_VOICE_STYLE":
       return { ...state, voiceStyle: action.voiceStyle };
+    case "SET_IMAGE_SIZE":
+      return { ...state, imageSize: action.imageSize };
+    case "SET_RESOLUTION":
+      return { ...state, resolution: action.resolution };
+    case "SET_RATIO":
+      return { ...state, ratio: action.ratio };
+    case "SET_DURATION":
+      return { ...state, durationSeconds: action.durationSeconds };
     case "SUBMIT_START":
       return { ...state, phase: "submitting", errorMessage: null, assets: [] };
     case "SUBMIT_ERROR":

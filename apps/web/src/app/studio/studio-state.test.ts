@@ -67,12 +67,11 @@ test("submit error returns to idle with a message", () => {
 
 test("mode switch resets phase/job/assets but preserves prompt text", () => {
   const state: StudioState = {
+    ...INITIAL_STUDIO_STATE,
     mode: "image",
     prompt: "a neon fox",
-    voiceStyle: "standard",
     phase: "complete",
     jobId: "job-1",
-    errorMessage: null,
     assets: [{ id: "a1", type: "image", url: "/api/assets/a1" }],
   };
   const next = studioReducer(state, { type: "SET_MODE", mode: "video" });
@@ -112,6 +111,48 @@ test("mode switch resets voiceStyle to standard", () => {
   };
   const next = studioReducer(state, { type: "SET_MODE", mode: "image" });
   assert.equal(next.voiceStyle, "standard");
+});
+
+test("generation params default to the previously hardcoded profiles", () => {
+  assert.equal(INITIAL_STUDIO_STATE.imageSize, "4K");
+  assert.equal(INITIAL_STUDIO_STATE.resolution, "720p");
+  assert.equal(INITIAL_STUDIO_STATE.ratio, "21:9");
+  assert.equal(INITIAL_STUDIO_STATE.durationSeconds, 5);
+});
+
+test("each generation param setter updates only its own field", () => {
+  let next = studioReducer(INITIAL_STUDIO_STATE, { type: "SET_IMAGE_SIZE", imageSize: "1K" });
+  assert.equal(next.imageSize, "1K");
+  assert.equal(next.resolution, "720p");
+
+  next = studioReducer(INITIAL_STUDIO_STATE, { type: "SET_RESOLUTION", resolution: "1080p" });
+  assert.equal(next.resolution, "1080p");
+  assert.equal(next.ratio, "21:9");
+
+  next = studioReducer(INITIAL_STUDIO_STATE, { type: "SET_RATIO", ratio: "9:16" });
+  assert.equal(next.ratio, "9:16");
+  assert.equal(next.durationSeconds, 5);
+
+  next = studioReducer(INITIAL_STUDIO_STATE, { type: "SET_DURATION", durationSeconds: 20 });
+  assert.equal(next.durationSeconds, 20);
+  assert.equal(next.resolution, "720p");
+});
+
+test("mode switch resets generation params but preserves the prompt", () => {
+  const state: StudioState = {
+    ...INITIAL_STUDIO_STATE,
+    mode: "video",
+    prompt: "orbital sunrise",
+    resolution: "1080p",
+    ratio: "9:16",
+    durationSeconds: 25,
+  };
+  const next = studioReducer(state, { type: "SET_MODE", mode: "image" });
+
+  assert.equal(next.prompt, "orbital sunrise");
+  assert.equal(next.resolution, "720p");
+  assert.equal(next.ratio, "21:9");
+  assert.equal(next.durationSeconds, 5);
 });
 
 test("set prompt updates only the prompt field", () => {

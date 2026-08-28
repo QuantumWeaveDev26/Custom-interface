@@ -1,6 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useReducer, useRef } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef } from "react";
+import {
+  IMAGE_SIZES,
+  VIDEO_RATIOS,
+  creditCostFor,
+  type CreditPricing,
+  type GenerationParams,
+  type VideoResolution,
+} from "@creative-ai/shared-types";
 import {
   INITIAL_STUDIO_STATE,
   studioReducer,
@@ -13,6 +21,11 @@ export interface StudioClientProps {
   imageModelLabel: string;
   videoModelLabel: string;
   voiceModelLabel: string;
+  /** Only what the configured video model actually supports. */
+  videoResolutions: readonly VideoResolution[];
+  minDurationSeconds: number;
+  maxDurationSeconds: number;
+  pricing: CreditPricing;
 }
 
 interface JobStatusMessage {
@@ -33,9 +46,41 @@ export function StudioClient({
   imageModelLabel,
   videoModelLabel,
   voiceModelLabel,
+  videoResolutions,
+  minDurationSeconds,
+  maxDurationSeconds,
+  pricing,
 }: StudioClientProps) {
   const [state, dispatch] = useReducer(studioReducer, INITIAL_STUDIO_STATE);
   const eventSourceRef = useRef<EventSource | null>(null);
+
+  // Built once here and reused for both the cost preview and the request body,
+  // so the price shown can never drift from the price submitted.
+  const params: GenerationParams = useMemo(() => {
+    if (state.mode === "image") return { type: "image", size: state.imageSize };
+    if (state.mode === "voice") return { type: "voice", style: state.voiceStyle };
+    return {
+      type: "video",
+      resolution: state.resolution,
+      ratio: state.ratio,
+      durationSeconds: state.durationSeconds,
+    };
+  }, [
+    state.mode,
+    state.imageSize,
+    state.voiceStyle,
+    state.resolution,
+    state.ratio,
+    state.durationSeconds,
+  ]);
+
+  // Same function the server charges with — a preview, still authoritative
+  // server-side.
+  const estimatedCost = useMemo(
+    () => creditCostFor(params, pricing),
+    [params, pricing],
+  );
+  const affordable = estimatedCost <= creditBalance;
 
   useEffect(() => {
     return () => {
@@ -63,9 +108,8 @@ export function StudioClient({
           body: JSON.stringify({
             type: state.mode,
             prompt: state.prompt,
-            ...(state.mode === "voice"
-              ? { params: { style: state.voiceStyle } }
-              : {}),
+            // `type` is the request discriminator, not a params field.
+            params: (({ type: _ignored, ...rest }) => rest)(params),
           }),
         });
       } catch {
@@ -108,7 +152,7 @@ export function StudioClient({
         source.close();
       };
     },
-    [isBusy, state.mode, state.prompt, state.voiceStyle],
+    [isBusy, state.mode, state.prompt, params],
   );
 
   const modelLabel =
@@ -173,6 +217,123 @@ export function StudioClient({
         </div>
       )}
 
+      {state.mode === "image" && (
+        <div className="mt-3">
+          <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-[var(--text-faint)]">
+            Size
+          </p>
+          <div className="flex gap-2" role="radiogroup" aria-label="Image size">
+            {IMAGE_SIZES.map((size) => (
+              <button
+                key={size}
+                type="button"
+                role="radio"
+                aria-checked={state.imageSize === size}
+                disabled={isBusy}
+                data-active={state.imageSize === size}
+                onClick={() => dispatch({ type: "SET_IMAGE_SIZE", imageSize: size })}
+                className="pill !px-3 !py-1.5 text-xs"
+                style={
+                  state.imageSize !== size
+                    ? { background: "var(--surface)", border: "1px solid var(--border)" }
+                    : undefined
+                }
+              >
+                {size}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {state.mode === "video" && (
+        <div className="mt-3 space-y-3">
+          <div>
+            <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-[var(--text-faint)]">
+              Resolution
+            </p>
+            <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Resolution">
+              {videoResolutions.map((resolution) => (
+                <button
+                  key={resolution}
+                  type="button"
+                  role="radio"
+                  aria-checked={state.resolution === resolution}
+                  disabled={isBusy}
+                  data-active={state.resolution === resolution}
+                  onClick={() => dispatch({ type: "SET_RESOLUTION", resolution })}
+                  className="pill !px-3 !py-1.5 text-xs"
+                  style={
+                    state.resolution !== resolution
+                      ? { background: "var(--surface)", border: "1px solid var(--border)" }
+                      : undefined
+                  }
+                >
+                  {resolution}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-[var(--text-faint)]">
+              Aspect ratio
+            </p>
+            <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Aspect ratio">
+              {VIDEO_RATIOS.map((ratio) => (
+                <button
+                  key={ratio}
+                  type="button"
+                  role="radio"
+                  aria-checked={state.ratio === ratio}
+                  disabled={isBusy}
+                  data-active={state.ratio === ratio}
+                  onClick={() => dispatch({ type: "SET_RATIO", ratio })}
+                  className="pill !px-3 !py-1.5 text-xs"
+                  style={
+                    state.ratio !== ratio
+                      ? { background: "var(--surface)", border: "1px solid var(--border)" }
+                      : undefined
+                  }
+                >
+                  {ratio}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label
+              htmlFor="duration"
+              className="mb-1.5 flex items-center justify-between text-[11px] font-medium uppercase tracking-wide text-[var(--text-faint)]"
+            >
+              <span>Duration</span>
+              <span className="text-[var(--text)]">{state.durationSeconds}s</span>
+            </label>
+            <input
+              id="duration"
+              type="range"
+              min={minDurationSeconds}
+              max={maxDurationSeconds}
+              step={1}
+              value={state.durationSeconds}
+              disabled={isBusy}
+              onChange={(event) =>
+                dispatch({
+                  type: "SET_DURATION",
+                  durationSeconds: Number(event.target.value),
+                })
+              }
+              className="w-full accent-[var(--accent-via)] disabled:opacity-50"
+            />
+            <div className="flex justify-between text-[10px] text-[var(--text-faint)]">
+              <span>{minDurationSeconds}s</span>
+              <span>{maxDurationSeconds}s</span>
+            </div>
+          </div>
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="mt-5 space-y-3">
         <label htmlFor="prompt" className="block text-xs font-medium text-[var(--text-muted)]">
           {state.mode === "voice" ? "Text to speak" : "Prompt"}
@@ -196,12 +357,19 @@ export function StudioClient({
         />
         <button
           type="submit"
-          disabled={isBusy || state.prompt.trim().length === 0}
+          disabled={isBusy || state.prompt.trim().length === 0 || !affordable}
           className="btn-primary w-full gap-2"
         >
           {isBusy && <span className="spinner" aria-hidden="true" />}
-          {isBusy ? "Working..." : "Generate"}
+          {isBusy
+            ? "Working..."
+            : `Generate · ${estimatedCost} credit${estimatedCost === 1 ? "" : "s"}`}
         </button>
+        {!affordable && !isBusy && (
+          <p className="text-xs text-[var(--danger)]">
+            Not enough credits — this costs {estimatedCost}, you have {creditBalance}.
+          </p>
+        )}
       </form>
 
       <div className="mt-6" aria-live="polite">
