@@ -285,3 +285,43 @@ features.
 Documented ratios for every Seedance model: `21:9`, `16:9`, `4:3`, `1:1`,
 **`3:4`**, `9:16`. This project's `VIDEO_RATIOS` was missing `3:4` — a real gap,
 since `3:4` is a common portrait format.
+
+---
+
+## Multi-reference image-to-image (R3) — CONFIRMED via official docs, 2026-08-29
+
+Source: BytePlus ModelArk "Image generation API" docs, read directly.
+**Documented, not yet exercised by a live call from this project.**
+
+Same `POST /images/generations` endpoint as text-to-image. The only difference
+is the `image` parameter, documented as **`string | string[]`** ("Reference
+image"). Passing an array is multi-reference:
+
+```json
+{
+  "model": "dola-seedream-5-0-pro-260628",
+  "prompt": "Replace the clothing in image 1 with the outfit from image 2.",
+  "image": ["https://.../ref1.png", "https://.../ref2.png"],
+  "size": "2K",
+  "output_format": "png",
+  "watermark": false
+}
+```
+
+Notes:
+- The prompt can address the references positionally — "image 1", "image 2" —
+  so **array order is meaningful** and must be preserved. This is why
+  `JobInputAsset.position` exists.
+- References are fetched by BytePlus, so they must be publicly reachable URLs.
+  Our assets are private, so each must be signed first (same as image-to-video).
+- `packages/modelark-client` already types `image?: string | string[]`, so no
+  client change was needed.
+- **`seedream-5-0-lite-260128` — the model this project already runs — supports
+  multi-reference image-to-image** per the model list. No upgrade required, and
+  no move to the pricier `5-0-pro` (whose extra draw is layer decomposition).
+
+### Documented modes on this endpoint we still do not use
+
+`Single image-to-image` (one reference), `Multi-Image Blending`,
+`Multi-Reference Image-to-Batch-Image`, `Layer decomposition` (5.0-pro only),
+`sequential_image_generation` (batch variants), and streaming output.

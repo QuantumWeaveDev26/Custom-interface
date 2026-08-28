@@ -194,3 +194,48 @@ test("mode switch clears the selected first frame", () => {
   const next = studioReducer(state, { type: "SET_MODE", mode: "image" });
   assert.equal(next.firstFrameAssetId, null);
 });
+
+// --- Reference images (C4) --------------------------------------------------
+
+test("references accumulate in selection order", () => {
+  let state = studioReducer(INITIAL_STUDIO_STATE, {
+    type: "TOGGLE_REFERENCE",
+    assetId: "a",
+  });
+  state = studioReducer(state, { type: "TOGGLE_REFERENCE", assetId: "b" });
+  state = studioReducer(state, { type: "TOGGLE_REFERENCE", assetId: "c" });
+
+  // Order is what the prompt addresses as "image 1", "image 2", "image 3".
+  assert.deepEqual(state.referenceAssetIds, ["a", "b", "c"]);
+});
+
+test("toggling a reference off removes it and preserves the rest in order", () => {
+  let state = INITIAL_STUDIO_STATE;
+  for (const assetId of ["a", "b", "c"]) {
+    state = studioReducer(state, { type: "TOGGLE_REFERENCE", assetId });
+  }
+  state = studioReducer(state, { type: "TOGGLE_REFERENCE", assetId: "b" });
+
+  assert.deepEqual(state.referenceAssetIds, ["a", "c"]);
+});
+
+test("re-adding a removed reference puts it at the end, not its old slot", () => {
+  let state = INITIAL_STUDIO_STATE;
+  for (const assetId of ["a", "b"]) {
+    state = studioReducer(state, { type: "TOGGLE_REFERENCE", assetId });
+  }
+  state = studioReducer(state, { type: "TOGGLE_REFERENCE", assetId: "a" });
+  state = studioReducer(state, { type: "TOGGLE_REFERENCE", assetId: "a" });
+
+  // Matches what the numbered badges show the user.
+  assert.deepEqual(state.referenceAssetIds, ["b", "a"]);
+});
+
+test("mode switch clears selected references", () => {
+  const state: StudioState = {
+    ...INITIAL_STUDIO_STATE,
+    referenceAssetIds: ["a", "b"],
+  };
+  const next = studioReducer(state, { type: "SET_MODE", mode: "video" });
+  assert.deepEqual(next.referenceAssetIds, []);
+});

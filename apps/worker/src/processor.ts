@@ -123,10 +123,23 @@ async function processImage(
   if (params.type !== "image") {
     throw new Error(`Image job ${job.id} has ${params.type} params`);
   }
+
+  // Multi-reference image-to-image (MODELARK_API_REFERENCE.md, R3): the same
+  // endpoint takes an `image` array of reference URLs. Order is meaningful --
+  // prompts address references positionally ("image 1", "image 2") -- so the
+  // links are loaded in `position` order and that order is preserved here.
+  const references = await dependencies.loadInputAssets(job.id, job.userId);
+  const referenceUrls: string[] = [];
+  for (const asset of references) {
+    if (asset.type !== "image") continue;
+    referenceUrls.push(await dependencies.signAssetUrl(asset.storageUrl));
+  }
+
   const response = await dependencies.modelArk.createImage({
     model: job.model,
     prompt: job.inputParams.prompt,
     size: params.size,
+    ...(referenceUrls.length > 0 ? { image: referenceUrls } : {}),
     ...IMAGE_OUTPUT_PROFILE,
   });
   const media = await imageMedia(dependencies, response);

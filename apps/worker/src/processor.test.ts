@@ -254,8 +254,10 @@ function createImageFailureHarness(options: ImageFailureHarnessOptions): {
   imageCalls(): number;
   downloadCalls(): number;
   pollCalls(): number;
+  imageRequests(): GenerateImagesRequest[];
 } {
   let currentJob = imageJob();
+  const imageRequests: GenerateImagesRequest[] = [];
   let imageCalls = 0;
   let downloadCalls = 0;
   let pollCalls = 0;
@@ -298,8 +300,9 @@ function createImageFailureHarness(options: ImageFailureHarnessOptions): {
       };
     },
     modelArk: {
-      createImage: async () => {
+      createImage: async (request) => {
         operations.push("modelark:image");
+        imageRequests.push(request);
         imageCalls += 1;
         if (options.createError !== undefined) throw options.createError;
         return (
@@ -354,6 +357,7 @@ function createImageFailureHarness(options: ImageFailureHarnessOptions): {
     imageCalls: () => imageCalls,
     downloadCalls: () => downloadCalls,
     pollCalls: () => pollCalls,
+    imageRequests: () => imageRequests,
   };
 }
 
@@ -1074,4 +1078,43 @@ test("a resumed video job does not re-sign or re-send input assets", async () =>
   // Resume polls the existing task; recreating it would double-charge upstream.
   assert.equal(harness.createRequests.length, 0);
   assert.equal(loadCalls, 0);
+});
+
+// --- Multi-reference image-to-image (C4) ------------------------------------
+// Confirmed contract (MODELARK_API_REFERENCE.md R3): same /images/generations
+// endpoint, with an `image` array of reference URLs. Order is meaningful --
+// prompts address references as "image 1", "image 2".
+
+test("an image job with no references omits the image field entirely", async () => {
+  const harness = createImageFailureHarness({});
+
+  await createGenerationProcessor(harness.dependencies)("image-job");
+
+  assert.equal("image" in (harness.imageRequests()[0] ?? {}), false);
+});
+
+test("reference assets are signed and passed as an ordered image array", async () => {
+  const harness = createImageFailureHarness({});
+  harness.dependencies.loadInputAssets = async () => [
+    { assetId: "ref-a", role: "reference", position: 0, storageUrl: "tos://b/a.png", type: "image" },
+    { assetId: "ref-b", role: "reference", position: 1, storageUrl: "tos://b/b.png", type: "image" },
+  ];
+
+  await createGenerationProcessor(harness.dependencies)("image-job");
+
+  assert.deepEqual(harness.imageRequests()[0]?.image, [
+    "https://signed.example/tos://b/a.png",
+    "https://signed.example/tos://b/b.png",
+  ]);
+});
+
+test("private tos:// URLs are never sent as image references unsigned", async () => {
+  const harness = createImageFailureHarness({});
+  harness.dependencies.loadInputAssets = async () => [
+    { assetId: "ref-a", role: "reference", position: 0, storageUrl: "tos://b/a.png", type: "image" },
+  ];
+
+  await createGenerationProcessor(harness.dependencies)("image-job");
+
+  assert.doesNotMatch(JSON.stringify(harness.imageRequests()[0]), /"tos:\/\//);
 });

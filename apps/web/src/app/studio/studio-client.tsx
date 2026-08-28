@@ -90,14 +90,19 @@ export function StudioClient({
         }
         const { assetId } = (await response.json()) as { assetId: string };
         setUploadedIds((previous) => [assetId, ...previous]);
-        dispatch({ type: "SET_FIRST_FRAME", assetId });
+        // Select it straight away, in whichever way this mode means "use it".
+        dispatch(
+          state.mode === "image"
+            ? { type: "TOGGLE_REFERENCE", assetId }
+            : { type: "SET_FIRST_FRAME", assetId },
+        );
       } catch {
         setUploadError("Could not reach the server.");
       } finally {
         setUploading(false);
       }
     },
-    [],
+    [state.mode],
   );
 
   // Built once here and reused for both the cost preview and the request body,
@@ -163,6 +168,14 @@ export function StudioClient({
                   ],
                 }
               : {}),
+            ...(state.mode === "image" && state.referenceAssetIds.length > 0
+              ? {
+                  inputAssets: state.referenceAssetIds.map((assetId) => ({
+                    assetId,
+                    role: "reference",
+                  })),
+                }
+              : {}),
           }),
         });
       } catch {
@@ -205,7 +218,7 @@ export function StudioClient({
         source.close();
       };
     },
-    [isBusy, state.mode, state.prompt, params, state.firstFrameAssetId],
+    [isBusy, state.mode, state.prompt, params, state.firstFrameAssetId, state.referenceAssetIds],
   );
 
   const modelLabel =
@@ -273,6 +286,83 @@ export function StudioClient({
       {state.mode === "image" && (
         <div className="mt-3">
           <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-[var(--text-faint)]">
+            Reference images{" "}
+            <span className="normal-case tracking-normal">
+              (optional — keeps a character or style consistent)
+            </span>
+          </p>
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            <label
+              htmlFor="upload-reference"
+              className={`flex h-16 w-16 shrink-0 flex-col items-center justify-center gap-0.5 rounded-lg border border-dashed text-[10px] transition-colors ${
+                isBusy || uploading
+                  ? "cursor-not-allowed opacity-50"
+                  : "cursor-pointer hover:border-[var(--border-strong)]"
+              }`}
+              style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}
+            >
+              {uploading ? (
+                <span className="spinner h-4 w-4" aria-hidden="true" />
+              ) : (
+                <>
+                  <span className="text-base leading-none">+</span>
+                  <span>Upload</span>
+                </>
+              )}
+            </label>
+            <input
+              id="upload-reference"
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              onChange={handleUpload}
+              disabled={isBusy || uploading}
+              className="sr-only"
+            />
+            {pickableImageIds.map((assetId) => {
+              const order = state.referenceAssetIds.indexOf(assetId);
+              const selected = order !== -1;
+              return (
+                <button
+                  key={assetId}
+                  type="button"
+                  disabled={isBusy}
+                  aria-pressed={selected}
+                  aria-label={
+                    selected ? `Reference ${order + 1}, click to remove` : "Add as reference"
+                  }
+                  onClick={() => dispatch({ type: "TOGGLE_REFERENCE", assetId })}
+                  className="relative shrink-0 overflow-hidden rounded-lg transition-all disabled:opacity-50"
+                  style={{
+                    border: selected
+                      ? "2px solid var(--accent-via)"
+                      : "2px solid var(--border)",
+                  }}
+                >
+                  <img src={`/api/assets/${assetId}`} alt="" className="h-16 w-16 object-cover" />
+                  {selected && (
+                    // The number is the position the prompt can address as
+                    // "image 1", "image 2" — selection order is send order.
+                    <span
+                      className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-bold text-white"
+                      style={{ background: "var(--accent-via)" }}
+                    >
+                      {order + 1}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          {uploadError !== null && (
+            <p className="mt-1.5 text-[11px] text-[var(--danger)]">{uploadError}</p>
+          )}
+          {state.referenceAssetIds.length > 0 && (
+            <p className="mt-1.5 text-[11px] text-[var(--text-muted)]">
+              Refer to them in your prompt as “image 1”, “image 2”, and so on.
+            </p>
+          )}
+
+          <p className="mb-1.5 mt-3 text-[11px] font-medium uppercase tracking-wide text-[var(--text-faint)]">
             Size
           </p>
           <div className="flex gap-2" role="radiogroup" aria-label="Image size">
