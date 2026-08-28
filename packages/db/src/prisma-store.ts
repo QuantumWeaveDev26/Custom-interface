@@ -58,7 +58,7 @@ function toDatabaseTransaction(
           ...job,
           type: job.type as PhaseOneJobType,
           status: job.status as JobStatus,
-          inputParams: job.inputParams as { prompt: string },
+          inputParams: job.inputParams as { prompt: string; voiceStyle?: "standard" | "expressive" },
         };
       },
       updateMany: async ({ where, data }) => {
@@ -93,7 +93,7 @@ function toDatabaseTransaction(
               ...job,
               type: job.type as PhaseOneJobType,
               status: job.status as JobStatus,
-              inputParams: job.inputParams as { prompt: string },
+              inputParams: job.inputParams as { prompt: string; voiceStyle?: "standard" | "expressive" },
             };
       },
       findMany: async ({ where, orderBy, take }) => {
@@ -102,7 +102,7 @@ function toDatabaseTransaction(
           ...job,
           type: job.type as PhaseOneJobType,
           status: job.status as JobStatus,
-          inputParams: job.inputParams as { prompt: string },
+          inputParams: job.inputParams as { prompt: string; voiceStyle?: "standard" | "expressive" },
         }));
       },
     },

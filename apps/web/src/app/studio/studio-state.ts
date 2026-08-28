@@ -1,4 +1,5 @@
 export type StudioMode = "image" | "video" | "voice";
+export type VoiceStyle = "standard" | "expressive";
 
 export interface StudioAsset {
   id: string;
@@ -17,6 +18,7 @@ export type StudioPhase =
 export interface StudioState {
   mode: StudioMode;
   prompt: string;
+  voiceStyle: VoiceStyle;
   phase: StudioPhase;
   jobId: string | null;
   errorMessage: string | null;
@@ -26,6 +28,7 @@ export interface StudioState {
 export const INITIAL_STUDIO_STATE: StudioState = {
   mode: "image",
   prompt: "",
+  voiceStyle: "standard",
   phase: "idle",
   jobId: null,
   errorMessage: null,
@@ -35,6 +38,7 @@ export const INITIAL_STUDIO_STATE: StudioState = {
 export type StudioAction =
   | { type: "SET_MODE"; mode: StudioMode }
   | { type: "SET_PROMPT"; prompt: string }
+  | { type: "SET_VOICE_STYLE"; voiceStyle: VoiceStyle }
   | { type: "SUBMIT_START" }
   | { type: "SUBMIT_ERROR"; message: string }
   | { type: "JOB_QUEUED"; jobId: string }
@@ -54,6 +58,8 @@ export function studioReducer(
       return { ...INITIAL_STUDIO_STATE, mode: action.mode, prompt: state.prompt };
     case "SET_PROMPT":
       return { ...state, prompt: action.prompt };
+    case "SET_VOICE_STYLE":
+      return { ...state, voiceStyle: action.voiceStyle };
     case "SUBMIT_START":
       return { ...state, phase: "submitting", errorMessage: null, assets: [] };
     case "SUBMIT_ERROR":

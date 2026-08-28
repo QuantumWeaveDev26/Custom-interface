@@ -35,7 +35,7 @@ export interface GenerationProcessorDependencies {
     ModelArkClient,
     "createImage" | "createVideoTask" | "pollVideoTaskUntilDone"
   >;
-  voice: Pick<VoiceClient, "createSpeech">;
+  voice: Pick<VoiceClient, "createSpeech" | "createAudioGeneration">;
   download(url: string): Promise<DownloadedMedia>;
   storage: AssetStorage;
   publish(event: JobStatusEvent): Promise<void>;

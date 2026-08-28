@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  AUDIO_GENERATION_PROFILE,
   IMAGE_PROFILE,
   InvalidJobRequest,
   JobStatus,
@@ -74,6 +75,30 @@ test("accepts a prompt at the 2000-character boundary", () => {
   assert.deepEqual(parseSubmitJobRequest({ type: "image", prompt }), { type: "image", prompt });
 });
 
+test("accepts a standard or expressive voiceStyle on voice jobs", () => {
+  assert.deepEqual(parseSubmitJobRequest({ type: "voice", prompt: "hi", voiceStyle: "standard" }), {
+    type: "voice",
+    prompt: "hi",
+    voiceStyle: "standard",
+  });
+  assert.deepEqual(parseSubmitJobRequest({ type: "voice", prompt: "hi", voiceStyle: "expressive" }), {
+    type: "voice",
+    prompt: "hi",
+    voiceStyle: "expressive",
+  });
+});
+
+test("rejects voiceStyle on non-voice jobs and rejects invalid voiceStyle values", () => {
+  assert.throws(
+    () => parseSubmitJobRequest({ type: "image", prompt: "hi", voiceStyle: "expressive" }),
+    InvalidJobRequest,
+  );
+  assert.throws(
+    () => parseSubmitJobRequest({ type: "voice", prompt: "hi", voiceStyle: "dramatic" }),
+    InvalidJobRequest,
+  );
+});
+
 test("exposes immutable fixed generation profiles", () => {
   assert.deepEqual(IMAGE_PROFILE, {
     size: "4K",
@@ -94,6 +119,12 @@ test("exposes immutable fixed generation profiles", () => {
   assert.equal(Reflect.set(IMAGE_PROFILE, "size", "1K"), false);
   assert.equal(Reflect.set(VIDEO_PROFILE, "duration", 30), false);
   assert.equal(Reflect.set(VOICE_PROFILE, "speaker", "other"), false);
+  assert.deepEqual(AUDIO_GENERATION_PROFILE, {
+    model: "seed-audio-1.0",
+    format: "mp3",
+    sample_rate: 48000,
+  });
+  assert.equal(Object.isFrozen(AUDIO_GENERATION_PROFILE), true);
 });
 
 test("exposes only Phase 1 job statuses", () => {

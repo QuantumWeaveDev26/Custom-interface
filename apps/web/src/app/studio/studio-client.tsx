@@ -60,7 +60,11 @@ export function StudioClient({
         response = await fetch("/api/jobs", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ type: state.mode, prompt: state.prompt }),
+          body: JSON.stringify({
+            type: state.mode,
+            prompt: state.prompt,
+            ...(state.mode === "voice" ? { voiceStyle: state.voiceStyle } : {}),
+          }),
         });
       } catch {
         dispatch({ type: "SUBMIT_ERROR", message: "Could not reach the server." });
@@ -102,7 +106,7 @@ export function StudioClient({
         source.close();
       };
     },
-    [isBusy, state.mode, state.prompt],
+    [isBusy, state.mode, state.prompt, state.voiceStyle],
   );
 
   const modelLabel =
@@ -137,6 +141,26 @@ export function StudioClient({
 
       <p className="mt-2 text-xs text-gray-500">Model: {modelLabel}</p>
 
+      {state.mode === "voice" && (
+        <div className="mt-3 flex gap-2" role="radiogroup" aria-label="Voice style">
+          {(["standard", "expressive"] as const).map((style) => (
+            <button
+              key={style}
+              type="button"
+              role="radio"
+              aria-checked={state.voiceStyle === style}
+              disabled={isBusy}
+              onClick={() => dispatch({ type: "SET_VOICE_STYLE", voiceStyle: style })}
+              className={`rounded px-3 py-1.5 text-xs font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-black disabled:opacity-50 ${
+                state.voiceStyle === style ? "bg-black text-white" : "bg-gray-100 text-gray-800"
+              }`}
+            >
+              {style === "standard" ? "Standard" : "Expressive"}
+            </button>
+          ))}
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="mt-4 space-y-3">
         <label htmlFor="prompt" className="block text-sm font-medium text-gray-700">
           {state.mode === "voice" ? "Text to speak" : "Prompt"}
@@ -151,7 +175,9 @@ export function StudioClient({
           required
           placeholder={
             state.mode === "voice"
-              ? "Type the words you want spoken aloud..."
+              ? state.voiceStyle === "expressive"
+                ? "Describe the scene, tone, and words to speak (e.g. \"A dramatic announcer voice: Welcome to the show!\")..."
+                : "Type the words you want spoken aloud..."
               : "Describe what you want to create..."
           }
           className="w-full rounded border border-gray-300 p-3 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-black disabled:opacity-50"

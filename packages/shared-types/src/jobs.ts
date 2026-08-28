@@ -1,6 +1,7 @@
 export type SubmitJobRequest = {
   type: "image" | "video" | "voice";
   prompt: string;
+  voiceStyle?: "standard" | "expressive";
 };
 
 export class InvalidJobRequest extends Error {
@@ -50,6 +51,15 @@ export const VOICE_PROFILE = Object.freeze({
   sample_rate: 24000,
 } as const);
 
+// Expressive voice style routes through the richer tts/create endpoint instead
+// of tts/unidirectional -- same prompt text, but the model reads emotion/tone/
+// style direction out of it rather than speaking it flatly.
+export const AUDIO_GENERATION_PROFILE = Object.freeze({
+  model: "seed-audio-1.0",
+  format: "mp3",
+  sample_rate: 48000,
+} as const);
+
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   if (value === null || typeof value !== "object" || Array.isArray(value)) {
     return false;
@@ -64,9 +74,9 @@ export function parseSubmitJobRequest(value: unknown): SubmitJobRequest {
     throw new InvalidJobRequest("Body must be a plain object");
   }
 
-  const allowedFields = new Set(["type", "prompt"]);
+  const allowedFields = new Set(["type", "prompt", "voiceStyle"]);
   if (Object.keys(value).some((field) => !allowedFields.has(field))) {
-    throw new InvalidJobRequest("Only type and prompt are allowed");
+    throw new InvalidJobRequest("Only type, prompt, and voiceStyle are allowed");
   }
 
   if (value.type !== "image" && value.type !== "video" && value.type !== "voice") {
@@ -80,6 +90,16 @@ export function parseSubmitJobRequest(value: unknown): SubmitJobRequest {
   const prompt = value.prompt.trim();
   if (prompt.length < 1 || prompt.length > 2000) {
     throw new InvalidJobRequest("Prompt must be 1-2000 characters");
+  }
+
+  if (value.voiceStyle !== undefined) {
+    if (value.type !== "voice") {
+      throw new InvalidJobRequest("voiceStyle is only valid for voice jobs");
+    }
+    if (value.voiceStyle !== "standard" && value.voiceStyle !== "expressive") {
+      throw new InvalidJobRequest("voiceStyle must be standard or expressive");
+    }
+    return { type: value.type, prompt, voiceStyle: value.voiceStyle };
   }
 
   return { type: value.type, prompt };

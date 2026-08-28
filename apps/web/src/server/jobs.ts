@@ -46,6 +46,7 @@ export async function submitGenerationJob(
     userId,
     type: parsedRequest.type,
     prompt: parsedRequest.prompt,
+    ...(parsedRequest.voiceStyle === undefined ? {} : { voiceStyle: parsedRequest.voiceStyle }),
     model,
     creditsCost: cost,
     maxInFlight: MAX_IN_FLIGHT_JOBS,

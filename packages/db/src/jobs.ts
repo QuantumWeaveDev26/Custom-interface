@@ -90,7 +90,10 @@ export async function submitJob(
               type: command.type,
               model: command.model,
               status: "queued",
-              inputParams: { prompt: command.prompt },
+              inputParams: {
+                prompt: command.prompt,
+                ...(command.voiceStyle === undefined ? {} : { voiceStyle: command.voiceStyle }),
+              },
               creditsCost: command.creditsCost,
             },
           });

@@ -48,6 +48,25 @@ function imageResponse(url: string): ImagesResponse {
   };
 }
 
+function voiceJob(voiceStyle?: "standard" | "expressive"): JobRecord {
+  return {
+    id: "voice-job",
+    userId: "user-1",
+    type: "voice",
+    model: "seed-tts-2.0",
+    status: "queued",
+    inputParams: {
+      prompt: "welcome to the show",
+      ...(voiceStyle === undefined ? {} : { voiceStyle }),
+    },
+    externalTaskId: null,
+    errorMessage: null,
+    creditsCost: 1,
+    createdAt: FIXED_TIME,
+    updatedAt: FIXED_TIME,
+  };
+}
+
 function videoJob(
   status: JobRecord["status"] = "queued",
   externalTaskId: string | null = null,
@@ -172,6 +191,9 @@ function createVideoHarness(
       createSpeech: async () => {
         throw new Error("video flow must not call voice");
       },
+      createAudioGeneration: async () => {
+        throw new Error("video flow must not call voice");
+      },
     },
     download: async (url) => {
       operations.push(`download:${url}`);
@@ -284,6 +306,9 @@ function createImageFailureHarness(options: ImageFailureHarnessOptions): {
       createSpeech: async () => {
         throw new Error("image flow must not call voice");
       },
+      createAudioGeneration: async () => {
+        throw new Error("image flow must not call voice");
+      },
     },
     download: async () => {
       downloadCalls += 1;
@@ -384,6 +409,9 @@ test("claims an image job, creates once without polling, and publishes after dur
     },
     voice: {
       createSpeech: async () => {
+        throw new Error("image flow must not call voice");
+      },
+      createAudioGeneration: async () => {
         throw new Error("image flow must not call voice");
       },
     },
@@ -487,6 +515,9 @@ test("an already-processing image fails and refunds without replaying createImag
     },
     voice: {
       createSpeech: async () => {
+        throw new Error("image flow must not call voice");
+      },
+      createAudioGeneration: async () => {
         throw new Error("image flow must not call voice");
       },
     },
@@ -744,4 +775,162 @@ test("a succeeded video without a URL refunds once", async () => {
     harness.events,
     "Generation failed. Your credits have been refunded.",
   );
+});
+
+test("a standard voice job calls createSpeech, not createAudioGeneration", async () => {
+  let currentJob = voiceJob("standard");
+  const operations: string[] = [];
+  const events: JobStatusEvent[] = [];
+  const dependencies: GenerationProcessorDependencies = {
+    loadJob: async () => currentJob,
+    claimQueuedJob: async () => {
+      currentJob = { ...currentJob, status: "processing" };
+      return true;
+    },
+    failAndRefund: async () => {
+      throw new Error("happy path must not refund");
+    },
+    saveExternalTaskId: async () => {
+      throw new Error("voice flow must not save a video task ID");
+    },
+    completeJobWithAsset: async (_jobId, assetInput) => {
+      currentJob = { ...currentJob, status: "complete" };
+      return {
+        job: currentJob,
+        asset: {
+          id: "audio-asset-1",
+          jobId: currentJob.id,
+          userId: currentJob.userId,
+          type: assetInput.type,
+          storageUrl: assetInput.storageUrl,
+          thumbnailUrl: null,
+          createdAt: FIXED_TIME,
+        },
+      };
+    },
+    modelArk: {
+      createImage: async () => {
+        throw new Error("voice flow must not call modelArk");
+      },
+      createVideoTask: async () => {
+        throw new Error("voice flow must not call modelArk");
+      },
+      pollVideoTaskUntilDone: async () => {
+        throw new Error("voice flow must not call modelArk");
+      },
+    },
+    voice: {
+      createSpeech: async (request) => {
+        operations.push("voice:createSpeech");
+        assert.equal(request.req_params.text, "welcome to the show");
+        return { audio: Uint8Array.from([1, 2, 3]), contentType: "audio/mpeg" };
+      },
+      createAudioGeneration: async () => {
+        throw new Error("standard voice must not call createAudioGeneration");
+      },
+    },
+    download: async () => {
+      throw new Error("voice flow must not download");
+    },
+    storage: {
+      upload: async (input) => {
+        operations.push(`storage:upload:${input.type}`);
+        return "tos://assets/user-1/voice-job/audio.mp3";
+      },
+    },
+    publish: async (event) => {
+      operations.push(`publish:${event.status}`);
+      events.push(event);
+    },
+  };
+
+  await createGenerationProcessor(dependencies)("voice-job");
+
+  assert.deepEqual(operations, [
+    "publish:processing",
+    "voice:createSpeech",
+    "storage:upload:audio",
+    "publish:complete",
+  ]);
+  assert.equal(events.at(-1)?.assets?.[0]?.type, "audio");
+});
+
+test("an expressive voice job calls createAudioGeneration, not createSpeech", async () => {
+  let currentJob = voiceJob("expressive");
+  const operations: string[] = [];
+  const events: JobStatusEvent[] = [];
+  const dependencies: GenerationProcessorDependencies = {
+    loadJob: async () => currentJob,
+    claimQueuedJob: async () => {
+      currentJob = { ...currentJob, status: "processing" };
+      return true;
+    },
+    failAndRefund: async () => {
+      throw new Error("happy path must not refund");
+    },
+    saveExternalTaskId: async () => {
+      throw new Error("voice flow must not save a video task ID");
+    },
+    completeJobWithAsset: async (_jobId, assetInput) => {
+      currentJob = { ...currentJob, status: "complete" };
+      return {
+        job: currentJob,
+        asset: {
+          id: "audio-asset-2",
+          jobId: currentJob.id,
+          userId: currentJob.userId,
+          type: assetInput.type,
+          storageUrl: assetInput.storageUrl,
+          thumbnailUrl: null,
+          createdAt: FIXED_TIME,
+        },
+      };
+    },
+    modelArk: {
+      createImage: async () => {
+        throw new Error("voice flow must not call modelArk");
+      },
+      createVideoTask: async () => {
+        throw new Error("voice flow must not call modelArk");
+      },
+      pollVideoTaskUntilDone: async () => {
+        throw new Error("voice flow must not call modelArk");
+      },
+    },
+    voice: {
+      createSpeech: async () => {
+        throw new Error("expressive voice must not call createSpeech");
+      },
+      createAudioGeneration: async (request) => {
+        operations.push("voice:createAudioGeneration");
+        assert.equal(request.model, "seed-audio-1.0");
+        assert.equal(request.text_prompt, "welcome to the show");
+        assert.deepEqual(request.audio_config, { format: "mp3", sample_rate: 48000 });
+        return { audio: Uint8Array.from([4, 5, 6]), contentType: "audio/mpeg" };
+      },
+    },
+    download: async () => {
+      throw new Error("voice flow must not download");
+    },
+    storage: {
+      upload: async (input) => {
+        operations.push(`storage:upload:${input.type}`);
+        return "tos://assets/user-1/voice-job/audio.mp3";
+      },
+    },
+    publish: async (event) => {
+      operations.push(`publish:${event.status}`);
+      events.push(event);
+    },
+  };
+
+  await createGenerationProcessor(dependencies)("voice-job");
+
+  assert.deepEqual(operations, [
+    "publish:processing",
+    "voice:createAudioGeneration",
+    "storage:upload:audio",
+    "publish:complete",
+  ]);
+  assert.equal(events.at(-1)?.assets?.[0]?.type, "audio");
 });

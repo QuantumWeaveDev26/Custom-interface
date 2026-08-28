@@ -155,6 +155,7 @@ export async function createWorkerRuntime(
     },
     voice: {
       createSpeech: voice.createSpeech.bind(voice),
+      createAudioGeneration: voice.createAudioGeneration.bind(voice),
     },
     download: downloadUrl,
     storage,

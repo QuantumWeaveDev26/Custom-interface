@@ -1,4 +1,5 @@
 export {
+  AUDIO_GENERATION_PROFILE,
   IMAGE_PROFILE,
   InvalidJobRequest,
   JobStatus,

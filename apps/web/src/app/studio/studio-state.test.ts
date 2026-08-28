@@ -69,6 +69,7 @@ test("mode switch resets phase/job/assets but preserves prompt text", () => {
   const state: StudioState = {
     mode: "image",
     prompt: "a neon fox",
+    voiceStyle: "standard",
     phase: "complete",
     jobId: "job-1",
     errorMessage: null,
@@ -91,6 +92,26 @@ test("voice mode completes with an audio asset", () => {
   });
   assert.equal(next.phase, "complete");
   assert.deepEqual(next.assets, [{ id: "a2", type: "audio", url: "/api/assets/a2" }]);
+});
+
+test("set voice style updates only the voiceStyle field", () => {
+  const next = studioReducer(INITIAL_STUDIO_STATE, {
+    type: "SET_VOICE_STYLE",
+    voiceStyle: "expressive",
+  });
+  assert.equal(next.voiceStyle, "expressive");
+  assert.equal(next.phase, "idle");
+});
+
+test("mode switch resets voiceStyle to standard", () => {
+  const state: StudioState = {
+    ...INITIAL_STUDIO_STATE,
+    mode: "voice",
+    voiceStyle: "expressive",
+    phase: "complete",
+  };
+  const next = studioReducer(state, { type: "SET_MODE", mode: "image" });
+  assert.equal(next.voiceStyle, "standard");
 });
 
 test("set prompt updates only the prompt field", () => {

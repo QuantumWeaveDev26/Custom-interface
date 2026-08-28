@@ -4,6 +4,7 @@ import type {
   ImagesResponse,
 } from "@creative-ai/modelark-client";
 import {
+  AUDIO_GENERATION_PROFILE,
   IMAGE_PROFILE,
   JobStatus,
   VIDEO_PROFILE,
@@ -141,16 +142,26 @@ async function processVoice(
   dependencies: GenerationProcessorDependencies,
   job: JobRecord,
 ): Promise<JobStatusEvent> {
-  const result = await dependencies.voice.createSpeech({
-    req_params: {
-      text: job.inputParams.prompt,
-      speaker: VOICE_PROFILE.speaker,
-      audio_params: {
-        format: VOICE_PROFILE.format,
-        sample_rate: VOICE_PROFILE.sample_rate,
-      },
-    },
-  });
+  const result =
+    job.inputParams.voiceStyle === "expressive"
+      ? await dependencies.voice.createAudioGeneration({
+          model: AUDIO_GENERATION_PROFILE.model,
+          text_prompt: job.inputParams.prompt,
+          audio_config: {
+            format: AUDIO_GENERATION_PROFILE.format,
+            sample_rate: AUDIO_GENERATION_PROFILE.sample_rate,
+          },
+        })
+      : await dependencies.voice.createSpeech({
+          req_params: {
+            text: job.inputParams.prompt,
+            speaker: VOICE_PROFILE.speaker,
+            audio_params: {
+              format: VOICE_PROFILE.format,
+              sample_rate: VOICE_PROFILE.sample_rate,
+            },
+          },
+        });
   const storageUrl = await dependencies.storage.upload({
     userId: job.userId,
     jobId: job.id,

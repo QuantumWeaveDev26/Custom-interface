@@ -56,7 +56,7 @@ export interface JobRecord {
   type: PhaseOneJobType;
   model: string;
   status: JobStatus;
-  inputParams: { prompt: string };
+  inputParams: { prompt: string; voiceStyle?: "standard" | "expressive" };
   externalTaskId: string | null;
   errorMessage: string | null;
   creditsCost: number;
@@ -78,6 +78,7 @@ export interface SubmitJobCommand {
   userId: string;
   type: PhaseOneJobType;
   prompt: string;
+  voiceStyle?: "standard" | "expressive";
   model: string;
   creditsCost: number;
   maxInFlight: number;
@@ -125,7 +126,7 @@ export interface DatabaseTransaction extends WelcomeGrantTransaction {
         type: PhaseOneJobType;
         model: string;
         status: "queued";
-        inputParams: { prompt: string };
+        inputParams: { prompt: string; voiceStyle?: "standard" | "expressive" };
         creditsCost: number;
       };
     }): Promise<JobRecord>;
