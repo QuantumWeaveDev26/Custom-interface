@@ -195,7 +195,7 @@ export interface ProposeCreativeDirectionOptions {
   model?: string;
 }
 
-const DEFAULT_MARKETING_MODEL = "seed-2-1-260628";
+const DEFAULT_MARKETING_MODEL = "dola-seed-2-1-turbo-260628";
 
 export async function proposeCreativeDirection(
   client: ChatClient,

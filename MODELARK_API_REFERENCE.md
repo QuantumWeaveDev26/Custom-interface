@@ -152,7 +152,7 @@ Response: `{ total: number, items: [...same shape as Get task, plus failure_reas
 
 ---
 
-## Chat / reasoning (Phase 2 — director agent)
+## Chat / reasoning (Phase 2/3 — Director and Marketing agents)
 
 Fully OpenAI-compatible. Either use the official `openai` npm package pointed at the
 ModelArk base URL, or call `/chat/completions` directly with standard OpenAI-shaped
@@ -160,6 +160,10 @@ ModelArk base URL, or call `/chat/completions` directly with standard OpenAI-sha
 (`system`/`user`/`assistant`/`tool`), `content`, `tool_calls`, `function_call`. Supports
 streaming, `response_format` (including `json_schema` for structured output), and
 `thinking: { type: "enabled" | "disabled" | "auto" }` to toggle deep reasoning.
+
+**Confirmed model ID** (Console → ModelArk → Model Square, verified live):
+`dola-seed-2-1-turbo-260628` ("Dola-Seed-2.1-turbo", Reasoning / Coding and Agent
+model, text-in text-out, 256k context). $0.5/M input tokens, $2.5/M output tokens.
 
 ---
 

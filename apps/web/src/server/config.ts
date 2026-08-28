@@ -4,6 +4,6 @@ export const VIDEO_MODEL = process.env.MODELARK_VIDEO_MODEL || "dreamina-seedanc
 export const VIDEO_COST = parseInt(process.env.VIDEO_CREDITS_COST || "14", 10);
 export const MAX_IN_FLIGHT_JOBS = parseInt(process.env.MAX_IN_FLIGHT_JOBS || "3", 10);
 
-// Phase 2: Director/Shot-Planner agent. Not yet a confirmed model ID for this
-// account -- see MODELARK_API_REFERENCE.md's caveat on unconfirmed model IDs.
-export const DIRECTOR_MODEL = process.env.MODELARK_CHAT_MODEL || "seed-2-1-260628";
+// Phase 2/3: Director and Marketing agents. Confirmed via Console -> ModelArk
+// -> Model Square ("Dola-Seed-2.1-turbo", reasoning/agent model).
+export const DIRECTOR_MODEL = process.env.MODELARK_CHAT_MODEL || "dola-seed-2-1-turbo-260628";

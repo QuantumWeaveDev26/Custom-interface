@@ -37,7 +37,7 @@ export class DirectorPlanError extends Error {
 const MAX_SHOTS = 8;
 const MIN_SHOT_DURATION_SECONDS = 2;
 const MAX_SHOT_DURATION_SECONDS = 10;
-const DEFAULT_DIRECTOR_MODEL = "seed-2-1-260628";
+const DEFAULT_DIRECTOR_MODEL = "dola-seed-2-1-turbo-260628";
 
 function buildSystemPrompt(): string {
   const presetList = CAMERA_PRESETS.map((preset) => `- ${preset.id}: ${preset.description}`).join(
