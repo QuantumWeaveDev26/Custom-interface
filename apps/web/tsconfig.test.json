@@ -16,6 +16,10 @@
     "src/app/transcribe/transcribe-state.ts",
     "src/app/transcribe/transcribe-state.test.ts",
     "src/app/voice-clone/voice-clone-state.ts",
-    "src/app/voice-clone/voice-clone-state.test.ts"
+    "src/app/voice-clone/voice-clone-state.test.ts",
+    "src/server/jobs.ts",
+    "src/server/jobs.test.ts",
+    "src/server/assets.ts",
+    "src/server/assets.test.ts"
   ]
 }

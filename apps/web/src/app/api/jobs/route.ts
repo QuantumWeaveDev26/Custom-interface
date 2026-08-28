@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { submitGenerationJob } from "@/server/jobs";
+import { jobDependencies } from "@/server/job-dependencies";
 import {
   InFlightLimitError,
   InputAssetNotOwnedError,
@@ -17,7 +18,11 @@ export async function POST(request: NextRequest) {
     }
 
     const body: unknown = await request.json();
-    const result = await submitGenerationJob(session.user.id, body);
+    const result = await submitGenerationJob(
+      session.user.id,
+      body,
+      jobDependencies(),
+    );
 
     return NextResponse.json(
       {

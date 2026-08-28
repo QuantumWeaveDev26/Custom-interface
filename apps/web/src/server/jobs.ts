@@ -1,52 +1,52 @@
 import {
   submitJob as dbSubmitJob,
   failAndRefund,
-  prismaStore,
+  type DatabaseStore,
   type SubmitJobResult,
 } from "@creative-ai/db";
 import {
   InvalidJobRequest,
   assertParamsSupportedByModel,
   creditCostFor,
-  generationJobOptions,
   parseSubmitJobRequest,
+  type CreditPricing,
 } from "@creative-ai/shared-types";
-import { getQueue } from "./queue";
-import {
-  CREDIT_PRICING,
-  IMAGE_MODEL,
-  MAX_IN_FLIGHT_JOBS,
-  VIDEO_MODEL,
-  VOICE_MODEL,
-} from "./config";
+export interface SubmitJobDependencies {
+  store: DatabaseStore;
+  /** Only the one method used, so tests don't need a whole BullMQ Queue. */
+  enqueue(jobId: string): Promise<unknown>;
+  modelByType: Readonly<Record<"image" | "video" | "voice", string>>;
+  pricing: CreditPricing;
+  maxInFlight: number;
+}
 
-const MODEL_BY_TYPE = {
-  image: IMAGE_MODEL,
-  video: VIDEO_MODEL,
-  voice: VOICE_MODEL,
-} as const;
-
+/**
+ * Dependencies are injected rather than imported so this module stays free of
+ * Redis, Postgres, and env-dependent config — the credit path is then testable
+ * in isolation, matching the injectable-client pattern used by modelark-client
+ * and voice-client. The composition root lives in `job-dependencies.ts`.
+ */
 export async function submitGenerationJob(
   userId: string,
   request: unknown,
+  dependencies: SubmitJobDependencies,
 ): Promise<SubmitJobResult> {
   // Shape validation. Rethrown as-is so the route can surface the specific
-  // reason -- a generic "invalid request" makes parameter errors undebuggable
-  // for the client.
+  // reason -- a generic "invalid request" makes parameter errors undebuggable.
   const parsedRequest = parseSubmitJobRequest(request);
 
   // Model comes from server config, never the client.
-  const model = MODEL_BY_TYPE[parsedRequest.type];
+  const model = dependencies.modelByType[parsedRequest.type];
 
-  // Model-aware validation: a resolution or duration the configured model does
-  // not support is rejected before any credits move.
+  // A resolution or duration the configured model does not support is rejected
+  // before any credits move.
   assertParamsSupportedByModel(parsedRequest.params, model);
 
-  // Cost is derived from the parameters actually requested, then persisted on
+  // Cost derives from the parameters actually requested, then is persisted on
   // the job row so a later pricing change never alters this job's refund value.
-  const creditsCost = creditCostFor(parsedRequest.params, CREDIT_PRICING);
+  const creditsCost = creditCostFor(parsedRequest.params, dependencies.pricing);
 
-  const jobRecord = await dbSubmitJob(prismaStore, {
+  const jobRecord = await dbSubmitJob(dependencies.store, {
     userId,
     type: parsedRequest.type,
     prompt: parsedRequest.prompt,
@@ -54,15 +54,19 @@ export async function submitGenerationJob(
     inputAssets: parsedRequest.inputAssets,
     model,
     creditsCost,
-    maxInFlight: MAX_IN_FLIGHT_JOBS,
+    maxInFlight: dependencies.maxInFlight,
   });
 
-  const queue = getQueue();
   try {
-    await queue.add("generate", { jobId: jobRecord.job.id }, generationJobOptions(jobRecord.job.id));
+    await dependencies.enqueue(jobRecord.job.id);
   } catch (error) {
-    // If enqueueing fails, compensate.
-    await failAndRefund(prismaStore, jobRecord.job.id, "Submission failed. Your credits have been refunded.");
+    // The job row and debit already committed, so a failed enqueue must
+    // compensate or the user is charged for work that will never run.
+    await failAndRefund(
+      dependencies.store,
+      jobRecord.job.id,
+      "Submission failed. Your credits have been refunded.",
+    );
     throw error;
   }
 
