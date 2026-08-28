@@ -28,6 +28,9 @@ export default async function RootLayout({
                 <Link href="/director" className="hover:underline">
                   Director
                 </Link>
+                <Link href="/marketing" className="hover:underline">
+                  Marketing
+                </Link>
                 <Link href="/gallery" className="hover:underline">
                   Gallery
                 </Link>

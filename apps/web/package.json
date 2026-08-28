@@ -9,7 +9,7 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "tsc -p tsconfig.test.json && node --test dist-test/app/studio/studio-state.test.js dist-test/app/director/director-state.test.js"
+    "test": "tsc -p tsconfig.test.json && node --test dist-test/app/studio/studio-state.test.js dist-test/app/director/director-state.test.js dist-test/app/marketing/marketing-state.test.js"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.4.1",

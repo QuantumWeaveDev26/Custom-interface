@@ -10,6 +10,8 @@
     "src/app/studio/studio-state.ts",
     "src/app/studio/studio-state.test.ts",
     "src/app/director/director-state.ts",
-    "src/app/director/director-state.test.ts"
+    "src/app/director/director-state.test.ts",
+    "src/app/marketing/marketing-state.ts",
+    "src/app/marketing/marketing-state.test.ts"
   ]
 }
