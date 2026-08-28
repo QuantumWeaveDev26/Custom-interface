@@ -51,16 +51,22 @@ Notes: dummy env vars are supplied because `packages/db` instantiates
 `PrismaClient` at module scope; `pnpm db:generate` must run before typecheck;
 push workflow changes to `ci-verify/**` first.
 
-### F2 — API route test coverage
-All 34 `apps/web` tests cover state reducers only. Every API route is untested —
-including `/api/jobs`, which performs the credit debit.
+### F2 — API route test coverage ✅ MOSTLY DONE (2026-08-28, `eb04cad`)
+Covered the two paths that matter most: job submission (the credit debit) and
+asset access (the cross-user boundary). 51 web tests, was 37.
 
-**Deliverable:** tests for `/api/jobs` (auth, invalid body, insufficient credits,
-in-flight cap, happy path), `/api/transcribe`, `/api/voice-clone` (consent gate),
-`/api/assets/[id]` (cross-user access must 404).
-**Done when:** breaking each guard deliberately makes its test fail.
-**Note:** prefer dependency injection over module mocking, matching the
-injectable-client pattern in `modelark-client` / `voice-client`.
+`jobs.ts` and `assets.ts` now take injected dependencies instead of importing
+Prisma/BullMQ directly; job submission's composition root moved to
+`job-dependencies.ts`. The fake store runs the *real* `submitJob` transaction
+logic and rolls back on throw — an earlier version didn't, and reported a debit
+Postgres would have undone.
+
+Each guard was verified to actually fail when deliberately broken:
+model-capability validation, enqueue compensation, asset ownership.
+
+**Still open:** `/api/transcribe` and `/api/voice-clone` server modules are
+untested — they need the same DI treatment. Route handlers themselves (auth
+rejection) remain untested; the logic beneath them is covered.
 
 ### F4 — Deployment path
 Nothing is deployed. `infra/` has local docker-compose only.
@@ -219,7 +225,7 @@ A2  ✅ done — Phase C is unblocked
 F1  ─→ user, today (security)
 R1  ─→ user, today (Model Square — gates all research)
 C1  ✅ done
-F2  ─→ agent, no blockers             ← NEXT
+F2  ✅ mostly done (transcribe/voice-clone modules still open)
 R2 → C3 → C2  ─→ the highest-value feature chain
 R3 → C4       ─→ headline feature
 C5  ─→ parallel anytime (no API dependency)
