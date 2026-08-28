@@ -1,6 +1,14 @@
 # Custom Creative-AI Interface — Engineering Architecture Blueprint
 ### Codebase target: `D:\office\claude-custom`
 
+> **This is the durable design document — the "how it's built and why."**
+> For current status, what's verified, and what's blocked, see
+> **`PROJECT_STATE.md`**. For what to build next, see **`BUILD_PLAN.md`**.
+>
+> Sections here describe the system as it is *designed*. Where the original
+> Phase-1 design has since been superseded by what was actually built, the
+> section says so inline.
+
 ---
 
 ## 1. Goal & Approach
@@ -16,7 +24,11 @@ Build a Higgsfield-style creative-AI web platform (image, video, voice, avatar g
 | **3 — Studio+** | Marketing/ad workflow (URL → ad), Voice (TTS), Avatar (OmniHuman) |
 | **4 — Polish** | Billing (real payments), admin dashboard, community/gallery features |
 
-**Start with Phase 1 only.** Do not scaffold Phase 2–4 features until Phase 1 is working end-to-end.
+**Status (superseded):** the original instruction here was "Phase 1 only, do not
+scaffold Phase 2–4." That has been carried out and moved past. Phases 1 and 2 are
+built and verified live; Phase 3 is built except Avatar, with Voice Cloning
+blocked externally; Phase 4 is not started. The phase-by-phase discipline still
+holds — see `PROJECT_STATE.md` for exactly where the line currently sits.
 
 ---
 
@@ -40,6 +52,8 @@ Build a Higgsfield-style creative-AI web platform (image, video, voice, avatar g
 
 ## 3. Repo layout
 
+Actual current layout (verified 2026-08-28):
+
 ```
 claude-custom/
 ├── apps/
@@ -48,16 +62,32 @@ claude-custom/
 ├── packages/
 │   ├── db/                       # Prisma schema + generated client
 │   ├── modelark-client/          # Typed wrapper around ModelArk REST API
+│   ├── voice-client/             # Typed wrapper around BytePlus Voice API
+│   │                             #   (separate product — see note below)
+│   ├── agents/                   # Director + Marketing agent logic
 │   ├── shared-types/             # Shared TS interfaces (Job, Asset, User, etc.)
-│   └── prompt-library/           # Phase 2: camera-preset prompt templates
+│   └── prompt-library/           # Camera-preset prompt templates
 ├── infra/
-│   ├── docker-compose.yml        # Local Postgres + Redis for dev
-│   └── ecs/                      # Deploy scripts/configs for BytePlus ECS
+│   └── docker-compose.yml        # Local Postgres + Redis for dev
+│                                 # NOTE: ecs/ deploy configs specified in §2
+│                                 # but NOT yet built — see BUILD_PLAN.md F4
 ├── .env.example
 ├── turbo.json
 ├── pnpm-workspace.yaml
 └── package.json
 ```
+
+**Why `voice-client` is separate from `modelark-client`:** BytePlus Voice (Seed
+Speech) is a genuinely different product from ModelArk, not a sibling endpoint —
+different host (`voice.ap-southeast-1.bytepluses.com`), different auth scheme
+(`x-api-key` header, not `Authorization: Bearer`), and a different API key. They
+cannot share a client. See `MODELARK_VOICE_AVATAR_REFERENCE.md`.
+
+**Client design pattern (applies to both API clients and `agents`):** all
+external dependencies — `fetch`, `now`, `sleep`, ID generation — are injectable
+via the factory config, so every client is unit-testable without network access
+or fake timers. Follow this pattern for any new client; it is why these packages
+have real test coverage.
 
 ---
 
@@ -154,6 +184,24 @@ model Asset {
 }
 ```
 
+### Typed contracts over these columns
+
+The Prisma schema stores `type` and `inputParams` loosely (string / JSON).
+The real contracts live in `packages/db/src/contracts.ts` and are enforced in
+TypeScript:
+
+- `PhaseOneJobType = "image" | "video" | "voice"` — what the job *generates*.
+- `AssetType = "image" | "video" | "audio"` — what the result *is*.
+  **These are deliberately different sets, not aliases.** A `voice` job produces
+  an `audio` asset. They were briefly aliased to each other, which silently
+  mistyped every voice row read back from the DB — do not re-collapse them.
+- `inputParams = { prompt: string; voiceStyle?: "standard" | "expressive" }` —
+  `voiceStyle` selects between the two distinct BytePlus TTS endpoints
+  (`tts/unidirectional` vs `tts/create`).
+
+`"avatar"` appears in the schema comment as a reserved future value; it is not
+yet a valid `PhaseOneJobType` and no code path handles it.
+
 ---
 
 ## 5. Core request flow (Phase 1)
@@ -215,27 +263,23 @@ Both agents follow the same loop: LLM proposes a tool call → your backend exec
 
 ---
 
-## 9. Environment variables (Phase 1)
+## 9. Environment variables
 
-```
-ARK_API_KEY=
-DATABASE_URL=postgresql://...
-REDIS_URL=redis://...
-TOS_ACCESS_KEY=
-TOS_SECRET_KEY=
-TOS_BUCKET=
-TOS_REGION=
-TOS_ENDPOINT=
-NEXTAUTH_SECRET=
-NEXTAUTH_URL=
-AUTH_RESEND_KEY=
-AUTH_EMAIL_FROM=
-GOOGLE_CLIENT_ID=
-GOOGLE_CLIENT_SECRET=
-INITIAL_CREDITS=100
-IMAGE_CREDITS_COST=1
-VIDEO_CREDITS_COST=14
-```
+**`.env.example` at the repo root is canonical** — it is kept current with
+inline commentary on why each value is what it is. This section deliberately
+does not duplicate the list, because a duplicated list drifts.
+
+Two structural facts worth knowing:
+
+- **`.env` is not read from the repo root.** Next.js only loads `.env` from its
+  own app directory, and the plain Node worker loads it only if present locally.
+  Both `apps/web/.env` and `apps/worker/.env` must exist and be kept in sync.
+  Directory-scoped `.env.example` files exist in each app, trimmed to the
+  variables that app actually reads.
+- **Three separate credentials, three separate services:** `ARK_API_KEY`
+  (ModelArk — images, video, chat), `BYTEPLUS_VOICE_API_KEY` (Seed Speech —
+  TTS/ASR/cloning, a different product), and `TOS_ACCESS_KEY`/`TOS_SECRET_KEY`
+  (object storage). Do not assume one key works across them.
 
 **Auth provider rationale:** email magic link + Google OAuth, not GitHub OAuth. The
 audience here (creators, marketers, agencies) is largely non-technical — GitHub OAuth
@@ -245,8 +289,31 @@ becomes worth targeting explicitly.
 
 ---
 
-## 10. Handoff prompt for Codex
+## 10. Agent handoff
 
-Paste this as the opening instruction when you start working in Codex on `D:\office\claude-custom`:
+> The original content here was a one-time Codex prompt for the initial Phase-1
+> build. That build is done; the prompt is retired.
 
-> Set up a pnpm + Turborepo monorepo per the structure in ARCHITECTURE.md Section 3. Start with Phase 1 only (Section 1 table). Implement in this order: (1) `packages/db` Prisma schema from Section 4 + local docker-compose Postgres/Redis, (2) `packages/modelark-client` — use the provided `modelark-client.ts` skeleton as the starting point and MODELARK_API_REFERENCE.md as the field-level source of truth; confirm the two flagged unknowns in that doc (exact URL paths, exact model ID strings) before writing tests against it, (3) `apps/worker` BullMQ consumer implementing the flow in Section 5 — remember video generation is async (poll) but image generation is synchronous (no polling), (4) `apps/web` Next.js app with the job-submission API route, SSE status stream, and a basic Studio UI for image + video prompts. Do not implement Phase 2–4 features yet. Ask before introducing any new major dependency not listed in Section 2.
+This project is built by AI agents (Claude Code primarily, with Codex and
+Antigravity as fallbacks if session budget runs out). Handoffs are expected and
+routine, so the repo — not any agent's private memory — is the source of truth.
+
+**Opening instruction for any agent taking over:**
+
+> Read `PROJECT_STATE.md` first, then `BUILD_PLAN.md`, then this file. Pick the
+> next unblocked block from `BUILD_PLAN.md` and do only that block. Before
+> touching Voice code, read `MODELARK_VOICE_AVATAR_REFERENCE.md` — BytePlus's
+> published samples differ from real API behavior in several confirmed places.
+> Verify with `pnpm typecheck && pnpm test && pnpm build` and report the actual
+> output; do not claim completion otherwise. Ask before adding any major
+> dependency not already in §2. Update `PROJECT_STATE.md` before you finish.
+
+**Two rules that exist because they were violated and cost real time:**
+
+1. **Never promote an unconfirmed API contract to confirmed without a live
+   call.** The reference docs mark every contract explicitly. BytePlus's own
+   console samples contain placeholder values that fail in practice.
+2. **Never trust a self-report of completion — including your own.** An earlier
+   agent on this project reported six tasks complete when they had hallucinated
+   a dependency, broken a build, and shipped a stub UI. Run the verification
+   commands.

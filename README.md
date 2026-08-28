@@ -1,6 +1,23 @@
-# Creative AI - Phase 1 Monorepo
+# Creative AI
 
-A Next.js + Node.js monorepo for building authenticated AI generation workflows with credit-based transactions.
+A Next.js + Node.js monorepo for AI generation workflows (image, video, voice,
+agent-driven creative direction) powered by BytePlus ModelArk and Seed Speech,
+with authentication and credit-based transactions.
+
+## Start here
+
+| I want to… | Read |
+|---|---|
+| Know what's built, verified, or blocked **right now** | **`PROJECT_STATE.md`** |
+| Know what to build next | **`BUILD_PLAN.md`** |
+| Understand the design and the reasoning behind it | `ARCHITECTURE.md` |
+| Work on image / video / chat API code | `MODELARK_API_REFERENCE.md` |
+| Work on any Voice code | `MODELARK_VOICE_AVATAR_REFERENCE.md` |
+| Run it locally | this file, below |
+
+**If you are an AI agent picking this project up:** read `PROJECT_STATE.md`
+first. This README's setup instructions are reliable, but treat
+`PROJECT_STATE.md` as authoritative on feature status.
 
 ## Local Setup
 
@@ -79,11 +96,16 @@ pnpm typecheck      # Type validation
 pnpm build          # Production build
 ```
 
-Access:
+Access (all pages except sign-in require auth):
 - **Web UI**: http://localhost:3000
-- **Sign-in**: http://localhost:3000/sign-in (magic link or Google OAuth)
-- **Studio**: http://localhost:3000/studio (after auth)
-- **Gallery**: http://localhost:3000/gallery (after auth)
+- **Sign-in**: `/sign-in` — magic link or Google OAuth
+- **Studio**: `/studio` — image, video, and voice generation
+- **Director**: `/director` — creative brief → shot list → video per shot
+- **Marketing**: `/marketing` — product URL → ad creative direction → generation
+- **Transcribe**: `/transcribe` — audio file → text (Speech-to-Text)
+- **Voice Clone**: `/voice-clone` — voice sample → cloned voice *(currently
+  blocked by an upstream BytePlus issue — see `PROJECT_STATE.md` §3.1)*
+- **Gallery**: `/gallery` — the signed-in user's generated assets
 
 ## Architecture
 
@@ -93,8 +115,11 @@ Next.js 15 frontend + API routes:
 - `/api/jobs` - Job submission with credit transactions
 - `/api/jobs/:id/stream` - Server-sent events for job status
 - `/api/assets/:id` - Private asset access (signed TOS URLs)
-- `/studio` - Prompt submission with live SSE status and result rendering
-- `/gallery` - Private grid of the signed-in user's generated assets
+- `/api/director`, `/api/marketing` - Agent planning calls (synchronous, no
+  credit charge — these are LLM planning steps, not media generation)
+- `/api/transcribe`, `/api/transcribe/:requestId` - Speech-to-Text submit + poll
+- `/api/voice-clone` - Voice cloning with a required consent gate
+- Pages listed under "Access" above
 
 ### apps/worker
 Standalone Node.js BullMQ consumer:
@@ -117,9 +142,24 @@ Typed ModelArk HTTP client:
 - Video task creation & polling (POST/GET /contents/generations/tasks)
 - Error handling with safe user messages
 
+### packages/voice-client
+Typed BytePlus Seed Speech client — **a separate product from ModelArk**
+(different host, auth header, and API key):
+- Standard TTS (`tts/unidirectional`) and Expressive TTS (`tts/create`)
+- Speech-to-Text submit + poll (`auc/bigmodel/*`)
+- Voice cloning (`tts/voice_clone`)
+
+### packages/agents
+Director and Marketing agent logic (ModelArk chat completions), including the
+URL scraper with SSRF protection used by the Marketing agent.
+
+### packages/prompt-library
+Camera-preset prompt templates used by the Director agent.
+
 ### packages/shared-types
 Shared TypeScript contracts:
 - Job submission & status event schemas
+- Fixed generation profiles (image/video/voice output settings)
 - BullMQ queue configuration
 - Validation utilities
 
@@ -140,15 +180,21 @@ Phase 1 tests cover:
 
 ## Constraints
 
-**Stack (locked for Phase 1)**:
+**Stack (locked)**:
 - Next.js 15, React 19, TypeScript 5.9.3
 - Prisma 6.19.3, Auth.js 5.0.0-beta.32
 - BullMQ 6.3.1, ioredis 6.0.0
 - Tailwind 4.3.3
 
-**Models (fixed)**:
-- Image: `seedream-5-0-lite-260128`, cost: 1 credit, 4K PNG output
-- Video: `dreamina-seedance-2-0-fast-260128`, cost: 14 credits, 5s 720p 21:9 output
+**Models (fixed, server-side only — never client-selectable)**:
+- Image: `seedream-5-0-lite-260128`, 1 credit, 4K PNG
+- Video: `dreamina-seedance-2-0-fast-260128`, 14 credits, 5s 720p 21:9
+- Voice: `seed-tts-2.0`, 1 credit, mp3 24kHz
+- Chat (Director/Marketing agents): `dola-seed-2-1-turbo-260628`, no credit charge
+
+⚠️ **Model ID and credit cost are coupled.** Changing a default generation model
+without updating its credit cost in the same change silently mis-bills against
+real BytePlus spend. See `ARCHITECTURE.md` §8 for the ratio math.
 
 **User data**:
 - `User.email` required (non-nullable)
@@ -162,34 +208,23 @@ Phase 1 tests cover:
 
 ## Git Workflow
 
-Each task is a single commit:
-1. Task 1: Monorepo scaffold, database package, local infrastructure
-2. Task 2: Prompt-only shared contracts & fixed generation profiles
-3. Task 3: Typed ModelArk image and video client
-4. Task 4: Transactional credits and job state (packages/db)
-5. Task 5: No-replay image and resumable video worker processor
-6. Task 6: TOS storage, recovery sweep, and worker runtime
-7. Task 7: Magic-link + Google authentication (Auth.js, welcome grant)
-8. Task 8: Transactional job submission API
-9. Task 9: Job SSE + private asset access
-10. Task 10: Studio & gallery UI
-11. Task 11: README & verification
+One logical change per commit, with a message explaining *why*, not just what.
+Verify before committing:
 
-Verify with:
 ```bash
-git log --oneline | head -11  # See task commits
-pnpm test && pnpm typecheck && pnpm build  # Full validation
+pnpm typecheck && pnpm test && pnpm build
 ```
 
-## Phase 2+ Features (Out of Scope)
+Baseline as of 2026-08-28: **152 tests passing** across 8 packages.
 
-- Prompt library & versioning
-- Agent orchestration
-- Director workflow
-- Voice/avatar generation
-- Billing & subscription
-- Admin dashboard
-- Public gallery
-- ECS deployment
-- Chat interface
-- Advanced generation settings
+## Not yet built
+
+See `BUILD_PLAN.md` for the full plan and current blockers. Summary:
+
+- **Avatar (OmniHuman)** — research only, blocked on model ID confirmation
+- **Billing & subscriptions** — blocked on business decisions
+- **Admin dashboard**, **public/community gallery** — not started
+- **ECS deployment** — specified in `ARCHITECTURE.md` §2, `infra/` currently
+  has local docker-compose only; nothing is deployed anywhere yet
+- **CI** — no pipeline yet; all verification is manual and local
+- **API route tests** — current web tests cover state reducers only
