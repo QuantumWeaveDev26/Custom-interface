@@ -153,6 +153,12 @@ pnpm test        # 152 tests, all must pass
 pnpm build       # full monorepo build
 ```
 
+**CI runs exactly these** on every push to `main` and every PR
+(`.github/workflows/ci.yml`). It has been verified to go green on good code and
+red on a deliberate break, so a red badge is a real signal. To modify the
+workflow, push to a `ci-verify/**` branch first — that pattern triggers CI
+without touching `main`.
+
 **Current baseline (2026-08-28):** 152 tests passing across 8 packages —
 prompt-library 5, db 20, voice-client 18, modelark-client 11, shared-types 18,
 agents 18, web 34, worker 28. Typecheck and build both clean.

@@ -66,18 +66,29 @@ injectable-client pattern already used in `modelark-client` / `voice-client`.
 
 ---
 
-### F3 — Continuous integration
+### F3 — Continuous integration ✅ DONE (2026-08-28)
 
 **Problem:** no CI. Every verification is manual and local. Any agent — Claude,
 Codex, Antigravity — can push a regression undetected.
 
-**Deliverable:** `.github/workflows/ci.yml` running `pnpm install`,
-`pnpm typecheck`, `pnpm test`, `pnpm build` on push and PR to `main`.
+**Delivered:** `.github/workflows/ci.yml` runs install → `db:generate` →
+typecheck → test → build on push to `main`, on PRs to `main`, and on
+`ci-verify/**` scratch branches.
 
-**Done when:** a green run is visible on GitHub, and a deliberately broken commit
-on a scratch branch turns it red.
+**Verified both directions:**
+- Green on `main` @ `f833ef8` — all steps confirmed executed, none skipped.
+- Red on a scratch branch carrying a deliberate type error, then the branch was
+  deleted. A CI that cannot fail is worse than no CI; this one fails correctly.
 
-**Why this matters for agent-portability:** CI is the one guardrail that works
+**Notes for whoever touches it next:**
+- Dummy env vars are supplied because `packages/db` instantiates `PrismaClient`
+  at module scope and Next.js imports route modules during `next build`. They
+  are placeholders; nothing in CI contacts a live service.
+- `pnpm db:generate` must run before typecheck — Prisma's generated types are
+  not produced by the turbo pipeline.
+- To change this workflow safely, push to a `ci-verify/**` branch first.
+
+**Why this mattered for agent-portability:** CI is the one guardrail that works
 identically no matter which AI is driving. It is the cheapest insurance against
 a handoff going wrong.
 
@@ -178,10 +189,10 @@ Real work, but lower priority than the foundation blocks. Not blocked.
 ## Recommended order
 
 ```
+F3 (CI)              ───→ ✅ DONE 2026-08-28
 F1 (security, user)  ─┐
-V1 (verify, user)    ─┴─→ can happen in parallel with agent work below
-F2 (route tests)     ─┐
-F3 (CI)              ─┴─→ agent work, no blockers, do now
+V1 (verify, user)    ─┴─→ user actions, can run in parallel with agent work
+F2 (route tests)     ───→ agent work, no blockers — NEXT
 F4 (deploy)          ───→ needs a hosting decision first
 B1/B2/B3             ───→ external unblock required
 P1/P2/P3             ───→ after foundation

@@ -2,7 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    # ci-verify/** lets you test changes to this workflow (or prove it still
+    # fails correctly) on a scratch branch without pushing to main.
+    branches: [main, 'ci-verify/**']
   pull_request:
     branches: [main]
 
