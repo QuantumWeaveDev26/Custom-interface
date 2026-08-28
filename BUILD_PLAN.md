@@ -156,9 +156,17 @@ setting the server would reject. Live cost preview uses the same
 `creditCostFor` the server charges with, built from one shared params object so
 shown price cannot drift from submitted price. Defaults unchanged.
 
-### C2 — Image-to-video ⭐ highest-value gap
-The core Higgsfield workflow: generate or upload a still, then animate it.
-Includes first-frame and first+last-frame (keyframe) modes. Needs R2.
+### C2 — Image-to-video ✅ DONE (2026-08-29, `b21dbbb`)
+Studio Video mode offers recent generated images as a first frame; the prompt
+describes the motion. Worker signs each input into a short-lived HTTPS URL
+(BytePlus fetches it itself and cannot read our private bucket) — a test
+asserts no raw `tos://` URL reaches the provider. Resumed jobs neither reload
+nor re-sign inputs. Non-image inputs are skipped rather than guessed at.
+
+**Still open in this area:** first+last-frame keyframes are supported by the
+worker (`role: "last_frame"` is wired and tested) but have no UI yet — only a
+first frame is selectable. `ratio: "adaptive"` is still not exposed. Both are
+small follow-ons.
 
 ### C3 — Upload pipeline
 Users must be able to bring their own images/audio, not only use generated
