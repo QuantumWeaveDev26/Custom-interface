@@ -142,9 +142,13 @@ references.
 
 </details>
 
-### C1 — Unlock existing model range *(quick win after A2)*
-Expose duration (4–30s), resolution (480p/720p/1080p/4K), and aspect ratio, which
-Seedance already supports and we hardcode away. Cost scales accordingly.
+### C1 — Unlock existing model range ✅ DONE (2026-08-28, `6639d38`)
+Studio now exposes video resolution, aspect ratio, and a duration slider, plus
+image size. The picker only offers what the server-resolved model documents
+(capabilities passed down from `videoCapabilitiesFor`), so the UI cannot offer a
+setting the server would reject. Live cost preview uses the same
+`creditCostFor` the server charges with, built from one shared params object so
+shown price cannot drift from submitted price. Defaults unchanged.
 
 ### C2 — Image-to-video ⭐ highest-value gap
 The core Higgsfield workflow: generate or upload a still, then animate it.
@@ -214,8 +218,8 @@ F3  ✅ done
 A2  ✅ done — Phase C is unblocked
 F1  ─→ user, today (security)
 R1  ─→ user, today (Model Square — gates all research)
-C1  ─→ quick win, ready now            ← NEXT
-F2  ─→ agent, no blockers
+C1  ✅ done
+F2  ─→ agent, no blockers             ← NEXT
 R2 → C3 → C2  ─→ the highest-value feature chain
 R3 → C4       ─→ headline feature
 C5  ─→ parallel anytime (no API dependency)
