@@ -89,7 +89,7 @@ lost days to building against unconfirmed BytePlus contracts.
 |---|---|---|
 | ~~**R1**~~ | ⚠️ **PARTIAL** — see `CAPABILITY_MAP.md` §4b. Seedance 2.5 confirmed GA (30s, multimodal ref); Seedream 5.0-pro confirmed (image editing); OmniHuman **not seen**. Video/image sections were cut off — recapture to close. | C2, C4, B2 |
 | ~~**R2**~~ | ✅ **DONE** — request shape confirmed from official docs, recorded in `MODELARK_API_REFERENCE.md`. Same endpoint, extra `content[]` items; roles `first_frame`/`last_frame` match what A2 already defined. **Our current cheap model already supports i2v, edit, extend, and references.** | C2, C6 |
-| **R3** | Seedream **multi-reference image-to-image** | C4 (Soul ID equivalent) |
+| ~~**R3**~~ | ✅ **DONE** — `image` is `string \| string[]`; array = multi-reference. Recorded in `MODELARK_API_REFERENCE.md`. `seedream-5-0-lite` supports it. | C4 |
 | ~~**R4**~~ | ✅ Covered by the same R2 doc read — `seedance-2-0-fast` supports Edit video and Extend video. Exact request shapes for those two still need a targeted read. | C6 |
 | **R5** | 3D generation (Rodin / Hitem3d) endpoints + quota metering | C8 |
 | **R6** | `skylark-embedding-vision` request shape | C7 |
@@ -168,14 +168,21 @@ worker (`role: "last_frame"` is wired and tested) but have no UI yet — only a
 first frame is selectable. `ratio: "adaptive"` is still not exposed. Both are
 small follow-ons.
 
-### C3 — Upload pipeline
-Users must be able to bring their own images/audio, not only use generated
-assets. Needed by C2, C4, and lipsync. Reuses the TOS + signed-URL pattern
-already proven in `/transcribe`.
+### C3 — Upload pipeline ✅ DONE (2026-08-29, `dfb93e7`)
+Studio picker has an Upload tile. Format decided by magic bytes, never the
+declared Content-Type or filename; storage key built from user id + UUID so a
+crafted filename cannot escape the prefix. Asset row written only after the
+object lands. `Asset.jobId` became nullable (uploads have no job).
+**Images only** — audio upload for lipsync is not built.
 
-### C4 — Character consistency (Soul ID equivalent) ⭐ headline feature
-Seedream multi-reference image-to-image: save a named character from reference
-images, reuse across generations. Needs R3 and C3.
+### C4 — Character consistency ✅ DONE (2026-08-29, `9c3db6a`)
+Image mode takes ordered reference images (`image: string[]`). Selection order
+is send order; numbered badges make "image 1"/"image 2" in the prompt match
+what the user sees. `seedream-5-0-lite` already supports it — no model upgrade.
+
+**Not yet built:** saving a *named* reusable character. Today references are
+picked per generation. A named "Soul ID" that persists across sessions and
+appears in every tool is the remaining half of Higgsfield parity here.
 
 ### C5 — Cinema Studio depth
 Expand `packages/prompt-library` toward Higgsfield's ~70 presets: camera bodies,
