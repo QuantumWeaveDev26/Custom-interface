@@ -126,6 +126,168 @@ Notes on the confirmed shape:
 **Implementation note:** since this uses different auth (`x-api-key` + a separate key)
 and a different base URL/host (`voice.ap-southeast-1.bytepluses.com`, not
 `ark.ap-southeast.bytepluses.com`) than ModelArk, this should be its own client —
-not bolted onto `packages/modelark-client`. A new `packages/voice-client` (or similar)
-mirroring `modelark-client`'s injectable-fetch pattern makes sense once the response
-shape above is confirmed.
+not bolted onto `packages/modelark-client`. Built as `packages/voice-client`, mirroring
+`modelark-client`'s injectable-fetch pattern. Response shape not yet live-verified (see
+above) — `createSpeech()` handles both plausible shapes and throws a clear error if
+neither matches.
+
+---
+
+## Audio generation (Seed-Audio-1.0) — confirmed request contract
+
+A separate, richer generation endpoint from basic Text-to-Speech — supports emotion/tone/
+style direction via natural-language prompt text (not just a flat sentence), 20 languages,
+slash-command timestamp control, and audio-reference support. Confirmed via BytePlus's own
+sample code after activating the model:
+
+```
+POST https://voice.ap-southeast-1.bytepluses.com/api/v3/tts/create
+```
+
+Headers:
+```
+Content-Type: application/json
+X-Api-Key: <Seed Speech API key>
+```
+(no `X-Api-Resource-Id` header here — unlike `tts/unidirectional`, the model is selected
+via the `model` field in the body instead)
+
+Body:
+```json
+{
+  "model": "seed-audio-1.0",
+  "text_prompt": "Inside a huge football stadium, with the deafening roar of tens of thousands of fans throughout the ...",
+  "audio_config": {
+    "format": "mp3",
+    "sample_rate": 48000,
+    "pitch_rate": 0,
+    "speech_rate": 0,
+    "loudness_rate": 0
+  },
+  "watermark": {}
+}
+```
+
+Notes:
+- `text_prompt` (not `text`) — this endpoint expects a richer descriptive prompt that can
+  include tone/emotion/style direction and slash-command timestamps (per the playground's
+  own description), not just the literal sentence to speak.
+- The sample's curl command pipes the response through `python3 -m json.tool` (a JSON
+  pretty-printer) — strong indirect evidence the response **is JSON**, not raw audio
+  bytes, unlike the `tts/unidirectional` endpoint's unconfirmed shape. Exact response
+  field names still need a live test call (same as the basic TTS endpoint).
+- The curl sample includes `--max-time 300`, suggesting generation can take up to 5
+  minutes for longer prompts — worth a generous client-side timeout.
+
+---
+
+## Voice Replication (voice cloning) — confirmed request contract
+
+```
+POST https://voice.ap-southeast-1.bytepluses.com/api/v3/tts/voice_clone
+```
+
+Headers:
+```
+Content-Type: application/json
+X-Api-Key: <Seed Speech API key>
+X-Api-Request-Id: <a fresh UUID per request>
+```
+
+Body:
+```json
+{
+  "speaker_id": "your_speaker_id",
+  "audio": {
+    "data": "<base64-encoded audio file bytes, no newlines>",
+    "format": "wav"
+  },
+  "language": 1,
+  "extra_params": {
+    "demo_text": "hello, this is a test"
+  }
+}
+```
+
+Notes:
+- The reference audio sample is sent **inline as base64** in the request body — no
+  separate upload step or URL reference.
+- `speaker_id` is presumably a caller-chosen identifier for the new cloned voice (to be
+  reused later as the `speaker` value in Text-to-Speech / Audio generation calls) —
+  not confirmed whether it must be unique account-wide or can collide/overwrite.
+- `language` is a **numeric code** (`1` in the sample), not a string like `en`/`yue-CN`
+  seen elsewhere — the mapping of numbers to languages is not yet confirmed; check Voice
+  Library or the Completed Integration Guide link in the console for the code table.
+- `demo_text` under `extra_params` is optional — generates a sample utterance in the new
+  cloned voice so you can verify it immediately.
+- **Product/consent consideration, not just a technical one:** voice cloning of a real
+  person's voice needs their explicit consent — this project has no consent-capture flow
+  designed yet. Flagging this before implementation, not just as an API detail.
+
+---
+
+## Speech-to-Text (ASR) — confirmed request contract, async create-then-poll
+
+Unlike everything else in Seed Speech, this is **async** — submit a job, then poll it by
+resending the same request ID, mirroring ModelArk's video generation pattern.
+
+**Submit:**
+```
+POST https://voice.ap-southeast-1.bytepluses.com/api/v3/auc/bigmodel/submit
+```
+
+Headers:
+```
+Content-Type: application/json
+x-api-key: <Seed Speech API key>
+X-Api-Resource-Id: volc.seedasr.auc
+X-Api-Request-Id: <a fresh UUID per request>
+X-Api-Sequence: -1
+```
+
+Body:
+```json
+{
+  "user": { "uid": "demo" },
+  "audio": {
+    "url": "https://.../console_demo_audio.mp3",
+    "language": "yue-CN",
+    "format": "wav",
+    "codec": "raw",
+    "rate": 16000,
+    "bits": 16,
+    "channel": 1
+  },
+  "request": {
+    "model_name": "bigmodel",
+    "enable_itn": true,
+    "enable_punc": false,
+    "enable_ddc": false,
+    "enable_speaker_info": false,
+    "enable_channel_split": false,
+    "show_utterances": true,
+    "vad_segment": false,
+    "sensitive_words_filter": ""
+  }
+}
+```
+
+**Query** (poll for the result — same endpoint host, no task ID in the body, just resend
+the identical `X-Api-Request-Id` from the submit call):
+```
+POST https://voice.ap-southeast-1.bytepluses.com/api/v3/auc/bigmodel/query
+```
+
+Headers: identical to submit (same `X-Api-Request-Id`, same `X-Api-Resource-Id`)
+Body: `{}` (empty — the request ID alone identifies which job to check)
+
+Notes:
+- Audio is referenced by **URL**, not inline base64 (opposite of Voice Replication) —
+  matches ModelArk's own pattern of referencing media by URL for generation inputs, so
+  a private TOS-signed URL should work the same way it does elsewhere in this project.
+- `language: "yue-CN"` in the sample is Cantonese — confirms multi-language/dialect
+  support; exact list of supported language codes not yet confirmed.
+- Not yet confirmed: the submit response shape (does it echo the request ID back, or
+  is that solely tracked client-side?), the query response shape (transcript text
+  location, confidence scores, timestamps per `show_utterances: true`), and the job
+  status values while still processing vs. complete.
