@@ -164,6 +164,35 @@ proper cost function mandatory rather than optional.
 
 ---
 
+## 4b. R1 — account entitlements (partial, 2026-08-28)
+
+Read from this account's Console → ModelArk → Model Square. **Partial** — the
+Video Generation section was cut off and no Image Generation, audio, or 3D
+section was captured. Treat absences below as "not seen", not "not available".
+
+**Confirmed present in this account's Model Square:**
+
+| Model | Console label | Why it matters |
+|---|---|---|
+| **Dreamina-Seedance-2.5** | **Generally Available** — "30secs direct output, multimodal reference support" | Confirms 30s and multimodal reference are real and GA, not roadmap. We currently run `seedance-2-0-fast`. |
+| Dreamina-Seedance-2.0 | (listed, detail cut off) | current default's family |
+| **Dola-Seedream-5.0-pro** | New — **"Precise Image Editing"** | Confirms image-to-image editing; relevant to C4 |
+| Dola-Seed-2.1-turbo | New — "Coding and Agent model" | already in use for Director/Marketing |
+| DeepSeek-V4 (pro/flash, +GA), GLM-5.2 | Reasoning / open source | alternative agent models, unused |
+
+**Not seen anywhere in the captured views: OmniHuman.** This is weak evidence
+that lipsync/talking-avatar is unavailable on this account, but the capture was
+partial — confirm before closing out B2.
+
+**Open decision — upgrading the default video model.** Seedance 2.5 would unlock
+30s and 1080p immediately (the capability registry already carries its limits),
+but per `ARCHITECTURE.md` §8 it costs roughly **6x** `seedance-2-0-fast` per
+second (~87 credits vs 14 for a 5s clip). Model ID and credit rate are coupled;
+switching one without the other mis-bills. This is a spend decision, not an
+engineering one — do not switch it without the account owner saying so.
+
+---
+
 ## 5. Verification needed before building
 
 Nothing here is live-confirmed. Ordered by how much depends on it:

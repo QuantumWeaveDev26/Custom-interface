@@ -81,7 +81,7 @@ lost days to building against unconfirmed BytePlus contracts.
 
 | Block | Confirm | Unblocks |
 |---|---|---|
-| **R1** | Which models this account can actually call (Model Square) | everything — docs list the catalog, not your entitlements |
+| ~~**R1**~~ | ⚠️ **PARTIAL** — see `CAPABILITY_MAP.md` §4b. Seedance 2.5 confirmed GA (30s, multimodal ref); Seedream 5.0-pro confirmed (image editing); OmniHuman **not seen**. Video/image sections were cut off — recapture to close. | C2, C4, B2 |
 | **R2** | Seedance **image-to-video** (first frame; first+last frames) | C2, C3 |
 | **R3** | Seedream **multi-reference image-to-image** | C4 (Soul ID equivalent) |
 | **R4** | Seedance **video extension** and **video editing** | C6 |
@@ -89,8 +89,8 @@ lost days to building against unconfirmed BytePlus contracts.
 | **R6** | `skylark-embedding-vision` request shape | C7 |
 | **R7** | Managed Agents / App Lab — replace or complement `packages/agents`? | future agent work |
 
-**R1 is first and is a user action** — the console shows account entitlements
-that no doc can tell us.
+**R1 is partially done.** Enough to target models for C2/C4; not enough to rule
+OmniHuman in or out for B2.
 
 ---
 
