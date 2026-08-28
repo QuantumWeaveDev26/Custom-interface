@@ -180,9 +180,13 @@ Image mode takes ordered reference images (`image: string[]`). Selection order
 is send order; numbered badges make "image 1"/"image 2" in the prompt match
 what the user sees. `seedream-5-0-lite` already supports it — no model upgrade.
 
-**Not yet built:** saving a *named* reusable character. Today references are
-picked per generation. A named "Soul ID" that persists across sessions and
-appears in every tool is the remaining half of Higgsfield parity here.
+**Saved characters ✅ DONE** (2026-08-29, `998f811`) — name a reference set,
+reload it into any later generation. Ownership checked inside the creation
+transaction; delete is userId-scoped and 404s rather than 403s.
+
+**Still open:** characters are only usable in Studio's Image tab. Higgsfield
+surfaces a saved identity across *every* tool (video, lipsync, Director).
+Wiring them into Video mode's first-frame/reference slots is the next step.
 
 ### C5 — Cinema Studio depth
 Expand `packages/prompt-library` toward Higgsfield's ~70 presets: camera bodies,

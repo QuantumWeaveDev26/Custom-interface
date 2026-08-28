@@ -58,8 +58,11 @@ and saw the correct result.
 | Per-job generation params (A2) | `/studio` | ✅ Defaults unchanged — image 1 credit, video 14 credits at 5s/720p |
 | Variable pricing + new controls (C1) | `/studio` | ✅ Cost preview tracks resolution/duration changes |
 | **Image-to-video (C2)** | `/studio` (Video tab) | ✅ **Verified live 2026-08-29** — picked a generated image as first frame, got a 5s clip animating that exact image |
+| Upload own images (C3) | `/studio` | ✅ Verified live 2026-08-29 |
+| **Multi-reference / character consistency (C4)** | `/studio` (Image tab) | ✅ **Verified live 2026-08-29** — subject and second reference both carried into the result. First attempt failed because a stale worker process was serving pre-C4 code; see §4 Windows gotchas. |
+| Saved named characters | `/studio` (Image tab) | ⚠️ Built, tests pass, **not yet exercised in the browser** |
 
-Nothing is currently in a "built but unproven" state.
+One item is currently built but unproven: saved named characters.
 
 ---
 
