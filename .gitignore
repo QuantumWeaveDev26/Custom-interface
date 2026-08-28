@@ -14,3 +14,7 @@ coverage/
 
 packages/db/prisma/dev.db
 packages/db/prisma/dev.db-journal
+
+# Agent skill definitions — useful locally, not part of the product
+.agents/
+skills-lock.json

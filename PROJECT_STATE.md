@@ -49,16 +49,16 @@ and saw the correct result.
 | Voice — Standard TTS | `/studio` (Voice tab) | ✅ Verified live |
 | Design system (dark theme) | all pages | ✅ Verified live |
 
-### Built, tests pass, but NOT yet verified live
+### Recently verified live (2026-08-28)
 
-These compile, typecheck, and have unit tests — but no human has confirmed them
-working end-to-end against the real API since the last fix. **Treat as
-"probably works, unproven."**
-
-| Feature | Where | Why unverified |
+| Feature | Where | Status |
 |---|---|---|
-| Voice — Expressive TTS | `/studio` (Voice tab → Expressive) | Failed live once (`tts/create` returns the clip under `audio`, not `data`), was fixed in `06240ec`, not retested since |
-| Speech-to-Text | `/transcribe` | Never exercised by a human in the browser; the ASR contract itself *was* confirmed with a real diagnostic call |
+| Voice — Expressive TTS | `/studio` (Voice tab → Expressive) | ✅ Playable clip produced — closes the gap left by the `06240ec` envelope fix |
+| Speech-to-Text | `/transcribe` | ✅ Verified (user-reported) |
+| Per-job generation params (A2) | `/studio` | ✅ Defaults unchanged — image 1 credit, video 14 credits at 5s/720p |
+| Variable pricing + new controls (C1) | `/studio` | ✅ Cost preview tracks resolution/duration changes |
+
+Nothing is currently in a "built but unproven" state.
 
 ---
 
