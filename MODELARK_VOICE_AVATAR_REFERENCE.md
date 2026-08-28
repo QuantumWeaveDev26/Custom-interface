@@ -337,8 +337,40 @@ Notes:
   matches ModelArk's own pattern of referencing media by URL for generation inputs, so
   a private TOS-signed URL should work the same way it does elsewhere in this project.
 - `language: "yue-CN"` in the sample is Cantonese — confirms multi-language/dialect
-  support; exact list of supported language codes not yet confirmed.
-- Not yet confirmed: the submit response shape (does it echo the request ID back, or
-  is that solely tracked client-side?), the query response shape (transcript text
-  location, confidence scores, timestamps per `show_utterances: true`), and the job
-  status values while still processing vs. complete.
+  support; exact list of supported language codes not yet confirmed (`en-US` confirmed
+  accepted, see below).
+
+**Response shape — CONFIRMED via real live calls** (2026-08-28, synthetic 16kHz mono
+16-bit PCM WAV uploaded to the project's own TOS bucket, signed URL submitted for real):
+
+**Submit response**: HTTP 200, JSON body is literally `{}` — the request ID is never
+echoed back in the body (the caller already knows it, since it generated it). The real
+submit acknowledgement is in **response headers**: `x-api-status-code: 20000000`,
+`x-api-message: OK`, `x-api-request-id: <the same UUID sent>`.
+
+**Query response — the real job status lives in response HEADERS, not the JSON body.**
+This is the opposite of every other Seed Speech endpoint and broke the first assumption
+that status would be in the body like `tts/unidirectional`'s NDJSON `code` field:
+
+```
+x-api-status-code: 20000001   -> still processing
+x-api-status-code: 20000000   -> complete, transcript in the body
+x-api-status-code: 20000003   -> complete, no speech detected (legitimate empty result,
+                                  not an error) -- observed message: "[Normal silence
+                                  audio] Handle response: no valid speech in audio"
+```
+
+Body while processing: `{"audio_info":{},"result":{"text":""}}`
+Body once complete: `{"audio_info":{"duration":3000},"result":{"additions":{"duration":"3000"},"text":"<transcript>"}}`
+(`duration` is in milliseconds.)
+
+`20000000` reused as a generic "OK" code across different endpoints (also seen as the
+`tts/unidirectional` NDJSON completion marker) appears to be a company-wide convention,
+not job-specific — don't treat "20000000 seen once" as proof of job completion outside
+of this specific `query` response's own header.
+
+**Still not confirmed:** the full list of status codes (only 20000000/20000001/20000003
+observed — a genuine transcription error, e.g. bad audio URL or unreachable file, has
+not been triggered live), confidence scores/timestamps in `result` when
+`show_utterances: true` and real speech is present (only tested with a non-speech
+synthetic tone), and whether other language codes beyond `en-US` are accepted.

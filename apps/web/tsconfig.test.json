@@ -12,6 +12,8 @@
     "src/app/director/director-state.ts",
     "src/app/director/director-state.test.ts",
     "src/app/marketing/marketing-state.ts",
-    "src/app/marketing/marketing-state.test.ts"
+    "src/app/marketing/marketing-state.test.ts",
+    "src/app/transcribe/transcribe-state.ts",
+    "src/app/transcribe/transcribe-state.test.ts"
   ]
 }

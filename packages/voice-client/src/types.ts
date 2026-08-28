@@ -80,3 +80,10 @@ export interface SubmitTranscriptionResult {
   requestId: string;
   raw: unknown;
 }
+
+export type TranscriptionStatus = "processing" | "complete" | "no_speech";
+
+export interface TranscriptionResult {
+  status: TranscriptionStatus;
+  text: string | null;
+}

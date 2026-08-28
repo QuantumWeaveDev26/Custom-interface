@@ -7,6 +7,7 @@ const LINKS = [
   { href: "/studio", label: "Studio" },
   { href: "/director", label: "Director" },
   { href: "/marketing", label: "Marketing" },
+  { href: "/transcribe", label: "Transcribe" },
   { href: "/gallery", label: "Gallery" },
 ] as const;
 

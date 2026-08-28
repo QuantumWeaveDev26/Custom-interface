@@ -8,6 +8,7 @@ import type {
   CreateSpeechResult,
   SubmitTranscriptionRequest,
   SubmitTranscriptionResult,
+  TranscriptionResult,
 } from "./types.js";
 
 const DEFAULT_BASE_URL = "https://voice.ap-southeast-1.bytepluses.com/api/v3";
@@ -31,7 +32,7 @@ export interface VoiceClient {
   submitTranscription(
     params: SubmitTranscriptionRequest,
   ): Promise<SubmitTranscriptionResult>;
-  queryTranscription(requestId: string): Promise<unknown>;
+  queryTranscription(requestId: string): Promise<TranscriptionResult>;
 }
 
 function base64ToBytes(base64: string): Uint8Array {
@@ -217,16 +218,53 @@ export function createVoiceClient(config: VoiceClientConfig): VoiceClient {
     return { requestId, raw };
   }
 
-  async function queryTranscription(requestId: string): Promise<unknown> {
-    return requestJson(
-      "/auc/bigmodel/query",
-      {
+  async function queryTranscription(requestId: string): Promise<TranscriptionResult> {
+    const response = await fetchImplementation(`${baseUrl}/auc/bigmodel/query`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
         "x-api-key": apiKey,
         "X-Api-Resource-Id": ASR_RESOURCE_ID,
         "X-Api-Request-Id": requestId,
       },
-      {},
-    );
+      body: JSON.stringify({}),
+    });
+
+    if (!response.ok) {
+      const responseBody = (await response.text()).slice(0, 1_000);
+      throw new VoiceHttpError(response.status, responseBody);
+    }
+
+    // Confirmed live 2026-08-28: unlike everything else in Seed Speech, the real job
+    // status here isn't in the JSON body at all -- it's the "x-api-status-code" response
+    // header. The body only ever carries { audio_info, result: { text, additions } }.
+    const statusCodeHeader = response.headers.get("x-api-status-code");
+    const statusCode = statusCodeHeader === null ? NaN : Number(statusCodeHeader);
+    const apiMessage = response.headers.get("x-api-message") ?? "";
+    const bodyText = await response.text();
+
+    if (statusCode === 20_000_001) {
+      return { status: "processing", text: null };
+    }
+    if (statusCode === 20_000_003) {
+      return { status: "no_speech", text: "" };
+    }
+    if (statusCode === 20_000_000) {
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(bodyText);
+      } catch {
+        throw new VoiceResponseShapeError(
+          response.headers.get("content-type") ?? "",
+          bodyText.slice(0, 500),
+        );
+      }
+      const body = parsed as { result?: { text?: unknown } };
+      const text = typeof body.result?.text === "string" ? body.result.text : "";
+      return { status: "complete", text };
+    }
+
+    throw new VoiceApiError(statusCode, apiMessage);
   }
 
   return {

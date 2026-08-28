@@ -377,15 +377,83 @@ test("queryTranscription posts to auc/bigmodel/query reusing the same request ID
     baseUrl: BASE_URL,
     fetch: asFetch(async (input, init) => {
       calls.push({ input: String(input), ...(init === undefined ? {} : { init }) });
-      return Response.json({ result: "transcript text" });
+      return new Response(JSON.stringify({ audio_info: { duration: 3000 }, result: { text: "hello" } }), {
+        status: 200,
+        headers: { "x-api-status-code": "20000000", "x-api-message": "OK" },
+      });
     }),
   });
 
   const result = await client.queryTranscription("submit-id-123");
 
-  assert.deepEqual(result, { result: "transcript text" });
+  assert.deepEqual(result, { status: "complete", text: "hello" });
   assert.equal(calls[0]?.input, `${BASE_URL}/auc/bigmodel/query`);
   const headers = new Headers(calls[0]?.init?.headers);
   assert.equal(headers.get("X-Api-Request-Id"), "submit-id-123");
   assert.equal(calls[0]?.init?.body, "{}");
+});
+
+test("queryTranscription reports processing while status code is 20000001", async () => {
+  // Confirmed live 2026-08-28: the real job status is only in the x-api-status-code
+  // response header, not the JSON body -- the body stays {"audio_info":{},"result":{"text":""}}
+  // while still processing.
+  const client = createVoiceClient({
+    apiKey: "secret-key",
+    baseUrl: BASE_URL,
+    fetch: asFetch(async () =>
+      new Response(JSON.stringify({ audio_info: {}, result: { text: "" } }), {
+        status: 200,
+        headers: {
+          "x-api-status-code": "20000001",
+          "x-api-message": "[Processing in progress] Handle response: Start Processing",
+        },
+      }),
+    ),
+  });
+
+  const result = await client.queryTranscription("submit-id-123");
+
+  assert.deepEqual(result, { status: "processing", text: null });
+});
+
+test("queryTranscription reports no_speech while status code is 20000003", async () => {
+  // Confirmed live: a synthetic non-speech audio clip terminates with this code rather
+  // than an error -- it's a legitimate empty-transcript outcome, not a failure.
+  const client = createVoiceClient({
+    apiKey: "secret-key",
+    baseUrl: BASE_URL,
+    fetch: asFetch(async () =>
+      new Response(JSON.stringify({ audio_info: { duration: 3000 }, result: { text: "" } }), {
+        status: 200,
+        headers: {
+          "x-api-status-code": "20000003",
+          "x-api-message": "[Normal silence audio] Handle response: no valid speech in audio",
+        },
+      }),
+    ),
+  });
+
+  const result = await client.queryTranscription("submit-id-123");
+
+  assert.deepEqual(result, { status: "no_speech", text: "" });
+});
+
+test("queryTranscription throws VoiceApiError for an unrecognized status code", async () => {
+  const client = createVoiceClient({
+    apiKey: "secret-key",
+    baseUrl: BASE_URL,
+    fetch: asFetch(async () =>
+      new Response(JSON.stringify({}), {
+        status: 200,
+        headers: { "x-api-status-code": "45000001", "x-api-message": "invalid audio format" },
+      }),
+    ),
+  });
+
+  await assert.rejects(client.queryTranscription("submit-id-123"), (error: unknown) => {
+    assert.ok(error instanceof VoiceApiError);
+    assert.equal(error.code, 45_000_001);
+    assert.equal(error.apiMessage, "invalid audio format");
+    return true;
+  });
 });
