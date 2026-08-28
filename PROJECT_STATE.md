@@ -15,6 +15,7 @@ this file — this file is updated deliberately at the end of each work session.
 | File | What it is | Trust level |
 |---|---|---|
 | **`PROJECT_STATE.md`** (this file) | Current status, blockers, verification state | **Authoritative on status** |
+| `CAPABILITY_MAP.md` | BytePlus catalog vs Higgsfield parity, and the gaps | Authoritative on scope/ambition |
 | `BUILD_PLAN.md` | Forward plan, block by block | Authoritative on what to build next |
 | `ARCHITECTURE.md` | Durable design: stack, data model, request flow, and *why* | Authoritative on design |
 | `MODELARK_API_REFERENCE.md` | Image/video/chat API contracts | Authoritative on those APIs |
@@ -103,6 +104,23 @@ OmniHuman model card and report the exact model ID string. Do not write Avatar
 code before this — the project has already lost time to unconfirmed model IDs
 (`seed-2-1-260628` was a placeholder that 404'd; the real one turned out to be
 `dola-seed-2-1-turbo-260628`).
+
+### 3.4 Scope correction (2026-08-28) — read this before planning work
+
+The project's goal is a **Higgsfield-grade platform built on the full BytePlus
+catalog**, not a wrapper over three endpoints. Work up to this date was scoped
+too narrowly: every generation feature built so far uses the *simplest mode* of
+its model, at the *smallest* output settings.
+
+Concretely — Seedance supports 7 modes and we use 1; Seedream supports 5–8 and we
+use 1; video is hardcoded to 5s/720p when the model does 4–30s at up to 4K. 3D
+generation and multimodal embeddings are entirely untouched. See
+`CAPABILITY_MAP.md` for the full inventory and the Higgsfield parity gap.
+
+**Consequence:** the current data model cannot express most of the remaining work
+(hardcoded generation profiles, no asset-as-input, flat credit cost). A schema
+and contract redesign — `BUILD_PLAN.md` block **A2** — gates nearly all feature
+work from here.
 
 ### 3.3 Phase 4 (Billing / Admin / Community) — blocked on business decisions
 

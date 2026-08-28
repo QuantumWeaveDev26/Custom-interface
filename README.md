@@ -9,6 +9,7 @@ with authentication and credit-based transactions.
 | I want to… | Read |
 |---|---|
 | Know what's built, verified, or blocked **right now** | **`PROJECT_STATE.md`** |
+| Understand the full scope — BytePlus catalog vs Higgsfield parity | **`CAPABILITY_MAP.md`** |
 | Know what to build next | **`BUILD_PLAN.md`** |
 | Understand the design and the reasoning behind it | `ARCHITECTURE.md` |
 | Work on image / video / chat API code | `MODELARK_API_REFERENCE.md` |

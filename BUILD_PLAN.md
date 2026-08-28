@@ -1,7 +1,11 @@
 # Build Plan
 
-Forward-looking, block by block. Pairs with `PROJECT_STATE.md` (current status)
-and `ARCHITECTURE.md` (design).
+Forward-looking, block by block. Pairs with `PROJECT_STATE.md` (current status),
+`CAPABILITY_MAP.md` (what BytePlus offers vs Higgsfield parity), and
+`ARCHITECTURE.md` (design).
+
+**Goal:** a Higgsfield-grade creative platform built on the full BytePlus
+catalog — not a thin wrapper over three endpoints.
 
 ---
 
@@ -9,196 +13,198 @@ and `ARCHITECTURE.md` (design).
 
 **One block at a time. Finish it. Verify it. Commit it. Then start the next.**
 
-This project previously drifted into reactive work — build a feature, hit a
-BytePlus surprise, chase it, repeat — with no plan surviving a session boundary.
-That is what this file prevents.
-
 **A block is done when all four are true:**
 1. The stated deliverable exists.
-2. `pnpm typecheck && pnpm test && pnpm build` all pass.
-3. Any new behavior has a test, or an explicit written note saying why it can't
-   be unit-tested (e.g. needs a live third-party call).
-4. It is committed and pushed with a message explaining *why*, not just what.
+2. `pnpm typecheck && pnpm test && pnpm build` all pass (CI enforces this).
+3. New behavior has a test, or a written note saying why it can't be unit-tested.
+4. Committed and pushed with a message explaining *why*, not just what.
 
-**Never mark a block done on the basis of "it should work."** This project has
-been burned by exactly that.
+**Never mark a block done on "it should work."** This project has been burned by
+exactly that — both by an agent self-reporting false completion, and by trusting
+BytePlus documentation over a real call.
 
 ---
 
-## Foundation blocks — do these first
+## Phase A — Foundation
 
-These harden the base. They are deliberately ahead of new features because the
-project currently has real feature surface with thin structural support.
+Hardening and structural work. **A2 is the gate for nearly all feature work** —
+do not start Phase C before it.
 
 ### F1 — Rotate exposed API credentials 🔴 SECURITY, DO FIRST
+`ARK_API_KEY` and `BYTEPLUS_VOICE_API_KEY` have appeared in plaintext in shared
+screenshots of `apps/web/.env`. Correctly gitignored and never committed, but
+screenshot exposure is exposure, and these bill to real spend.
 
-**Problem:** `ARK_API_KEY` and `BYTEPLUS_VOICE_API_KEY` values have been visible
-in plaintext in shared screenshots of `apps/web/.env`. They are correctly
-gitignored and were never committed, but screenshot exposure is still exposure —
-these map to real, billable BytePlus spend.
-
-**Deliverable:** both keys rotated in the BytePlus console; new values placed in
-`apps/web/.env` and `apps/worker/.env`; old keys revoked; app reverified working.
-
-**Done when:** an image generation and a voice generation both succeed with the
-new keys, and the old keys are confirmed revoked in the console.
-
-**Owner:** user (console access required).
-
----
-
-### F2 — Test coverage for API routes
-
-**Problem:** all 34 `apps/web` tests cover state reducers only. Every API route
-is untested — including `/api/jobs`, which performs the credit debit. The
-riskiest financial logic in the app has no route-level test.
-
-**Deliverable:** tests for `/api/jobs` (auth rejection, invalid body, insufficient
-credits, in-flight cap, happy path shape), `/api/transcribe`, `/api/voice-clone`
-(consent gate rejection), and `/api/assets/[id]` (cross-user access must 404).
-
-**Done when:** those routes have tests, `pnpm test` passes, and a deliberate
-break in each guard makes its test fail.
-
-**Note:** requires deciding how to fake `auth()` and Prisma at the route
-boundary — prefer dependency injection over module mocking, matching the
-injectable-client pattern already used in `modelark-client` / `voice-client`.
-
----
+**Done when:** both rotated in console, old ones revoked, both `.env` files
+updated, one image + one voice generation confirmed working on the new keys.
+**Owner:** user (console access).
 
 ### F3 — Continuous integration ✅ DONE (2026-08-28)
+`.github/workflows/ci.yml` runs install → `db:generate` → typecheck → test →
+build on push to `main`, PRs, and `ci-verify/**` branches.
 
-**Problem:** no CI. Every verification is manual and local. Any agent — Claude,
-Codex, Antigravity — can push a regression undetected.
+Verified **both directions**: green on `main` @ `f833ef8` with every step
+confirmed executing, and red on a scratch branch carrying a deliberate type
+error. A CI that cannot fail is worse than none.
 
-**Delivered:** `.github/workflows/ci.yml` runs install → `db:generate` →
-typecheck → test → build on push to `main`, on PRs to `main`, and on
-`ci-verify/**` scratch branches.
+Notes: dummy env vars are supplied because `packages/db` instantiates
+`PrismaClient` at module scope; `pnpm db:generate` must run before typecheck;
+push workflow changes to `ci-verify/**` first.
 
-**Verified both directions:**
-- Green on `main` @ `f833ef8` — all steps confirmed executed, none skipped.
-- Red on a scratch branch carrying a deliberate type error, then the branch was
-  deleted. A CI that cannot fail is worse than no CI; this one fails correctly.
+### F2 — API route test coverage
+All 34 `apps/web` tests cover state reducers only. Every API route is untested —
+including `/api/jobs`, which performs the credit debit.
 
-**Notes for whoever touches it next:**
-- Dummy env vars are supplied because `packages/db` instantiates `PrismaClient`
-  at module scope and Next.js imports route modules during `next build`. They
-  are placeholders; nothing in CI contacts a live service.
-- `pnpm db:generate` must run before typecheck — Prisma's generated types are
-  not produced by the turbo pipeline.
-- To change this workflow safely, push to a `ci-verify/**` branch first.
-
-**Why this mattered for agent-portability:** CI is the one guardrail that works
-identically no matter which AI is driving. It is the cheapest insurance against
-a handoff going wrong.
-
----
+**Deliverable:** tests for `/api/jobs` (auth, invalid body, insufficient credits,
+in-flight cap, happy path), `/api/transcribe`, `/api/voice-clone` (consent gate),
+`/api/assets/[id]` (cross-user access must 404).
+**Done when:** breaking each guard deliberately makes its test fail.
+**Note:** prefer dependency injection over module mocking, matching the
+injectable-client pattern in `modelark-client` / `voice-client`.
 
 ### F4 — Deployment path
-
-**Problem:** nothing is deployed. `ARCHITECTURE.md` §2 specifies Vercel (web) +
-BytePlus ECS (worker/Redis/Postgres), but `infra/` contains only
-`docker-compose.yml` for local dev. The system has never run outside this
-machine.
-
-**Deliverable:** decide staged vs full, then execute. Suggested minimum first
-step — deploy `apps/web` to Vercel with a managed Postgres and Redis, worker
-still local — to prove the app runs off-machine before taking on ECS.
-
-**Done when:** a URL other than `localhost` serves the app and completes one real
-generation end-to-end.
-
-**Blocked on:** a decision about hosting spend, and whether this needs to be
-publicly reachable yet.
+Nothing is deployed. `infra/` has local docker-compose only.
+**Suggested first step:** `apps/web` to Vercel with managed Postgres + Redis,
+worker still local, to prove it runs off-machine before taking on ECS.
+**Blocked on:** hosting spend decision.
 
 ---
 
-## Verification block
+## Phase B — Capability research
 
-### V1 — Close the two open verification gaps
+Cheap, high-leverage. Every Phase C block depends on one of these. Each is
+"confirm the real request/response shape with one live call, document it in
+`MODELARK_API_REFERENCE.md`, mark it confirmed."
 
-`PROJECT_STATE.md` §2 lists two features that are built and tested but never
-confirmed live. Both are cheap to check and both currently sit in an ambiguous
-state that will only get more expensive to untangle later.
+**Do these before writing the corresponding feature.** The project has already
+lost days to building against unconfirmed BytePlus contracts.
 
-1. **Expressive TTS** — `/studio` → Voice → Expressive → generate. Was broken
-   live once, fixed in `06240ec`, never retested.
-2. **Speech-to-Text** — `/transcribe`, upload any spoken-word audio file.
+| Block | Confirm | Unblocks |
+|---|---|---|
+| **R1** | Which models this account can actually call (Model Square) | everything — docs list the catalog, not your entitlements |
+| **R2** | Seedance **image-to-video** (first frame; first+last frames) | C2, C3 |
+| **R3** | Seedream **multi-reference image-to-image** | C4 (Soul ID equivalent) |
+| **R4** | Seedance **video extension** and **video editing** | C6 |
+| **R5** | 3D generation (Rodin / Hitem3d) endpoints + quota metering | C8 |
+| **R6** | `skylark-embedding-vision` request shape | C7 |
+| **R7** | Managed Agents / App Lab — replace or complement `packages/agents`? | future agent work |
 
-**Done when:** both produce correct output in the browser, and
-`PROJECT_STATE.md` §2 is updated to move them into "Verified live" — or a real
-bug is found and filed as its own block.
+**R1 is first and is a user action** — the console shows account entitlements
+that no doc can tell us.
 
-**Owner:** user (browser), with agent standing by to fix.
+---
+
+## Phase C — Capability build
+
+Ordered by value. **All gated on A2 below.**
+
+### A2 — Generation contract redesign 🔑 GATE FOR ALL OF PHASE C
+The current data model cannot express most Higgsfield-grade features
+(`CAPABILITY_MAP.md` §4). Three concrete problems:
+
+1. **Settings are hardcoded, not per-job.** `IMAGE_PROFILE` / `VIDEO_PROFILE` are
+   frozen at 5s / 720p / 21:9. Duration, resolution, and aspect ratio must become
+   per-job parameters — validated server-side, never client-trusted.
+2. **Jobs cannot take assets as input.** `inputParams` is text-only. Image-to-video,
+   multi-reference, extension, and editing all need a job to reference existing
+   assets — with ownership checks so users can't reference each other's.
+3. **Credit cost is a flat constant.** Real cost scales with duration × resolution
+   × model. Needs a cost function, not `VIDEO_COST`.
+
+**Deliverable:** revised Prisma schema + `shared-types` contracts + cost function,
+with migration. No new user-facing features — this is purely the shape change.
+**Done when:** existing image/video/voice generation still works unchanged
+end-to-end, all tests pass, and a job can carry both parameters and input asset
+references.
+
+> Doing this before C-blocks avoids building image-to-video on a shape that would
+> need immediate rewriting.
+
+### C1 — Unlock existing model range *(quick win after A2)*
+Expose duration (4–30s), resolution (480p/720p/1080p/4K), and aspect ratio, which
+Seedance already supports and we hardcode away. Cost scales accordingly.
+
+### C2 — Image-to-video ⭐ highest-value gap
+The core Higgsfield workflow: generate or upload a still, then animate it.
+Includes first-frame and first+last-frame (keyframe) modes. Needs R2.
+
+### C3 — Upload pipeline
+Users must be able to bring their own images/audio, not only use generated
+assets. Needed by C2, C4, and lipsync. Reuses the TOS + signed-URL pattern
+already proven in `/transcribe`.
+
+### C4 — Character consistency (Soul ID equivalent) ⭐ headline feature
+Seedream multi-reference image-to-image: save a named character from reference
+images, reuse across generations. Needs R3 and C3.
+
+### C5 — Cinema Studio depth
+Expand `packages/prompt-library` toward Higgsfield's ~70 presets: camera bodies,
+lens types, aperture/DoF, and stacking multiple moves per shot. Pure prompt
+engineering — no new API surface, so it can proceed in parallel.
+
+### C6 — Video extension and editing
+Extend a clip past its end; edit an existing clip. Needs R4 and A2's input-asset
+support.
+
+### C7 — Community / explore feed
+Semantic search and "more like this" over generated assets via
+`skylark-embedding-vision`. Needs R6. Overlaps Phase 4's community goal.
+
+### C8 — 3D generation 🟢 differentiator
+Text-to-3D and image-to-3D with PBR materials and glb/obj/fbx/usdz export.
+**Higgsfield does not offer this.** Free-tier quota available. Needs R5.
+
+### C9 — Batch generation / variants
+Seedream batch modes — N variants per prompt, a standard expectation in this
+product category.
 
 ---
 
 ## Blocked work
 
-Do not start these. Each needs something from outside the codebase.
+### B1 — Voice Cloning
+Blocked on BytePlus support. Four hypotheses already ruled out — read
+`PROJECT_STATE.md` §3.1 before touching. Support message draft is there too.
+**Follow-on:** surface cloned voices as selectable speakers in Studio.
 
-### B1 — Voice Cloning completion
-**Blocked on:** BytePlus support. Full diagnostic history in
-`PROJECT_STATE.md` §3.1 — read it before touching this, four hypotheses are
-already ruled out.
+### B2 — Lipsync / talking avatar (OmniHuman)
+Blocked on model ID confirmation via Model Square (folds into R1). Higgsfield's
+Lipsync Studio equivalent.
 
-**Support message to send (user action):**
-> `POST /api/v3/tts/voice_clone` (Voice Replication) fails with
-> `{"code":55000000,"message":"resource ID is mismatched with speaker related resource"}`
-> (HTTP 500) when called via the documented REST API using our project's API key,
-> even though the request exactly matches your own "Voice Training" API
-> documentation sample (`speaker_id: ""`, `audio.data`/`audio.format`,
-> `language`, `extra_params.demo_text`). The identical voice sample succeeds when
-> cloned through the Voice Replication console UI directly. Error code 55000000
-> does not appear in your published Voice Replication error code reference. Can
-> you confirm whether the REST API requires additional account/project
-> configuration beyond what's documented, or whether this is a bug on your end?
-
-**Follow-on once unblocked:** surface cloned voices as selectable speakers in
-Studio's Voice tab (currently the speaker is hardcoded in `VOICE_PROFILE`).
-
-### B2 — Avatar (OmniHuman)
-**Blocked on:** user confirming the model ID exists in Console → ModelArk →
-Model Square. See `PROJECT_STATE.md` §3.2. Writing code before this repeats a
-mistake already made once on this project.
-
-### B3 — Phase 4: Billing, Admin, Community
-**Blocked on:** payment provider, pricing tiers, and audience (real customers vs
-internal demo). See `PROJECT_STATE.md` §3.3.
-
-**Note:** `ARCHITECTURE.md` §8 flags that the 100-credit welcome grant needs a
-signup-abuse guard before any public launch, since those credits map to real
-BytePlus spend. That belongs in this block.
+### B3 — Phase 4: Billing, Admin
+Blocked on payment provider, pricing tiers, and audience (real customers vs
+internal demo). `ARCHITECTURE.md` §8 notes the 100-credit welcome grant needs a
+signup-abuse guard before any public launch.
 
 ---
 
 ## Polish backlog
-
-Real work, but lower priority than the foundation blocks. Not blocked.
-
-- **P1 — Responsive pass.** The design system landed with `sm:` breakpoints but
-  has never been checked on a real mobile viewport.
-- **P2 — Empty and error states.** Gallery has a designed empty state; Director,
-  Marketing, and Transcribe do not.
-- **P3 — Accessibility pass.** Focus rings, keyboard nav through the Studio mode
-  pills, `aria-live` coverage on async regions, contrast audit against the dark
-  palette.
+- **P1** Responsive pass — `sm:` breakpoints exist, never checked on a real device
+- **P2** Empty/error states for Director, Marketing, Transcribe (Gallery has one)
+- **P3** Accessibility — focus rings, keyboard nav, `aria-live`, contrast audit
 
 ---
 
 ## Recommended order
 
 ```
-F3 (CI)              ───→ ✅ DONE 2026-08-28
-F1 (security, user)  ─┐
-V1 (verify, user)    ─┴─→ user actions, can run in parallel with agent work
-F2 (route tests)     ───→ agent work, no blockers — NEXT
-F4 (deploy)          ───→ needs a hosting decision first
-B1/B2/B3             ───→ external unblock required
-P1/P2/P3             ───→ after foundation
+F3  ✅ done
+F1  ─→ user, today (security)
+R1  ─→ user, today (Model Square — gates all research)
+A2  ─→ agent, the gate for Phase C            ← BIGGEST STRUCTURAL ITEM
+F2  ─→ agent, parallel with A2
+C1  ─→ quick win once A2 lands
+R2 → C3 → C2  ─→ the highest-value feature chain
+R3 → C4       ─→ headline feature
+C5  ─→ parallel anytime (no API dependency)
+R4→C6, R6→C7, R5→C8, C9  ─→ after the above
+F4, B1/B2/B3, P1–P3
 ```
 
-**If credits/session budget run short mid-block:** stop at a committed, green
-state rather than leaving a block half-done. Update `PROJECT_STATE.md` before
-stopping. A clean handoff mid-plan is fine; a half-finished block with no note
-is not.
+**Reality check on scale:** Phase C is months of work, not days. Higgsfield is a
+funded product with a team. The sequence above is ordered so that each block ships
+something usable on its own rather than requiring the whole roadmap to land first.
+
+**If session budget runs short mid-block:** stop at a committed, green state.
+Update `PROJECT_STATE.md` before stopping. A clean handoff mid-plan is fine; a
+half-finished block with no note is not.
