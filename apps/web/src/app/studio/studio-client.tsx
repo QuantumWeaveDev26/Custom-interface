@@ -26,6 +26,8 @@ export interface StudioClientProps {
   minDurationSeconds: number;
   maxDurationSeconds: number;
   pricing: CreditPricing;
+  /** Recent images the user owns, offered as image-to-video first frames. */
+  recentImageIds: readonly string[];
 }
 
 interface JobStatusMessage {
@@ -50,6 +52,7 @@ export function StudioClient({
   minDurationSeconds,
   maxDurationSeconds,
   pricing,
+  recentImageIds,
 }: StudioClientProps) {
   const [state, dispatch] = useReducer(studioReducer, INITIAL_STUDIO_STATE);
   const eventSourceRef = useRef<EventSource | null>(null);
@@ -110,6 +113,13 @@ export function StudioClient({
             prompt: state.prompt,
             // `type` is the request discriminator, not a params field.
             params: (({ type: _ignored, ...rest }) => rest)(params),
+            ...(state.mode === "video" && state.firstFrameAssetId !== null
+              ? {
+                  inputAssets: [
+                    { assetId: state.firstFrameAssetId, role: "first_frame" },
+                  ],
+                }
+              : {}),
           }),
         });
       } catch {
@@ -152,7 +162,7 @@ export function StudioClient({
         source.close();
       };
     },
-    [isBusy, state.mode, state.prompt, params],
+    [isBusy, state.mode, state.prompt, params, state.firstFrameAssetId],
   );
 
   const modelLabel =
@@ -243,6 +253,53 @@ export function StudioClient({
               </button>
             ))}
           </div>
+        </div>
+      )}
+
+      {state.mode === "video" && recentImageIds.length > 0 && (
+        <div className="mt-3">
+          <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-[var(--text-faint)]">
+            Animate an image <span className="normal-case tracking-normal">(optional)</span>
+          </p>
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {recentImageIds.map((assetId) => {
+              const selected = state.firstFrameAssetId === assetId;
+              return (
+                <button
+                  key={assetId}
+                  type="button"
+                  disabled={isBusy}
+                  aria-pressed={selected}
+                  aria-label={selected ? "Deselect first frame" : "Use as first frame"}
+                  // Clicking the selected image clears it, so text-to-video is
+                  // always reachable without a separate "none" control.
+                  onClick={() =>
+                    dispatch({
+                      type: "SET_FIRST_FRAME",
+                      assetId: selected ? null : assetId,
+                    })
+                  }
+                  className="shrink-0 overflow-hidden rounded-lg transition-all disabled:opacity-50"
+                  style={{
+                    border: selected
+                      ? "2px solid var(--accent-via)"
+                      : "2px solid var(--border)",
+                  }}
+                >
+                  <img
+                    src={`/api/assets/${assetId}`}
+                    alt=""
+                    className="h-16 w-16 object-cover"
+                  />
+                </button>
+              );
+            })}
+          </div>
+          {state.firstFrameAssetId !== null && (
+            <p className="mt-1.5 text-[11px] text-[var(--text-muted)]">
+              This image becomes the first frame. Your prompt describes the motion.
+            </p>
+          )}
         </div>
       )}
 

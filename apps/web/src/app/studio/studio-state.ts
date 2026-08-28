@@ -30,6 +30,8 @@ export interface StudioState {
   resolution: VideoResolution;
   ratio: VideoRatio;
   durationSeconds: number;
+  /** Asset id used as the video's first frame (image-to-video), if any. */
+  firstFrameAssetId: string | null;
   phase: StudioPhase;
   jobId: string | null;
   errorMessage: string | null;
@@ -46,6 +48,7 @@ export const INITIAL_STUDIO_STATE: StudioState = {
   resolution: "720p",
   ratio: "21:9",
   durationSeconds: 5,
+  firstFrameAssetId: null,
   phase: "idle",
   jobId: null,
   errorMessage: null,
@@ -60,6 +63,7 @@ export type StudioAction =
   | { type: "SET_RESOLUTION"; resolution: VideoResolution }
   | { type: "SET_RATIO"; ratio: VideoRatio }
   | { type: "SET_DURATION"; durationSeconds: number }
+  | { type: "SET_FIRST_FRAME"; assetId: string | null }
   | { type: "SUBMIT_START" }
   | { type: "SUBMIT_ERROR"; message: string }
   | { type: "JOB_QUEUED"; jobId: string }
@@ -89,6 +93,8 @@ export function studioReducer(
       return { ...state, ratio: action.ratio };
     case "SET_DURATION":
       return { ...state, durationSeconds: action.durationSeconds };
+    case "SET_FIRST_FRAME":
+      return { ...state, firstFrameAssetId: action.assetId };
     case "SUBMIT_START":
       return { ...state, phase: "submitting", errorMessage: null, assets: [] };
     case "SUBMIT_ERROR":

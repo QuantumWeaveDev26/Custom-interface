@@ -1,5 +1,6 @@
 import type { JobRecord } from "@creative-ai/db";
 import type {
+  CreateContentGenerationContentItem,
   GetContentGenerationTaskResponse,
   ImagesResponse,
 } from "@creative-ai/modelark-client";
@@ -208,6 +209,48 @@ function assertSucceededVideo(
   return task.content.video_url;
 }
 
+/**
+ * Builds the `content[]` array for a video task.
+ *
+ * Confirmed contract (MODELARK_API_REFERENCE.md, R2): image-to-video is the same
+ * endpoint as text-to-video with extra `image_url` items, optionally carrying a
+ * `role` of "first_frame" or "last_frame".
+ *
+ * Each input asset is signed into a short-lived HTTPS URL because BytePlus
+ * fetches the image itself and cannot read our private bucket.
+ */
+async function buildVideoContent(
+  dependencies: GenerationProcessorDependencies,
+  job: JobRecord,
+): Promise<CreateContentGenerationContentItem[]> {
+  const content: CreateContentGenerationContentItem[] = [
+    { type: "text", text: job.inputParams.prompt },
+  ];
+
+  const inputAssets = await dependencies.loadInputAssets(job.id, job.userId);
+  if (inputAssets.length === 0) return content;
+
+  for (const asset of inputAssets) {
+    // Only image inputs are wired so far. Video references and source clips
+    // (edit/extend) are a later block; skipping them is safer than sending a
+    // shape the provider would reject mid-generation.
+    if (asset.type !== "image") continue;
+
+    const url = await dependencies.signAssetUrl(asset.storageUrl);
+    content.push({
+      type: "image_url",
+      image_url: { url },
+      // "reference" carries no role — the provider treats a bare image as a
+      // first frame, and only the keyframe roles are named in the contract.
+      ...(asset.role === "first_frame" || asset.role === "last_frame"
+        ? { role: asset.role }
+        : {}),
+    });
+  }
+
+  return content;
+}
+
 async function processVideo(
   dependencies: GenerationProcessorDependencies,
   job: JobRecord,
@@ -220,9 +263,10 @@ async function processVideo(
 
   let externalTaskId = resumedTaskId;
   if (externalTaskId === null) {
+    const content = await buildVideoContent(dependencies, job);
     const createdTask = await dependencies.modelArk.createVideoTask({
       model: job.model,
-      content: [{ type: "text", text: job.inputParams.prompt }],
+      content,
       resolution: params.resolution,
       ratio: params.ratio,
       duration: params.durationSeconds,

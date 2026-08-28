@@ -163,3 +163,34 @@ test("set prompt updates only the prompt field", () => {
   assert.equal(next.prompt, "orbital sunrise");
   assert.equal(next.phase, "idle");
 });
+
+test("first frame selection is independent of other params", () => {
+  const next = studioReducer(INITIAL_STUDIO_STATE, {
+    type: "SET_FIRST_FRAME",
+    assetId: "asset-1",
+  });
+  assert.equal(next.firstFrameAssetId, "asset-1");
+  assert.equal(next.resolution, "720p");
+  assert.equal(next.prompt, "");
+});
+
+test("first frame can be cleared back to text-to-video", () => {
+  const selected = studioReducer(INITIAL_STUDIO_STATE, {
+    type: "SET_FIRST_FRAME",
+    assetId: "asset-1",
+  });
+  const cleared = studioReducer(selected, { type: "SET_FIRST_FRAME", assetId: null });
+  assert.equal(cleared.firstFrameAssetId, null);
+});
+
+test("mode switch clears the selected first frame", () => {
+  const state: StudioState = {
+    ...INITIAL_STUDIO_STATE,
+    mode: "video",
+    firstFrameAssetId: "asset-1",
+  };
+  // Carrying an image-to-video selection into image or voice mode would submit
+  // an input asset the job type does not accept.
+  const next = studioReducer(state, { type: "SET_MODE", mode: "image" });
+  assert.equal(next.firstFrameAssetId, null);
+});

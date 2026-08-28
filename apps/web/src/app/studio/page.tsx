@@ -22,9 +22,20 @@ export default async function StudioPage() {
   // preview uses the same function the server charges with.
   const videoCapabilities = videoCapabilitiesFor(VIDEO_MODEL);
 
+  // Recent images the user owns, offered as first-frame candidates for
+  // image-to-video. Scoped to this user — the API re-checks ownership at
+  // submission regardless.
+  const recentImages = await prisma.asset.findMany({
+    where: { userId: session.user.id, type: "image" },
+    orderBy: { createdAt: "desc" },
+    take: 12,
+    select: { id: true },
+  });
+
   return (
     <StudioClient
       creditBalance={user?.creditBalance ?? 0}
+      recentImageIds={recentImages.map((asset) => asset.id)}
       imageModelLabel={IMAGE_MODEL}
       videoModelLabel={VIDEO_MODEL}
       voiceModelLabel={VOICE_MODEL}

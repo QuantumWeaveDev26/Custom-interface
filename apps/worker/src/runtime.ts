@@ -6,10 +6,12 @@ import {
   failAndRefund,
   findStaleQueuedJobs,
   prismaStore,
+  loadJobInputAssets,
   saveExternalTaskId,
 } from "@creative-ai/db";
 import {
   GENERATION_QUEUE_NAME,
+  parseTosUrl,
   type GenerationJobPayload,
 } from "@creative-ai/shared-types";
 import { TosClient } from "@volcengine/tos-sdk";
@@ -22,6 +24,11 @@ type RedisType = any;
 import { createGenerationProcessor } from "./processor.js";
 import { createTosStorage } from "./storage.js";
 import { runQueuedJobRecovery } from "./recovery.js";
+
+// BytePlus downloads an input image while the task is being created, not later,
+// so this only needs to outlive task creation. Kept short to limit how long a
+// signed URL to private media is valid if it leaks.
+const INPUT_ASSET_URL_EXPIRY_SECONDS = 600;
 
 export interface WorkerRuntimeConfig {
   queueName?: string;
@@ -126,6 +133,19 @@ export async function createWorkerRuntime(
     client: tosStorageClient,
   });
 
+  // Input images are fetched by BytePlus itself, so a private tos:// URL has to
+  // become a short-lived signed HTTPS URL first. Kept brief -- the provider
+  // downloads the image while creating the task, not later.
+  const signAssetUrl = async (storageUrl: string): Promise<string> => {
+    const parsed = parseTosUrl(storageUrl);
+    return tosClient.getPreSignedUrl({
+      method: "GET",
+      bucket: parsed.bucket,
+      key: parsed.key,
+      expires: INPUT_ASSET_URL_EXPIRY_SECONDS,
+    });
+  };
+
   // Create Redis publisher for SSE events
   const publisher = createRedisConnection(config.redisUrl);
 
@@ -163,6 +183,9 @@ export async function createWorkerRuntime(
       const channel = `job:${event.jobId}`;
       await publisher.publish(channel, JSON.stringify(event));
     },
+    loadInputAssets: async (jobId, userId) =>
+      loadJobInputAssets(prismaStore, jobId, userId),
+    signAssetUrl,
   });
 
   // Create BullMQ processor that adapts the generation processor

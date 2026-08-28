@@ -223,6 +223,8 @@ function createVideoHarness(
       operations.push(`publish:${event.status}`);
       events.push(event);
     },
+    loadInputAssets: async () => [],
+    signAssetUrl: async (storageUrl) => `https://signed.example/${storageUrl}`,
   };
   return {
     dependencies,
@@ -340,6 +342,8 @@ function createImageFailureHarness(options: ImageFailureHarnessOptions): {
       operations.push(`publish:${event.status}`);
       events.push(event);
     },
+    loadInputAssets: async () => [],
+    signAssetUrl: async (storageUrl) => `https://signed.example/${storageUrl}`,
   };
   return {
     dependencies,
@@ -444,6 +448,8 @@ test("claims an image job, creates once without polling, and publishes after dur
       operations.push(`publish:${event.status}`);
       events.push(event);
     },
+    loadInputAssets: async () => [],
+    signAssetUrl: async (storageUrl) => `https://signed.example/${storageUrl}`,
   };
 
   await createGenerationProcessor(dependencies)("image-job");
@@ -543,6 +549,8 @@ test("an already-processing image fails and refunds without replaying createImag
     publish: async (event) => {
       events.push(event);
     },
+    loadInputAssets: async () => [],
+    signAssetUrl: async (storageUrl) => `https://signed.example/${storageUrl}`,
   };
 
   await createGenerationProcessor(dependencies)(job.id);
@@ -853,6 +861,8 @@ test("a standard voice job calls createSpeech, not createAudioGeneration", async
       operations.push(`publish:${event.status}`);
       events.push(event);
     },
+    loadInputAssets: async () => [],
+    signAssetUrl: async (storageUrl) => `https://signed.example/${storageUrl}`,
   };
 
   await createGenerationProcessor(dependencies)("voice-job");
@@ -933,6 +943,8 @@ test("an expressive voice job calls createAudioGeneration, not createSpeech", as
       operations.push(`publish:${event.status}`);
       events.push(event);
     },
+    loadInputAssets: async () => [],
+    signAssetUrl: async (storageUrl) => `https://signed.example/${storageUrl}`,
   };
 
   await createGenerationProcessor(dependencies)("voice-job");
@@ -944,4 +956,122 @@ test("an expressive voice job calls createAudioGeneration, not createSpeech", as
     "publish:complete",
   ]);
   assert.equal(events.at(-1)?.assets?.[0]?.type, "audio");
+});
+
+// --- Image-to-video (C2) ----------------------------------------------------
+// Confirmed contract (MODELARK_API_REFERENCE.md R2): same endpoint as
+// text-to-video, with extra image_url items in content[], optionally carrying a
+// role of "first_frame" or "last_frame".
+
+function inputAsset(
+  assetId: string,
+  role: "first_frame" | "last_frame" | "reference" | "source_video",
+  type: "image" | "video" | "audio" = "image",
+) {
+  return {
+    assetId,
+    role,
+    position: 0,
+    storageUrl: `tos://bucket/${assetId}.png`,
+    type,
+  } as const;
+}
+
+test("a video job with no input assets sends text only, as before", async () => {
+  const harness = createVideoHarness(videoJob());
+
+  await createGenerationProcessor(harness.dependencies)("video-job");
+
+  assert.deepEqual(harness.createRequests[0]?.content, [
+    { type: "text", text: "orbital sunrise" },
+  ]);
+});
+
+test("a first-frame input asset is signed and appended with its role", async () => {
+  const harness = createVideoHarness(videoJob());
+  harness.dependencies.loadInputAssets = async () => [
+    inputAsset("still-1", "first_frame"),
+  ];
+
+  await createGenerationProcessor(harness.dependencies)("video-job");
+
+  assert.deepEqual(harness.createRequests[0]?.content, [
+    { type: "text", text: "orbital sunrise" },
+    {
+      type: "image_url",
+      image_url: { url: "https://signed.example/tos://bucket/still-1.png" },
+      role: "first_frame",
+    },
+  ]);
+});
+
+test("first and last frames are both sent, each with its own role", async () => {
+  const harness = createVideoHarness(videoJob());
+  harness.dependencies.loadInputAssets = async () => [
+    inputAsset("start", "first_frame"),
+    inputAsset("end", "last_frame"),
+  ];
+
+  await createGenerationProcessor(harness.dependencies)("video-job");
+
+  const content = harness.createRequests[0]?.content ?? [];
+  assert.equal(content.length, 3);
+  assert.equal(content[1]?.role, "first_frame");
+  assert.equal(content[2]?.role, "last_frame");
+});
+
+test("a reference asset is sent without a role", async () => {
+  const harness = createVideoHarness(videoJob());
+  harness.dependencies.loadInputAssets = async () => [
+    inputAsset("ref-1", "reference"),
+  ];
+
+  await createGenerationProcessor(harness.dependencies)("video-job");
+
+  const imageItem = harness.createRequests[0]?.content[1];
+  assert.equal(imageItem?.type, "image_url");
+  // Only the keyframe roles are named in the confirmed contract.
+  assert.equal("role" in (imageItem ?? {}), false);
+});
+
+test("private tos:// URLs are never sent to the provider unsigned", async () => {
+  const harness = createVideoHarness(videoJob());
+  harness.dependencies.loadInputAssets = async () => [
+    inputAsset("still-1", "first_frame"),
+  ];
+
+  await createGenerationProcessor(harness.dependencies)("video-job");
+
+  const serialized = JSON.stringify(harness.createRequests[0]);
+  assert.doesNotMatch(serialized, /"tos:\/\//);
+});
+
+test("non-image input assets are skipped rather than sent in an unconfirmed shape", async () => {
+  const harness = createVideoHarness(videoJob());
+  harness.dependencies.loadInputAssets = async () => [
+    inputAsset("clip-1", "source_video", "video"),
+  ];
+
+  await createGenerationProcessor(harness.dependencies)("video-job");
+
+  // Video edit/extend is a later block; sending a guessed shape mid-generation
+  // would fail after the user was already charged.
+  assert.deepEqual(harness.createRequests[0]?.content, [
+    { type: "text", text: "orbital sunrise" },
+  ]);
+});
+
+test("a resumed video job does not re-sign or re-send input assets", async () => {
+  const harness = createVideoHarness(videoJob("processing", "modelark-task-1"));
+  let loadCalls = 0;
+  harness.dependencies.loadInputAssets = async () => {
+    loadCalls += 1;
+    return [inputAsset("still-1", "first_frame")];
+  };
+
+  await createGenerationProcessor(harness.dependencies)("video-job");
+
+  // Resume polls the existing task; recreating it would double-charge upstream.
+  assert.equal(harness.createRequests.length, 0);
+  assert.equal(loadCalls, 0);
 });

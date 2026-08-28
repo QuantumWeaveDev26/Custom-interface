@@ -2,6 +2,7 @@ import type {
   CompleteJobResult,
   CreateAssetInput,
   JobRecord,
+  ResolvedInputAsset,
 } from "@creative-ai/db";
 import type { ModelArkClient } from "@creative-ai/modelark-client";
 import type { JobStatusEvent } from "@creative-ai/shared-types";
@@ -39,4 +40,15 @@ export interface GenerationProcessorDependencies {
   download(url: string): Promise<DownloadedMedia>;
   storage: AssetStorage;
   publish(event: JobStatusEvent): Promise<void>;
+  /**
+   * Input assets a job consumes (image-to-video, keyframes, references).
+   * Scoped to the job's owner — see loadJobInputAssets in packages/db.
+   */
+  loadInputAssets(jobId: string, userId: string): Promise<ResolvedInputAsset[]>;
+  /**
+   * Turns a private `tos://` URL into a short-lived HTTPS URL.
+   * Required because BytePlus fetches input images itself and cannot read our
+   * private bucket.
+   */
+  signAssetUrl(storageUrl: string): Promise<string>;
 }
