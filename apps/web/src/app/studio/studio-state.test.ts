@@ -82,6 +82,17 @@ test("mode switch resets phase/job/assets but preserves prompt text", () => {
   assert.deepEqual(next.assets, []);
 });
 
+test("voice mode completes with an audio asset", () => {
+  const state: StudioState = { ...INITIAL_STUDIO_STATE, mode: "voice", phase: "processing" };
+  const next = studioReducer(state, {
+    type: "STATUS_EVENT",
+    status: "complete",
+    assets: [{ id: "a2", type: "audio", url: "/api/assets/a2" }],
+  });
+  assert.equal(next.phase, "complete");
+  assert.deepEqual(next.assets, [{ id: "a2", type: "audio", url: "/api/assets/a2" }]);
+});
+
 test("set prompt updates only the prompt field", () => {
   const next = studioReducer(INITIAL_STUDIO_STATE, {
     type: "SET_PROMPT",

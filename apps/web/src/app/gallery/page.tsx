@@ -31,20 +31,24 @@ export default async function GalleryPage() {
       ) : (
         <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {assets.map((asset) => (
-            <div key={asset.id} className="overflow-hidden rounded border border-gray-200">
-              {asset.type === "image" ? (
+            <div key={asset.id} className="overflow-hidden rounded border border-gray-200 p-2">
+              {asset.type === "image" && (
                 <img
                   src={`/api/assets/${asset.id}`}
                   alt="Generated asset"
                   className="w-full object-cover"
                 />
-              ) : (
+              )}
+              {asset.type === "video" && (
                 <video
                   src={`/api/assets/${asset.id}`}
                   controls
                   preload="metadata"
                   className="w-full"
                 />
+              )}
+              {asset.type === "audio" && (
+                <audio src={`/api/assets/${asset.id}`} controls preload="metadata" className="w-full" />
               )}
             </div>
           ))}

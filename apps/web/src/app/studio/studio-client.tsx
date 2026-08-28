@@ -12,6 +12,7 @@ export interface StudioClientProps {
   creditBalance: number;
   imageModelLabel: string;
   videoModelLabel: string;
+  voiceModelLabel: string;
 }
 
 interface JobStatusMessage {
@@ -20,12 +21,18 @@ interface JobStatusMessage {
   assets?: StudioAsset[];
 }
 
-const MODES: StudioMode[] = ["image", "video"];
+const MODES: StudioMode[] = ["image", "video", "voice"];
+const MODE_LABELS: Record<StudioMode, string> = {
+  image: "Image",
+  video: "Video",
+  voice: "Voice",
+};
 
 export function StudioClient({
   creditBalance,
   imageModelLabel,
   videoModelLabel,
+  voiceModelLabel,
 }: StudioClientProps) {
   const [state, dispatch] = useReducer(studioReducer, INITIAL_STUDIO_STATE);
   const eventSourceRef = useRef<EventSource | null>(null);
@@ -98,7 +105,12 @@ export function StudioClient({
     [isBusy, state.mode, state.prompt],
   );
 
-  const modelLabel = state.mode === "image" ? imageModelLabel : videoModelLabel;
+  const modelLabel =
+    state.mode === "image"
+      ? imageModelLabel
+      : state.mode === "video"
+        ? videoModelLabel
+        : voiceModelLabel;
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-12">
@@ -118,7 +130,7 @@ export function StudioClient({
               state.mode === mode ? "bg-black text-white" : "bg-gray-100 text-gray-800"
             }`}
           >
-            {mode === "image" ? "Image" : "Video"}
+            {MODE_LABELS[mode]}
           </button>
         ))}
       </div>
@@ -127,7 +139,7 @@ export function StudioClient({
 
       <form onSubmit={handleSubmit} className="mt-4 space-y-3">
         <label htmlFor="prompt" className="block text-sm font-medium text-gray-700">
-          Prompt
+          {state.mode === "voice" ? "Text to speak" : "Prompt"}
         </label>
         <textarea
           id="prompt"
@@ -137,7 +149,11 @@ export function StudioClient({
           rows={4}
           maxLength={2000}
           required
-          placeholder="Describe what you want to create..."
+          placeholder={
+            state.mode === "voice"
+              ? "Type the words you want spoken aloud..."
+              : "Describe what you want to create..."
+          }
           className="w-full rounded border border-gray-300 p-3 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-black disabled:opacity-50"
         />
         <button
@@ -158,15 +174,29 @@ export function StudioClient({
           <p className="text-sm text-red-600">{state.errorMessage}</p>
         )}
         {state.phase === "complete" &&
-          state.assets.map((asset) =>
-            asset.type === "image" ? (
-              <img
-                key={asset.id}
-                src={asset.url}
-                alt="Generated result"
-                className="mt-2 max-w-full rounded"
-              />
-            ) : (
+          state.assets.map((asset) => {
+            if (asset.type === "image") {
+              return (
+                <img
+                  key={asset.id}
+                  src={asset.url}
+                  alt="Generated result"
+                  className="mt-2 max-w-full rounded"
+                />
+              );
+            }
+            if (asset.type === "audio") {
+              return (
+                <audio
+                  key={asset.id}
+                  src={asset.url}
+                  controls
+                  preload="metadata"
+                  className="mt-2 w-full"
+                />
+              );
+            }
+            return (
               <video
                 key={asset.id}
                 src={asset.url}
@@ -174,8 +204,8 @@ export function StudioClient({
                 preload="metadata"
                 className="mt-2 max-w-full rounded"
               />
-            ),
-          )}
+            );
+          })}
       </div>
     </div>
   );

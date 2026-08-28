@@ -1,7 +1,7 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@creative-ai/db";
-import { IMAGE_MODEL, VIDEO_MODEL } from "@/server/config";
+import { IMAGE_MODEL, VIDEO_MODEL, VOICE_MODEL } from "@/server/config";
 import { StudioClient } from "./studio-client";
 
 export default async function StudioPage() {
@@ -21,6 +21,7 @@ export default async function StudioPage() {
       creditBalance={user?.creditBalance ?? 0}
       imageModelLabel={IMAGE_MODEL}
       videoModelLabel={VIDEO_MODEL}
+      voiceModelLabel={VOICE_MODEL}
     />
   );
 }

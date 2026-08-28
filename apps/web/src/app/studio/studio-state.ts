@@ -1,8 +1,8 @@
-export type StudioMode = "image" | "video";
+export type StudioMode = "image" | "video" | "voice";
 
 export interface StudioAsset {
   id: string;
-  type: "image" | "video";
+  type: "image" | "video" | "audio";
   url: string;
 }
 
