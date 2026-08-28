@@ -57,44 +57,75 @@ marketing copy):
 
 ---
 
-## Voice (TTS) — low confidence, do not build against this yet
+## Voice (TTS) — request contract confirmed live; response shape still unconfirmed
 
-**This is very likely a separate BytePlus product ("BytePlus Voice" / "Seed Speech"),
-not part of ModelArk's `arkruntime` API surface at all.**
+**Confirmed: a genuinely separate BytePlus product ("Seed Speech", internally "Doubao
+Speech Service"), not part of ModelArk's `arkruntime` API surface at all** — separate
+console area (`console.byteplus.com/voice/...`), separate per-service activation
+(billed by character count, not part of ModelArk billing), and **a separate API key**
+from `ARK_API_KEY` (generated under Seed Speech → API Key, not ModelArk → API Keys).
 
-Evidence:
-- BytePlus's docs site has an entirely separate section at
-  `docs.byteplus.com/en/docs/byteplusvoice/*` (not under any ModelArk path), covering
-  "TTS 2.0", "TTS - Bi-directional Streaming (WebSocket)", and "ASR-Audio File" as
-  distinct pages — the WebSocket streaming page in particular suggests a different
-  transport/protocol than ModelArk's plain REST `/chat/completions`-style API.
-- The Go SDK's `arkruntime/model` package (155+ exported types, full list checked) has
-  **no TTS-specific request/response types at all**. The only audio-related type,
-  `AudioUrl { Url string }`, is a generic content-item shape already used for supplying
-  audio as an *input* to video generation — it is not a text-to-speech output type.
-- The SDK's top-level `service/` directory (same repo, same source of truth as
-  everything else in this project) has **no separate voice/TTS/speech service package**
-  either — so if BytePlus Voice has its own Go SDK coverage, it is not in this repo.
+**Confirmed request contract**, from BytePlus's own "Quick API Access" sample code after
+activating the Text-to-Speech 2.0 model:
 
-**Could not confirm via automated fetch:** `docs.byteplus.com` is a JS single-page app
-(the exact problem `MODELARK_API_REFERENCE.md` already flagged for image/video docs) —
-every automated attempt to read the actual API Reference page returned only navigation
-chrome, no real endpoint/field content, even via an AI-summarizing fetch tool.
+```
+POST https://voice.ap-southeast-1.bytepluses.com/api/v3/tts/unidirectional
+```
 
-**What this means for implementation:** Voice generation likely needs:
-1. A completely different base URL (not `ark.ap-southeast.bytepluses.com/api/v3`)
-2. Possibly different authentication (the "Bi-directional Streaming (WebSocket)" doc page
-   name suggests this might not even be a simple bearer-token REST call)
-3. Confirming whether "BytePlus Voice" is enabled on this account at all — **check the
-   BytePlus Console's service list (or search "Voice" in the console search bar) before
-   assuming this is available**; it may require separate activation like TOS was.
+Headers (note: different auth scheme than ModelArk's `Authorization: Bearer`):
+```
+x-api-key: <Seed Speech API key>
+X-Api-Resource-Id: seed-tts-2.0
+Connection: keep-alive
+Content-Type: application/json
+```
 
-**Recommended next step, in order:**
-1. Check the BytePlus Console for a "Voice" or "Seed Speech" service listing — confirm
-   it's activated and see if its own console area shows an API/Access tab with example
-   code (same pattern that worked for confirming the image/video/chat model IDs)
-2. If found, the exact endpoint/field names still need field-level verification the same
-   rigor as `MODELARK_API_REFERENCE.md` before any client code gets written
-3. If BytePlus Voice does need a genuinely different SDK client (different base URL/auth
-   scheme than `packages/modelark-client`), it should likely be its own package rather
-   than bolted onto the existing ModelArk client
+Body:
+```json
+{
+  "req_params": {
+    "text": "To be or not to be, that is the question.",
+    "speaker": "en_female_stokie_uranus_bigtts",
+    "additions": "{\"disable_markdown_filter\":true,\"enable_language_detector\":true,\"enable_latex_tn\":true,\"disable_default_bit_rate\":true,\"max_length_to_filter_parenthesis\":0,\"cache_config\":{\"text_type\":1,\"use_cache\":true}}",
+    "audio_params": {
+      "format": "mp3",
+      "sample_rate": 24000
+    }
+  }
+}
+```
+
+Notes on the confirmed shape:
+- `speaker` is a specific voice ID string (e.g. `en_female_stokie_uranus_bigtts`) — the
+  Text-to-Speech playground's "Voice" picker (showed a voice named "Enzo, middle-aged"
+  when last viewed) is presumably how you browse/pick these IDs; check **Voice Library**
+  in the Seed Speech console section for the full list and their exact ID strings.
+- `additions` is unusually a **JSON-encoded string**, not a nested object — the escaping
+  in the sample above is exact, not a formatting artifact. Preserve it as a string when
+  implementing.
+- The model/resource selection happens via the `X-Api-Resource-Id` header
+  (`seed-tts-2.0`), not a `model` field in the body — different pattern from ModelArk's
+  `/chat/completions` and `/images/generations`, both of which use a `model` body field.
+- The path segment `unidirectional` (vs. the "Bi-directional Streaming (WebSocket)" doc
+  page seen earlier) confirms this is the plain single-request/single-response REST
+  variant, not the WebSocket streaming one — good, matches this project's existing
+  synchronous-image / async-task patterns rather than needing new streaming plumbing.
+
+**Not yet confirmed — the sample code only shows the request:**
+- The exact response shape (JSON with a URL? JSON with base64 audio? Raw binary
+  `audio/mpeg` bytes as the HTTP body?). To confirm: in the Seed Speech → Text-to-Speech
+  playground, type text and click play/generate with browser DevTools' Network tab open,
+  then inspect the actual response to the `/tts/unidirectional` call — its
+  `Content-Type` header and body shape settle this immediately.
+- Whether errors follow the same `{"error": {"code", "message"}}` shape ModelArk uses,
+  or something else.
+- Full list of valid `speaker` IDs and `X-Api-Resource-Id` values beyond the one example
+  (`seed-tts-2.0`) — check Voice Library for the speaker list; there may be other
+  resource IDs for different quality/language tiers.
+
+**Implementation note:** since this uses different auth (`x-api-key` + a separate key)
+and a different base URL/host (`voice.ap-southeast-1.bytepluses.com`, not
+`ark.ap-southeast.bytepluses.com`) than ModelArk, this should be its own client —
+not bolted onto `packages/modelark-client`. A new `packages/voice-client` (or similar)
+mirroring `modelark-client`'s injectable-fetch pattern makes sense once the response
+shape above is confirmed.
