@@ -117,10 +117,18 @@ use 1; video is hardcoded to 5s/720p when the model does 4–30s at up to 4K. 3D
 generation and multimodal embeddings are entirely untouched. See
 `CAPABILITY_MAP.md` for the full inventory and the Higgsfield parity gap.
 
-**Consequence:** the current data model cannot express most of the remaining work
-(hardcoded generation profiles, no asset-as-input, flat credit cost). A schema
-and contract redesign — `BUILD_PLAN.md` block **A2** — gates nearly all feature
-work from here.
+**Consequence:** the data model could not express most of the remaining work
+(hardcoded generation profiles, no asset-as-input, flat credit cost). That was
+fixed in block **A2** (`4a37f56`) — generation params are now per-job, jobs can
+consume owned assets via a `JobInputAsset` join table, and credit cost is a
+function of duration × resolution. **Phase C capability work is unblocked.**
+
+Two things to know before building on it:
+- Job reads normalize legacy rows (written before params existed) through
+  `normalizeInputParams` in `packages/db/src/prisma-store.ts`. Don't bypass it.
+- Resolution cost multipliers in `packages/shared-types/src/generation.ts` are
+  **UNCONFIRMED** and deliberately biased high. Verify against real BytePlus
+  per-resolution pricing before any launch.
 
 ### 3.3 Phase 4 (Billing / Admin / Community) — blocked on business decisions
 
@@ -177,8 +185,8 @@ red on a deliberate break, so a red badge is a real signal. To modify the
 workflow, push to a `ci-verify/**` branch first — that pattern triggers CI
 without touching `main`.
 
-**Current baseline (2026-08-28):** 152 tests passing across 8 packages —
-prompt-library 5, db 20, voice-client 18, modelark-client 11, shared-types 18,
+**Current baseline (2026-08-28):** 191 tests passing across 8 packages —
+prompt-library 5, db 31, voice-client 18, modelark-client 11, shared-types 46,
 agents 18, web 34, worker 28. Typecheck and build both clean.
 
 Running the app locally requires two processes (see `README.md`); the worker has

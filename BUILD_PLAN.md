@@ -98,7 +98,27 @@ that no doc can tell us.
 
 Ordered by value. **All gated on A2 below.**
 
-### A2 — Generation contract redesign 🔑 GATE FOR ALL OF PHASE C
+### A2 — Generation contract redesign ✅ DONE (2026-08-28, `4a37f56`)
+
+All three structural blockers fixed. `GenerationParams` is now carried per job;
+a `JobInputAsset` join table lets jobs consume owned assets (ownership verified
+*inside* the submission transaction); credit cost is a function of duration ×
+resolution that rounds up and never returns zero.
+
+Notes for whoever builds on this:
+- Validation is split — `parseSubmitJobRequest` (pure, shape only) vs
+  `assertParamsSupportedByModel` (model-aware). Unknown models validate against
+  a narrow conservative set, never waved through.
+- Legacy rows have no `params`; all job reads normalize through
+  `normalizeInputParams` in `prisma-store.ts`. Don't bypass it.
+- 5s/720p still costs exactly 14 credits, asserted by test. Resolution
+  multipliers are **UNCONFIRMED** and biased high — verify before launch.
+- `packages/db` now depends on `shared-types`.
+
+**Phase C is unblocked.** C1 (expose the existing model range) is the quick win.
+
+<details>
+<summary>Original problem statement</summary>
 The current data model cannot express most Higgsfield-grade features
 (`CAPABILITY_MAP.md` §4). Three concrete problems:
 
@@ -119,6 +139,8 @@ references.
 
 > Doing this before C-blocks avoids building image-to-video on a shape that would
 > need immediate rewriting.
+
+</details>
 
 ### C1 — Unlock existing model range *(quick win after A2)*
 Expose duration (4–30s), resolution (480p/720p/1080p/4K), and aspect ratio, which
@@ -189,11 +211,11 @@ signup-abuse guard before any public launch.
 
 ```
 F3  ✅ done
+A2  ✅ done — Phase C is unblocked
 F1  ─→ user, today (security)
 R1  ─→ user, today (Model Square — gates all research)
-A2  ─→ agent, the gate for Phase C            ← BIGGEST STRUCTURAL ITEM
-F2  ─→ agent, parallel with A2
-C1  ─→ quick win once A2 lands
+C1  ─→ quick win, ready now            ← NEXT
+F2  ─→ agent, no blockers
 R2 → C3 → C2  ─→ the highest-value feature chain
 R3 → C4       ─→ headline feature
 C5  ─→ parallel anytime (no API dependency)
