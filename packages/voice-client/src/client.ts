@@ -143,7 +143,7 @@ export function createVoiceClient(config: VoiceClientConfig): VoiceClient {
 
     if (!response.ok) {
       const responseBody = (await response.text()).slice(0, 1_000);
-      throw new VoiceHttpError(response.status, responseBody);
+      throw new VoiceHttpError(path, response.status, responseBody);
     }
 
     return (await response.json()) as T;
@@ -164,7 +164,7 @@ export function createVoiceClient(config: VoiceClientConfig): VoiceClient {
 
     if (!response.ok) {
       const responseBody = (await response.text()).slice(0, 1_000);
-      throw new VoiceHttpError(response.status, responseBody);
+      throw new VoiceHttpError("tts/unidirectional", response.status, responseBody);
     }
 
     return parseAudioResponse(response);
@@ -184,7 +184,7 @@ export function createVoiceClient(config: VoiceClientConfig): VoiceClient {
 
     if (!response.ok) {
       const responseBody = (await response.text()).slice(0, 1_000);
-      throw new VoiceHttpError(response.status, responseBody);
+      throw new VoiceHttpError("tts/create", response.status, responseBody);
     }
 
     return parseAudioResponse(response);
@@ -232,7 +232,7 @@ export function createVoiceClient(config: VoiceClientConfig): VoiceClient {
 
     if (!response.ok) {
       const responseBody = (await response.text()).slice(0, 1_000);
-      throw new VoiceHttpError(response.status, responseBody);
+      throw new VoiceHttpError("auc/bigmodel/query", response.status, responseBody);
     }
 
     // Confirmed live 2026-08-28: unlike everything else in Seed Speech, the real job

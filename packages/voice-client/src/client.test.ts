@@ -180,6 +180,7 @@ test("HTTP failures expose status and at most 1000 response characters", async (
     }),
     (error: unknown) => {
       assert.ok(error instanceof VoiceHttpError);
+      assert.equal(error.operation, "tts/unidirectional");
       assert.equal(error.status, 429);
       assert.equal(error.responseBody, "x".repeat(1_000));
       return true;

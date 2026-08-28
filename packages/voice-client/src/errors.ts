@@ -1,9 +1,10 @@
 export class VoiceHttpError extends Error {
   constructor(
+    public readonly operation: string,
     public readonly status: number,
     public readonly responseBody: string,
   ) {
-    super(`BytePlus Voice tts/unidirectional failed with HTTP ${status}: ${responseBody}`);
+    super(`BytePlus Voice ${operation} failed with HTTP ${status}: ${responseBody}`);
     this.name = "VoiceHttpError";
   }
 }
