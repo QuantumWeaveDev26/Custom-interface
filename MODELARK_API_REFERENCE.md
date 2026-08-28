@@ -204,3 +204,84 @@ succeeded | cancelled | failed | running | queued
 Use these exact strings when mapping ModelArk's task status onto your own `Job.status`
 enum in the Prisma schema (`queued` / `processing` / `complete` / `failed` — map
 `running`→`processing`, `succeeded`→`complete`, `cancelled`/`failed`→`failed`).
+
+---
+
+## Image-to-video and references (R2) — CONFIRMED via official docs, 2026-08-28
+
+Source: BytePlus ModelArk "Video generation" docs, read directly. **Documented,
+not yet exercised by a live call from this project.**
+
+### Same endpoint, extra content items
+
+Image-to-video is not a separate endpoint — it is the existing
+`POST /contents/generations/tasks` with additional entries in `content[]`.
+
+**First frame only** (animate a still):
+```json
+{
+  "model": "dreamina-seedance-2-0-fast-260128",
+  "content": [
+    { "type": "text", "text": "the girl opens her eyes and looks at the camera" },
+    { "type": "image_url", "image_url": { "url": "https://..." } }
+  ],
+  "generate_audio": true,
+  "ratio": "adaptive"
+}
+```
+
+**First and last frame** (keyframe / transition control) — uses an explicit
+`role` on each image item:
+```json
+{
+  "content": [
+    { "type": "text", "text": "..." },
+    { "type": "image_url", "image_url": { "url": "..." }, "role": "first_frame" },
+    { "type": "image_url", "image_url": { "url": "..." }, "role": "last_frame" }
+  ],
+  "generate_audio": true,
+  "ratio": "adaptive",
+  "duration": 5,
+  "watermark": true
+}
+```
+
+Confirmed `role` values: **`first_frame`**, **`last_frame`**. These match the
+`InputAssetRole` values already defined in `packages/shared-types/src/generation.ts`.
+
+### `ratio: "adaptive"`
+
+A documented ratio value beyond the fixed list — matches the source image's
+aspect ratio. Intended for image-driven generation. **Not yet added to
+`VIDEO_RATIOS`**; add it when C2 wires image-to-video, where it is the sensible
+default.
+
+### Our current model already supports far more than we use
+
+`dreamina-seedance-2-0-fast-260128` — the model this project runs today — is
+documented as supporting **all** of:
+
+| Capability | Supported |
+|---|---|
+| Text to video | ✓ (only one we use) |
+| Image to video — first frame | ✓ |
+| Image to video — first and last frames | ✓ |
+| Omni reference — image | ✓ |
+| Omni reference — video | ✓ |
+| Omni reference — audio | ✗ (must accompany an image or video) |
+| Combined reference (image+audio, image+video, video+audio, all three) | ✓ |
+| Edit video | ✓ |
+| Extend video | ✓ |
+| Generate video with audio | ✓ |
+| Return last frame of output | ✓ |
+
+**Consequence:** C2 (image-to-video), C6 (edit/extend), and reference-driven
+generation do **not** require upgrading to Seedance 2.5. The cheap model already
+does them. The 2.5 upgrade buys 30s duration and 1080p, nothing more for these
+features.
+
+### Aspect ratio correction
+
+Documented ratios for every Seedance model: `21:9`, `16:9`, `4:3`, `1:1`,
+**`3:4`**, `9:16`. This project's `VIDEO_RATIOS` was missing `3:4` — a real gap,
+since `3:4` is a common portrait format.

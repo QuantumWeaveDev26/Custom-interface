@@ -14,7 +14,12 @@
 //      loses real money against real BytePlus spend.
 
 export type VideoResolution = "480p" | "720p" | "1080p" | "4K";
-export type VideoRatio = "16:9" | "9:16" | "1:1" | "4:3" | "21:9";
+// Confirmed from BytePlus docs 2026-08-28 (R2). "3:4" was missing before —
+// a real gap, since it is a common portrait format. A further value,
+// "adaptive" (match the source image's ratio), is documented for image-driven
+// generation; it will be added when C2 wires image-to-video, where it is the
+// sensible default.
+export type VideoRatio = "16:9" | "9:16" | "1:1" | "4:3" | "3:4" | "21:9";
 export type ImageSize = "1K" | "2K" | "4K";
 export type VoiceStyle = "standard" | "expressive";
 
@@ -30,6 +35,7 @@ export const VIDEO_RATIOS: readonly VideoRatio[] = Object.freeze([
   "9:16",
   "1:1",
   "4:3",
+  "3:4",
   "21:9",
 ] as const);
 

@@ -88,9 +88,9 @@ lost days to building against unconfirmed BytePlus contracts.
 | Block | Confirm | Unblocks |
 |---|---|---|
 | ~~**R1**~~ | ⚠️ **PARTIAL** — see `CAPABILITY_MAP.md` §4b. Seedance 2.5 confirmed GA (30s, multimodal ref); Seedream 5.0-pro confirmed (image editing); OmniHuman **not seen**. Video/image sections were cut off — recapture to close. | C2, C4, B2 |
-| **R2** | Seedance **image-to-video** (first frame; first+last frames) | C2, C3 |
+| ~~**R2**~~ | ✅ **DONE** — request shape confirmed from official docs, recorded in `MODELARK_API_REFERENCE.md`. Same endpoint, extra `content[]` items; roles `first_frame`/`last_frame` match what A2 already defined. **Our current cheap model already supports i2v, edit, extend, and references.** | C2, C6 |
 | **R3** | Seedream **multi-reference image-to-image** | C4 (Soul ID equivalent) |
-| **R4** | Seedance **video extension** and **video editing** | C6 |
+| ~~**R4**~~ | ✅ Covered by the same R2 doc read — `seedance-2-0-fast` supports Edit video and Extend video. Exact request shapes for those two still need a targeted read. | C6 |
 | **R5** | 3D generation (Rodin / Hitem3d) endpoints + quota metering | C8 |
 | **R6** | `skylark-embedding-vision` request shape | C7 |
 | **R7** | Managed Agents / App Lab — replace or complement `packages/agents`? | future agent work |
