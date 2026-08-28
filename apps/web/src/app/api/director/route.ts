@@ -37,6 +37,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 502 });
     }
     if (error instanceof ModelArkHttpError) {
+      console.error("Director planning ModelArk error:", error.operation, error.status, error.responseBody);
       return NextResponse.json({ error: "Director agent request failed" }, { status: 502 });
     }
     console.error("Director planning error:", error);

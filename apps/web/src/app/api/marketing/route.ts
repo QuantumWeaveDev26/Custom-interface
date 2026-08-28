@@ -40,6 +40,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 502 });
     }
     if (error instanceof ModelArkHttpError) {
+      console.error("Marketing planning ModelArk error:", error.operation, error.status, error.responseBody);
       return NextResponse.json({ error: "Marketing agent request failed" }, { status: 502 });
     }
     console.error("Marketing planning error:", error);
