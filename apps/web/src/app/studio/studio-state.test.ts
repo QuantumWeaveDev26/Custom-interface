@@ -239,3 +239,25 @@ test("mode switch clears selected references", () => {
   const next = studioReducer(state, { type: "SET_MODE", mode: "video" });
   assert.deepEqual(next.referenceAssetIds, []);
 });
+
+test("loading a character replaces the selection rather than merging", () => {
+  const state: StudioState = {
+    ...INITIAL_STUDIO_STATE,
+    referenceAssetIds: ["old-1", "old-2"],
+  };
+  // Merging would silently give a different set than the character defines,
+  // and the numbered badges would stop matching the saved order.
+  const next = studioReducer(state, {
+    type: "SET_REFERENCES",
+    assetIds: ["char-a", "char-b"],
+  });
+  assert.deepEqual(next.referenceAssetIds, ["char-a", "char-b"]);
+});
+
+test("loading a character preserves its saved order", () => {
+  const next = studioReducer(INITIAL_STUDIO_STATE, {
+    type: "SET_REFERENCES",
+    assetIds: ["c", "a", "b"],
+  });
+  assert.deepEqual(next.referenceAssetIds, ["c", "a", "b"]);
+});

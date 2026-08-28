@@ -18,6 +18,7 @@ model User {
   createdAt     DateTime            @default(now())
   creditBalance Int                 @default(0)
   jobs          Job[]
+  characters    Character[]
   ledger        CreditLedgerEntry[]
   accounts      Account[]
   sessions      Session[]
@@ -102,6 +103,37 @@ model Asset {
   thumbnailUrl String?
   createdAt    DateTime @default(now())
   usedAsInput  JobInputAsset[]
+  characterRefs CharacterReference[]
+}
+
+// A named, reusable set of reference images — the "Soul ID" equivalent.
+// Without this, references are re-picked from scratch on every generation,
+// which is the difference between a demo and something usable daily.
+model Character {
+  id         String               @id @default(cuid())
+  userId     String
+  user       User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String
+  createdAt  DateTime             @default(now())
+  references CharacterReference[]
+
+  // Names are the handle a user reasons about, so they must be unambiguous
+  // within an account — but only within one, so two users can both have "Me".
+  @@unique([userId, name])
+  @@index([userId])
+}
+
+model CharacterReference {
+  id          String    @id @default(cuid())
+  characterId String
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  assetId     String
+  asset       Asset     @relation(fields: [assetId], references: [id])
+  // Reference order is meaningful downstream ("image 1", "image 2").
+  position    Int       @default(0)
+
+  @@unique([characterId, assetId])
+  @@index([assetId])
 }
 
 // Lets a job consume assets the user already owns — image-to-video, keyframe

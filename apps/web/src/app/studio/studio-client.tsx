@@ -28,6 +28,8 @@ export interface StudioClientProps {
   pricing: CreditPricing;
   /** Recent images the user owns, offered as image-to-video first frames. */
   recentImageIds: readonly string[];
+  /** Saved named characters — reusable reference sets. */
+  characters: readonly { id: string; name: string; assetIds: string[] }[];
 }
 
 interface JobStatusMessage {
@@ -53,6 +55,7 @@ export function StudioClient({
   maxDurationSeconds,
   pricing,
   recentImageIds,
+  characters,
 }: StudioClientProps) {
   const [state, dispatch] = useReducer(studioReducer, INITIAL_STUDIO_STATE);
   const eventSourceRef = useRef<EventSource | null>(null);
@@ -62,6 +65,10 @@ export function StudioClient({
   const [uploadedIds, setUploadedIds] = useState<string[]>([]);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [savedCharacters, setSavedCharacters] = useState(characters);
+  const [characterName, setCharacterName] = useState("");
+  const [savingCharacter, setSavingCharacter] = useState(false);
+  const [characterError, setCharacterError] = useState<string | null>(null);
   const pickableImageIds = useMemo(
     () => [...uploadedIds, ...recentImageIds],
     [uploadedIds, recentImageIds],
@@ -104,6 +111,57 @@ export function StudioClient({
     },
     [state.mode],
   );
+
+
+  const handleSaveCharacter = useCallback(async () => {
+    const name = characterName.trim();
+    if (name.length === 0 || state.referenceAssetIds.length === 0) return;
+
+    setCharacterError(null);
+    setSavingCharacter(true);
+    try {
+      const response = await fetch("/api/characters", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, assetIds: state.referenceAssetIds }),
+      });
+      if (!response.ok) {
+        const body = (await response.json().catch(() => ({}))) as { error?: string };
+        setCharacterError(body.error ?? "Could not save character.");
+        return;
+      }
+      const { character } = (await response.json()) as {
+        character: { id: string; name: string; assetIds: string[] };
+      };
+      setSavedCharacters((previous) => [character, ...previous]);
+      setCharacterName("");
+    } catch {
+      setCharacterError("Could not reach the server.");
+    } finally {
+      setSavingCharacter(false);
+    }
+  }, [characterName, state.referenceAssetIds]);
+
+  const handleDeleteCharacter = useCallback(async (characterId: string) => {
+    setCharacterError(null);
+    const response = await fetch(`/api/characters/${characterId}`, {
+      method: "DELETE",
+    });
+    if (!response.ok) {
+      setCharacterError("Could not delete character.");
+      return;
+    }
+    setSavedCharacters((previous) =>
+      previous.filter((character) => character.id !== characterId),
+    );
+  }, []);
+
+  // Replaces the current selection wholesale rather than merging, so loading a
+  // character gives exactly that character's references in its saved order --
+  // which is what the numbered badges and the prompt then refer to.
+  const handleLoadCharacter = useCallback((assetIds: readonly string[]) => {
+    dispatch({ type: "SET_REFERENCES", assetIds: [...assetIds] });
+  }, []);
 
   // Built once here and reused for both the cost preview and the request body,
   // so the price shown can never drift from the price submitted.
@@ -360,6 +418,70 @@ export function StudioClient({
             <p className="mt-1.5 text-[11px] text-[var(--text-muted)]">
               Refer to them in your prompt as “image 1”, “image 2”, and so on.
             </p>
+          )}
+
+          {savedCharacters.length > 0 && (
+            <div className="mt-3">
+              <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-[var(--text-faint)]">
+                Saved characters
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {savedCharacters.map((character) => (
+                  <span
+                    key={character.id}
+                    className="inline-flex items-center gap-1 rounded-full border px-1 py-0.5 text-xs"
+                    style={{ borderColor: "var(--border)", background: "var(--surface)" }}
+                  >
+                    <button
+                      type="button"
+                      disabled={isBusy}
+                      onClick={() => handleLoadCharacter(character.assetIds)}
+                      className="rounded-full px-2 py-0.5 text-[var(--text)] disabled:opacity-50"
+                      title={`Load ${character.assetIds.length} reference image(s)`}
+                    >
+                      {character.name}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={isBusy}
+                      onClick={() => handleDeleteCharacter(character.id)}
+                      aria-label={`Delete character ${character.name}`}
+                      className="px-1 text-[var(--text-faint)] hover:text-[var(--danger)] disabled:opacity-50"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {state.referenceAssetIds.length > 0 && (
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <input
+                type="text"
+                value={characterName}
+                onChange={(event) => setCharacterName(event.target.value)}
+                disabled={isBusy || savingCharacter}
+                maxLength={60}
+                placeholder="Name this character…"
+                className="input-field !w-48 !py-1.5 text-xs"
+              />
+              <button
+                type="button"
+                onClick={handleSaveCharacter}
+                disabled={
+                  isBusy || savingCharacter || characterName.trim().length === 0
+                }
+                className="btn-secondary gap-1.5 !px-3 !py-1.5 text-xs"
+              >
+                {savingCharacter && <span className="spinner h-3 w-3" aria-hidden="true" />}
+                Save {state.referenceAssetIds.length} as character
+              </button>
+            </div>
+          )}
+          {characterError !== null && (
+            <p className="mt-1.5 text-[11px] text-[var(--danger)]">{characterError}</p>
           )}
 
           <p className="mb-1.5 mt-3 text-[11px] font-medium uppercase tracking-wide text-[var(--text-faint)]">

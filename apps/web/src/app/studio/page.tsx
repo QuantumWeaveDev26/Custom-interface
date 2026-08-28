@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@creative-ai/db";
 import { CREDIT_PRICING, IMAGE_MODEL, VIDEO_MODEL, VOICE_MODEL } from "@/server/config";
 import { videoCapabilitiesFor } from "@creative-ai/shared-types";
+import { listCharacters } from "@/server/characters";
 import { StudioClient } from "./studio-client";
 
 export default async function StudioPage() {
@@ -32,8 +33,11 @@ export default async function StudioPage() {
     select: { id: true },
   });
 
+  const characters = await listCharacters(session.user.id);
+
   return (
     <StudioClient
+      characters={characters}
       creditBalance={user?.creditBalance ?? 0}
       recentImageIds={recentImages.map((asset) => asset.id)}
       imageModelLabel={IMAGE_MODEL}

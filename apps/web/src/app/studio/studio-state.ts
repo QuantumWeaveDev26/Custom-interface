@@ -71,6 +71,7 @@ export type StudioAction =
   | { type: "SET_DURATION"; durationSeconds: number }
   | { type: "SET_FIRST_FRAME"; assetId: string | null }
   | { type: "TOGGLE_REFERENCE"; assetId: string }
+  | { type: "SET_REFERENCES"; assetIds: readonly string[] }
   | { type: "SUBMIT_START" }
   | { type: "SUBMIT_ERROR"; message: string }
   | { type: "JOB_QUEUED"; jobId: string }
@@ -102,6 +103,8 @@ export function studioReducer(
       return { ...state, durationSeconds: action.durationSeconds };
     case "SET_FIRST_FRAME":
       return { ...state, firstFrameAssetId: action.assetId };
+    case "SET_REFERENCES":
+      return { ...state, referenceAssetIds: action.assetIds };
     case "TOGGLE_REFERENCE": {
       const present = state.referenceAssetIds.includes(action.assetId);
       return {
