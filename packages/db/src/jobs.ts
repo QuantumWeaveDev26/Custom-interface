@@ -1,10 +1,12 @@
-import type {
-  AssetRecord,
-  CreateAssetInput,
-  CreditLedgerRecord,
-  DatabaseStore,
-  JobRecord,
-  SubmitJobCommand,
+import {
+  InputAssetNotOwnedError,
+  type AssetRecord,
+  type CreateAssetInput,
+  type CreditLedgerRecord,
+  type DatabaseStore,
+  type JobRecord,
+  type ResolvedInputAsset,
+  type SubmitJobCommand,
 } from "./contracts.js";
 
 const SERIALIZABLE_RETRY_LIMIT = 3;
@@ -84,6 +86,24 @@ export async function submitJob(
             throw new InsufficientCreditsError(command.creditsCost);
           }
 
+          // Ownership is verified inside the transaction, not before it, so a
+          // concurrent delete cannot slip an unowned asset through between the
+          // check and the insert.
+          const requestedAssets = command.inputAssets ?? [];
+          if (requestedAssets.length > 0) {
+            const requestedIds = [
+              ...new Set(requestedAssets.map((asset) => asset.assetId)),
+            ];
+            const owned = await tx.asset.findMany({
+              where: { id: { in: requestedIds }, userId: command.userId },
+            });
+            const ownedIds = new Set(owned.map((asset) => asset.id));
+            const missing = requestedIds.filter((id) => !ownedIds.has(id));
+            if (missing.length > 0) {
+              throw new InputAssetNotOwnedError(missing);
+            }
+          }
+
           const job = await tx.job.create({
             data: {
               userId: command.userId,
@@ -92,11 +112,24 @@ export async function submitJob(
               status: "queued",
               inputParams: {
                 prompt: command.prompt,
-                ...(command.voiceStyle === undefined ? {} : { voiceStyle: command.voiceStyle }),
+                params: command.params,
               },
               creditsCost: command.creditsCost,
             },
           });
+
+          if (requestedAssets.length > 0) {
+            // position orders multiple "reference" assets; the single-slot roles
+            // keep their natural index, which is harmless.
+            await tx.jobInputAsset.createMany({
+              data: requestedAssets.map((asset, index) => ({
+                jobId: job.id,
+                assetId: asset.assetId,
+                role: asset.role,
+                position: index,
+              })),
+            });
+          }
           const ledger = await tx.creditLedgerEntry.create({
             data: {
               userId: command.userId,
@@ -218,6 +251,44 @@ export async function completeJobWithAsset(
     });
 
     return { job, asset };
+  });
+}
+
+/**
+ * Loads a job's input assets, resolved to the storage URLs the worker needs.
+ *
+ * `userId` is required and applied to the asset lookup even though the job row
+ * already implies it — defense in depth, so a bug elsewhere cannot turn this
+ * into a cross-user read.
+ */
+export async function loadJobInputAssets(
+  store: DatabaseStore,
+  jobId: string,
+  userId: string,
+): Promise<ResolvedInputAsset[]> {
+  const links = await store.jobInputAsset.findMany({
+    where: { jobId },
+    orderBy: { position: "asc" },
+  });
+  if (links.length === 0) return [];
+
+  const assets = await store.asset.findMany({
+    where: { id: { in: links.map((link) => link.assetId) }, userId },
+  });
+  const assetsById = new Map(assets.map((asset) => [asset.id, asset]));
+
+  return links.flatMap((link) => {
+    const asset = assetsById.get(link.assetId);
+    if (asset === undefined) return [];
+    return [
+      {
+        assetId: link.assetId,
+        role: link.role,
+        position: link.position,
+        storageUrl: asset.storageUrl,
+        type: asset.type,
+      },
+    ];
   });
 }
 

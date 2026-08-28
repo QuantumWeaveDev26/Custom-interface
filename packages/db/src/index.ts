@@ -1,5 +1,6 @@
 export { prisma } from "./client.js";
 export type * from "./contracts.js";
+export { InputAssetNotOwnedError } from "./contracts.js";
 export {
   InFlightLimitError,
   InsufficientCreditsError,
@@ -8,6 +9,7 @@ export {
   completeJobWithAsset,
   failAndRefund,
   findStaleQueuedJobs,
+  loadJobInputAssets,
   saveExternalTaskId,
   submitJob,
   type CompleteJobResult,

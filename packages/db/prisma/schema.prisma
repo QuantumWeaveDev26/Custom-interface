@@ -76,6 +76,9 @@ model Job {
   type           String // "image" | "video" | "voice" | "avatar"
   model          String // e.g. "seedream-5-0-pro", "seedance-2-5"
   status         String // "queued" | "processing" | "complete" | "failed"
+  // { prompt, params } — params is a GenerationParams discriminated union
+  // (packages/shared-types/src/generation.ts). Stored rather than recomputed so
+  // a later config change never retroactively alters what a job actually ran.
   inputParams    Json
   externalTaskId String?
   errorMessage   String?
@@ -83,6 +86,7 @@ model Job {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   assets         Asset[]
+  inputAssets    JobInputAsset[]
 }
 
 model Asset {
@@ -94,4 +98,25 @@ model Asset {
   storageUrl   String
   thumbnailUrl String?
   createdAt    DateTime @default(now())
+  usedAsInput  JobInputAsset[]
+}
+
+// Lets a job consume assets the user already owns — image-to-video, keyframe
+// control, multi-reference (character consistency), video extension/editing.
+// A join table rather than a JSON array of IDs so the reference is a real FK:
+// asset lineage stays queryable in both directions, and a dangling reference to
+// a deleted asset is impossible.
+model JobInputAsset {
+  id       String @id @default(cuid())
+  jobId    String
+  job      Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  assetId  String
+  asset    Asset  @relation(fields: [assetId], references: [id])
+  // "first_frame" | "last_frame" | "reference" | "source_video"
+  role     String
+  // Ordering within a role; only meaningful for "reference", which can repeat.
+  position Int    @default(0)
+
+  @@unique([jobId, assetId, role])
+  @@index([assetId])
 }

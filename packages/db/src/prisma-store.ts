@@ -1,15 +1,62 @@
 import { Prisma, type PrismaClient } from "@prisma/client";
 
 import { prisma } from "./client.js";
+import {
+  DEFAULT_IMAGE_PARAMS,
+  DEFAULT_VIDEO_PARAMS,
+  type GenerationParams,
+  type InputAssetRole,
+} from "@creative-ai/shared-types";
+
 import type {
   AssetType,
   DatabaseStore,
   DatabaseTransaction,
+  JobInputParams,
   JobStatus,
   PhaseOneJobType,
 } from "./contracts.js";
 
 type PrismaDelegateClient = Prisma.TransactionClient | PrismaClient;
+
+/**
+ * Rows written before generation params existed store `{ prompt }` (plus, for
+ * voice, a top-level `voiceStyle`) with no `params` object. The migration that
+ * introduced JobInputAsset was additive and did not backfill them, so this
+ * reconstructs the profile those jobs actually ran with.
+ *
+ * Without this, a legacy job still sitting in the queue would fail on
+ * `params.type` and get refunded rather than run.
+ */
+function normalizeInputParams(
+  raw: unknown,
+  jobType: PhaseOneJobType,
+): JobInputParams {
+  const value = (raw ?? {}) as {
+    prompt?: unknown;
+    params?: unknown;
+    voiceStyle?: unknown;
+  };
+  const prompt = typeof value.prompt === "string" ? value.prompt : "";
+
+  if (value.params !== undefined && value.params !== null) {
+    return { prompt, params: value.params as GenerationParams };
+  }
+
+  if (jobType === "image") {
+    return { prompt, params: DEFAULT_IMAGE_PARAMS };
+  }
+  if (jobType === "video") {
+    return { prompt, params: DEFAULT_VIDEO_PARAMS };
+  }
+  return {
+    prompt,
+    params: {
+      type: "voice",
+      style: value.voiceStyle === "expressive" ? "expressive" : "standard",
+    },
+  };
+}
 
 function toDatabaseTransaction(
   client: PrismaDelegateClient,
@@ -51,14 +98,17 @@ function toDatabaseTransaction(
         const job = await client.job.create({
           data: {
             ...data,
-            inputParams: data.inputParams as Prisma.InputJsonValue,
+            // JobInputParams is a plain JSON-serializable object, but its
+            // discriminated union does not structurally match Prisma's
+            // InputJsonValue, so the widening is explicit.
+            inputParams: data.inputParams as unknown as Prisma.InputJsonValue,
           },
         });
         return {
           ...job,
           type: job.type as PhaseOneJobType,
           status: job.status as JobStatus,
-          inputParams: job.inputParams as { prompt: string; voiceStyle?: "standard" | "expressive" },
+          inputParams: normalizeInputParams(job.inputParams, job.type as PhaseOneJobType),
         };
       },
       updateMany: async ({ where, data }) => {
@@ -93,7 +143,7 @@ function toDatabaseTransaction(
               ...job,
               type: job.type as PhaseOneJobType,
               status: job.status as JobStatus,
-              inputParams: job.inputParams as { prompt: string; voiceStyle?: "standard" | "expressive" },
+              inputParams: normalizeInputParams(job.inputParams, job.type as PhaseOneJobType),
             };
       },
       findMany: async ({ where, orderBy, take }) => {
@@ -102,7 +152,7 @@ function toDatabaseTransaction(
           ...job,
           type: job.type as PhaseOneJobType,
           status: job.status as JobStatus,
-          inputParams: job.inputParams as { prompt: string; voiceStyle?: "standard" | "expressive" },
+          inputParams: normalizeInputParams(job.inputParams, job.type as PhaseOneJobType),
         }));
       },
     },
@@ -123,6 +173,26 @@ function toDatabaseTransaction(
           ...asset,
           type: asset.type as AssetType,
         };
+      },
+      findMany: async ({ where }) => {
+        const assets = await client.asset.findMany({
+          where: { id: { in: where.id.in }, userId: where.userId },
+        });
+        return assets.map((asset) => ({
+          ...asset,
+          type: asset.type as AssetType,
+        }));
+      },
+    },
+    jobInputAsset: {
+      createMany: async ({ data }) =>
+        client.jobInputAsset.createMany({ data }),
+      findMany: async ({ where, orderBy }) => {
+        const links = await client.jobInputAsset.findMany({ where, orderBy });
+        return links.map((link) => ({
+          ...link,
+          role: link.role as InputAssetRole,
+        }));
       },
     },
   };

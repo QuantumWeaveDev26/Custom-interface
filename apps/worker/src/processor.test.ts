@@ -26,7 +26,10 @@ function imageJob(status: JobRecord["status"] = "queued"): JobRecord {
     type: "image",
     model: "seedream-5-0-lite-260128",
     status,
-    inputParams: { prompt: "portrait in dramatic light" },
+    inputParams: {
+      prompt: "portrait in dramatic light",
+      params: { type: "image", size: "4K" },
+    },
     externalTaskId: null,
     errorMessage: null,
     creditsCost: 1,
@@ -48,7 +51,7 @@ function imageResponse(url: string): ImagesResponse {
   };
 }
 
-function voiceJob(voiceStyle?: "standard" | "expressive"): JobRecord {
+function voiceJob(style: "standard" | "expressive" = "standard"): JobRecord {
   return {
     id: "voice-job",
     userId: "user-1",
@@ -57,7 +60,7 @@ function voiceJob(voiceStyle?: "standard" | "expressive"): JobRecord {
     status: "queued",
     inputParams: {
       prompt: "welcome to the show",
-      ...(voiceStyle === undefined ? {} : { voiceStyle }),
+      params: { type: "voice", style },
     },
     externalTaskId: null,
     errorMessage: null,
@@ -77,7 +80,15 @@ function videoJob(
     type: "video",
     model: "dreamina-seedance-2-0-fast-260128",
     status,
-    inputParams: { prompt: "orbital sunrise" },
+    inputParams: {
+      prompt: "orbital sunrise",
+      params: {
+        type: "video",
+        resolution: "720p",
+        ratio: "21:9",
+        durationSeconds: 5,
+      },
+    },
     externalTaskId,
     errorMessage: null,
     creditsCost: 14,

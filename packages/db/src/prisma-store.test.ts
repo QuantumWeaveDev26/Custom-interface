@@ -66,6 +66,12 @@ test("Prisma adapter submits with serializable isolation and conditional debit",
     userId: "user-1",
     type: "video",
     prompt: "orbital sunrise",
+    params: {
+      type: "video",
+      resolution: "720p",
+      ratio: "21:9",
+      durationSeconds: 5,
+    },
     model: "dreamina-seedance-2-0-fast-260128",
     creditsCost: 14,
     maxInFlight: 3,
@@ -137,4 +143,87 @@ test("stale queue queries default to at most 100 jobs", async () => {
   );
 
   assert.equal(findManyArgs?.take, 100);
+});
+
+// --- Legacy row normalization -----------------------------------------------
+// The migration that introduced generation params was additive and did not
+// backfill existing rows, so jobs written before it still store { prompt } with
+// no params object. These must keep working rather than fail on params.type.
+
+function legacyJobStore(row: Record<string, unknown>) {
+  return createPrismaStore({
+    user: { create: unusedDelegate, updateMany: unusedDelegate },
+    creditLedgerEntry: { create: unusedDelegate },
+    job: {
+      count: unusedDelegate,
+      create: unusedDelegate,
+      updateMany: unusedDelegate,
+      findUnique: async () => row,
+      findMany: unusedDelegate,
+    },
+    asset: { create: unusedDelegate, findMany: unusedDelegate },
+    jobInputAsset: { createMany: unusedDelegate, findMany: unusedDelegate },
+    $transaction: unusedDelegate,
+  } as unknown as PrismaClient);
+}
+
+test("a legacy video row without params reads back as the old fixed profile", async () => {
+  const store = legacyJobStore(JOB_ROW);
+  const job = await store.job.findUnique({ where: { id: "job-1" } });
+
+  assert.equal(job?.inputParams.prompt, "orbital sunrise");
+  assert.deepEqual(job?.inputParams.params, {
+    type: "video",
+    resolution: "720p",
+    ratio: "21:9",
+    durationSeconds: 5,
+  });
+});
+
+test("a legacy image row without params reads back as 4K", async () => {
+  const store = legacyJobStore({
+    ...JOB_ROW,
+    type: "image",
+    inputParams: { prompt: "a fox" },
+  });
+  const job = await store.job.findUnique({ where: { id: "job-1" } });
+
+  assert.deepEqual(job?.inputParams.params, { type: "image", size: "4K" });
+});
+
+test("a legacy voice row preserves its top-level voiceStyle", async () => {
+  const store = legacyJobStore({
+    ...JOB_ROW,
+    type: "voice",
+    inputParams: { prompt: "hello", voiceStyle: "expressive" },
+  });
+  const job = await store.job.findUnique({ where: { id: "job-1" } });
+
+  assert.deepEqual(job?.inputParams.params, {
+    type: "voice",
+    style: "expressive",
+  });
+});
+
+test("a row that already has params is passed through untouched", async () => {
+  const store = legacyJobStore({
+    ...JOB_ROW,
+    inputParams: {
+      prompt: "orbit",
+      params: {
+        type: "video",
+        resolution: "1080p",
+        ratio: "16:9",
+        durationSeconds: 12,
+      },
+    },
+  });
+  const job = await store.job.findUnique({ where: { id: "job-1" } });
+
+  assert.deepEqual(job?.inputParams.params, {
+    type: "video",
+    resolution: "1080p",
+    ratio: "16:9",
+    durationSeconds: 12,
+  });
 });

@@ -19,6 +19,7 @@
     "db:validate": "prisma validate --schema prisma/schema.prisma"
   },
   "dependencies": {
+    "@creative-ai/shared-types": "workspace:*",
     "@prisma/client": "6.19.3"
   },
   "devDependencies": {

@@ -3,27 +3,66 @@ import test from "node:test";
 
 import {
   AUDIO_GENERATION_PROFILE,
-  IMAGE_PROFILE,
+  IMAGE_OUTPUT_PROFILE,
   InvalidJobRequest,
   JobStatus,
-  VIDEO_PROFILE,
   VOICE_PROFILE,
+  assertParamsSupportedByModel,
   parseSubmitJobRequest,
 } from "./jobs.js";
+import {
+  DEFAULT_IMAGE_PARAMS,
+  DEFAULT_VIDEO_PARAMS,
+  DEFAULT_VOICE_PARAMS,
+} from "./generation.js";
 
-test("trims whitespace from image, video, and voice prompts", () => {
-  assert.deepEqual(parseSubmitJobRequest({ type: "image", prompt: "  neon portrait  " }), {
-    type: "image",
-    prompt: "neon portrait",
-  });
-  assert.deepEqual(parseSubmitJobRequest({ type: "video", prompt: "\norbital sunrise\t" }), {
+// --- Backward compatibility -------------------------------------------------
+// A request with no params must behave exactly as it did when the profiles were
+// hardcoded. This is the guard against A2 silently changing what existing
+// clients get.
+
+test("omitting params yields the previous hardcoded profile values", () => {
+  const image = parseSubmitJobRequest({ type: "image", prompt: "a fox" });
+  assert.deepEqual(image.params, { type: "image", size: "4K" });
+
+  const video = parseSubmitJobRequest({ type: "video", prompt: "a fox" });
+  assert.deepEqual(video.params, {
     type: "video",
-    prompt: "orbital sunrise",
+    resolution: "720p",
+    ratio: "21:9",
+    durationSeconds: 5,
   });
-  assert.deepEqual(parseSubmitJobRequest({ type: "voice", prompt: "  hello there  " }), {
-    type: "voice",
-    prompt: "hello there",
-  });
+
+  const voice = parseSubmitJobRequest({ type: "voice", prompt: "hello" });
+  assert.deepEqual(voice.params, { type: "voice", style: "standard" });
+});
+
+test("defaults match the exported DEFAULT_* constants", () => {
+  assert.deepEqual(
+    parseSubmitJobRequest({ type: "image", prompt: "x" }).params,
+    DEFAULT_IMAGE_PARAMS,
+  );
+  assert.deepEqual(
+    parseSubmitJobRequest({ type: "video", prompt: "x" }).params,
+    DEFAULT_VIDEO_PARAMS,
+  );
+  assert.deepEqual(
+    parseSubmitJobRequest({ type: "voice", prompt: "x" }).params,
+    DEFAULT_VOICE_PARAMS,
+  );
+});
+
+test("omitting inputAssets yields an empty list, never undefined", () => {
+  assert.deepEqual(parseSubmitJobRequest({ type: "image", prompt: "x" }).inputAssets, []);
+});
+
+// --- Core request validation ------------------------------------------------
+
+test("trims whitespace from prompts", () => {
+  assert.equal(
+    parseSubmitJobRequest({ type: "image", prompt: "  neon portrait  " }).prompt,
+    "neon portrait",
+  );
 });
 
 test("rejects values that are not plain request objects", () => {
@@ -31,25 +70,13 @@ test("rejects values that are not plain request objects", () => {
     type = "image";
     prompt = "portrait";
   }
-
   for (const value of [null, undefined, "prompt", 42, [], new Date(), new RequestBody()]) {
     assert.throws(() => parseSubmitJobRequest(value), InvalidJobRequest);
   }
 });
 
-test("rejects every request-controlled generation setting", () => {
-  const fields = [
-    "model",
-    "size",
-    "resolution",
-    "ratio",
-    "duration",
-    "output_format",
-    "outputFormat",
-    "creditsCost",
-  ];
-
-  for (const field of fields) {
+test("rejects server-controlled fields at the top level", () => {
+  for (const field of ["model", "creditsCost", "userId", "status"]) {
     assert.throws(
       () => parseSubmitJobRequest({ type: "video", prompt: "orbit", [field]: "unsafe" }),
       InvalidJobRequest,
@@ -59,7 +86,7 @@ test("rejects every request-controlled generation setting", () => {
 });
 
 test("rejects generation types outside the supported set", () => {
-  for (const type of ["avatar", "director", "voice_clone", "transcription", "", 1, null]) {
+  for (const type of ["avatar", "director", "voice_clone", "", 1, null]) {
     assert.throws(() => parseSubmitJobRequest({ type, prompt: "hello" }), InvalidJobRequest);
   }
 });
@@ -72,59 +99,279 @@ test("rejects non-string, empty, and over-limit prompts", () => {
 
 test("accepts a prompt at the 2000-character boundary", () => {
   const prompt = "x".repeat(2000);
-  assert.deepEqual(parseSubmitJobRequest({ type: "image", prompt }), { type: "image", prompt });
+  assert.equal(parseSubmitJobRequest({ type: "image", prompt }).prompt, prompt);
 });
 
-test("accepts a standard or expressive voiceStyle on voice jobs", () => {
-  assert.deepEqual(parseSubmitJobRequest({ type: "voice", prompt: "hi", voiceStyle: "standard" }), {
-    type: "voice",
-    prompt: "hi",
-    voiceStyle: "standard",
+// --- Generation params ------------------------------------------------------
+
+test("accepts valid video params and preserves them", () => {
+  const parsed = parseSubmitJobRequest({
+    type: "video",
+    prompt: "orbit",
+    params: { resolution: "1080p", ratio: "16:9", durationSeconds: 12 },
   });
-  assert.deepEqual(parseSubmitJobRequest({ type: "voice", prompt: "hi", voiceStyle: "expressive" }), {
-    type: "voice",
-    prompt: "hi",
-    voiceStyle: "expressive",
+  assert.deepEqual(parsed.params, {
+    type: "video",
+    resolution: "1080p",
+    ratio: "16:9",
+    durationSeconds: 12,
   });
 });
 
-test("rejects voiceStyle on non-voice jobs and rejects invalid voiceStyle values", () => {
+test("video params fill only the omitted fields from defaults", () => {
+  const parsed = parseSubmitJobRequest({
+    type: "video",
+    prompt: "orbit",
+    params: { durationSeconds: 9 },
+  });
+  assert.deepEqual(parsed.params, {
+    type: "video",
+    resolution: "720p",
+    ratio: "21:9",
+    durationSeconds: 9,
+  });
+});
+
+test("rejects invalid video params", () => {
+  const bad = [
+    { resolution: "8K" },
+    { ratio: "3:2" },
+    { durationSeconds: 0 },
+    { durationSeconds: -5 },
+    { durationSeconds: 4.5 },
+    { durationSeconds: "10" },
+    { unknownField: 1 },
+  ];
+  for (const params of bad) {
+    assert.throws(
+      () => parseSubmitJobRequest({ type: "video", prompt: "x", params }),
+      InvalidJobRequest,
+      `${JSON.stringify(params)} must be rejected`,
+    );
+  }
+});
+
+test("accepts and validates image size", () => {
+  assert.deepEqual(
+    parseSubmitJobRequest({ type: "image", prompt: "x", params: { size: "1K" } }).params,
+    { type: "image", size: "1K" },
+  );
   assert.throws(
-    () => parseSubmitJobRequest({ type: "image", prompt: "hi", voiceStyle: "expressive" }),
+    () => parseSubmitJobRequest({ type: "image", prompt: "x", params: { size: "8K" } }),
+    InvalidJobRequest,
+  );
+});
+
+test("accepts and validates voice style", () => {
+  assert.deepEqual(
+    parseSubmitJobRequest({ type: "voice", prompt: "x", params: { style: "expressive" } }).params,
+    { type: "voice", style: "expressive" },
+  );
+  assert.throws(
+    () => parseSubmitJobRequest({ type: "voice", prompt: "x", params: { style: "dramatic" } }),
+    InvalidJobRequest,
+  );
+});
+
+test("rejects params belonging to a different job type", () => {
+  // resolution is a video field; it must not be silently ignored on an image job
+  assert.throws(
+    () => parseSubmitJobRequest({ type: "image", prompt: "x", params: { resolution: "720p" } }),
+    InvalidJobRequest,
+  );
+});
+
+// --- Input assets -----------------------------------------------------------
+
+test("accepts well-formed input assets", () => {
+  const parsed = parseSubmitJobRequest({
+    type: "video",
+    prompt: "animate this",
+    inputAssets: [
+      { assetId: "asset-1", role: "first_frame" },
+      { assetId: "asset-2", role: "reference" },
+    ],
+  });
+  assert.deepEqual(parsed.inputAssets, [
+    { assetId: "asset-1", role: "first_frame" },
+    { assetId: "asset-2", role: "reference" },
+  ]);
+});
+
+test("rejects malformed input assets", () => {
+  const bad: unknown[] = [
+    "not-an-array",
+    [{ assetId: "", role: "reference" }],
+    [{ assetId: "a", role: "not_a_role" }],
+    [{ assetId: 1, role: "reference" }],
+    [{ assetId: "a" }],
+    [{ assetId: "a", role: "reference", extra: true }],
+  ];
+  for (const inputAssets of bad) {
+    assert.throws(
+      () => parseSubmitJobRequest({ type: "video", prompt: "x", inputAssets }),
+      InvalidJobRequest,
+      `${JSON.stringify(inputAssets)} must be rejected`,
+    );
+  }
+});
+
+test("rejects duplicate single-slot roles but allows repeated references", () => {
+  for (const role of ["first_frame", "last_frame", "source_video"]) {
+    assert.throws(
+      () =>
+        parseSubmitJobRequest({
+          type: "video",
+          prompt: "x",
+          inputAssets: [
+            { assetId: "a", role },
+            { assetId: "b", role },
+          ],
+        }),
+      InvalidJobRequest,
+      `duplicate ${role} must be rejected`,
+    );
+  }
+
+  const parsed = parseSubmitJobRequest({
+    type: "video",
+    prompt: "x",
+    inputAssets: [
+      { assetId: "a", role: "reference" },
+      { assetId: "b", role: "reference" },
+      { assetId: "c", role: "reference" },
+    ],
+  });
+  assert.equal(parsed.inputAssets.length, 3);
+});
+
+test("rejects more than the per-job input asset cap", () => {
+  const tooMany = Array.from({ length: 9 }, (_, index) => ({
+    assetId: `asset-${index}`,
+    role: "reference" as const,
+  }));
+  assert.throws(
+    () => parseSubmitJobRequest({ type: "video", prompt: "x", inputAssets: tooMany }),
+    InvalidJobRequest,
+  );
+});
+
+test("rejects video-only input asset roles on non-video jobs", () => {
+  for (const role of ["first_frame", "last_frame", "source_video"]) {
+    assert.throws(
+      () =>
+        parseSubmitJobRequest({
+          type: "image",
+          prompt: "x",
+          inputAssets: [{ assetId: "a", role }],
+        }),
+      InvalidJobRequest,
+      `${role} must be rejected on an image job`,
+    );
+  }
+  // "reference" is valid on an image job (multi-reference image-to-image)
+  assert.doesNotThrow(() =>
+    parseSubmitJobRequest({
+      type: "image",
+      prompt: "x",
+      inputAssets: [{ assetId: "a", role: "reference" }],
+    }),
+  );
+});
+
+// --- Model-aware validation -------------------------------------------------
+
+test("accepts params within the configured model's documented limits", () => {
+  assert.doesNotThrow(() =>
+    assertParamsSupportedByModel(
+      { type: "video", resolution: "1080p", ratio: "16:9", durationSeconds: 30 },
+      "dreamina-seedance-2-5-260628",
+    ),
+  );
+});
+
+test("rejects a resolution the configured model does not support", () => {
+  // seedance-2-0-fast documents 480p/720p only
+  assert.throws(
+    () =>
+      assertParamsSupportedByModel(
+        { type: "video", resolution: "1080p", ratio: "16:9", durationSeconds: 5 },
+        "dreamina-seedance-2-0-fast-260128",
+      ),
+    InvalidJobRequest,
+  );
+});
+
+test("rejects a duration outside the configured model's range", () => {
+  // seedance-2-5 documents 4-30s
+  assert.throws(
+    () =>
+      assertParamsSupportedByModel(
+        { type: "video", resolution: "720p", ratio: "16:9", durationSeconds: 31 },
+        "dreamina-seedance-2-5-260628",
+      ),
     InvalidJobRequest,
   );
   assert.throws(
-    () => parseSubmitJobRequest({ type: "voice", prompt: "hi", voiceStyle: "dramatic" }),
+    () =>
+      assertParamsSupportedByModel(
+        { type: "video", resolution: "720p", ratio: "16:9", durationSeconds: 3 },
+        "dreamina-seedance-2-5-260628",
+      ),
     InvalidJobRequest,
   );
 });
 
-test("exposes immutable fixed generation profiles", () => {
-  assert.deepEqual(IMAGE_PROFILE, {
-    size: "4K",
+test("an unknown model validates against the conservative capability set", () => {
+  // Must NOT wave everything through just because the model is unrecognized.
+  assert.throws(
+    () =>
+      assertParamsSupportedByModel(
+        { type: "video", resolution: "4K", ratio: "16:9", durationSeconds: 5 },
+        "some-future-model-nobody-registered",
+      ),
+    InvalidJobRequest,
+  );
+  assert.doesNotThrow(() =>
+    assertParamsSupportedByModel(
+      { type: "video", resolution: "720p", ratio: "16:9", durationSeconds: 5 },
+      "some-future-model-nobody-registered",
+    ),
+  );
+});
+
+test("image and voice params are not model-gated", () => {
+  assert.doesNotThrow(() =>
+    assertParamsSupportedByModel({ type: "image", size: "4K" }, "anything"),
+  );
+  assert.doesNotThrow(() =>
+    assertParamsSupportedByModel({ type: "voice", style: "expressive" }, "anything"),
+  );
+});
+
+// --- Fixed profiles ---------------------------------------------------------
+
+test("exposes immutable non-selectable output profiles", () => {
+  assert.deepEqual(IMAGE_OUTPUT_PROFILE, {
     response_format: "url",
     output_format: "png",
     watermark: false,
     sequential_image_generation: "disabled",
   });
-  assert.deepEqual(VIDEO_PROFILE, { resolution: "720p", ratio: "21:9", duration: 5 });
   assert.deepEqual(VOICE_PROFILE, {
     speaker: "en_female_stokie_uranus_bigtts",
     format: "mp3",
     sample_rate: 24000,
   });
-  assert.equal(Object.isFrozen(IMAGE_PROFILE), true);
-  assert.equal(Object.isFrozen(VIDEO_PROFILE), true);
-  assert.equal(Object.isFrozen(VOICE_PROFILE), true);
-  assert.equal(Reflect.set(IMAGE_PROFILE, "size", "1K"), false);
-  assert.equal(Reflect.set(VIDEO_PROFILE, "duration", 30), false);
-  assert.equal(Reflect.set(VOICE_PROFILE, "speaker", "other"), false);
   assert.deepEqual(AUDIO_GENERATION_PROFILE, {
     model: "seed-audio-1.0",
     format: "mp3",
     sample_rate: 48000,
   });
-  assert.equal(Object.isFrozen(AUDIO_GENERATION_PROFILE), true);
+  for (const profile of [IMAGE_OUTPUT_PROFILE, VOICE_PROFILE, AUDIO_GENERATION_PROFILE]) {
+    assert.equal(Object.isFrozen(profile), true);
+  }
+  assert.equal(Reflect.set(VOICE_PROFILE, "speaker", "other"), false);
 });
 
 test("exposes only Phase 1 job statuses", () => {

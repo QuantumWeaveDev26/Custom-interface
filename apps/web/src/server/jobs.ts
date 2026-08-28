@@ -6,61 +6,67 @@ import {
 } from "@creative-ai/db";
 import {
   InvalidJobRequest,
-  parseSubmitJobRequest,
+  assertParamsSupportedByModel,
+  creditCostFor,
   generationJobOptions,
+  parseSubmitJobRequest,
 } from "@creative-ai/shared-types";
 import { getQueue } from "./queue";
 import {
+  CREDIT_PRICING,
   IMAGE_MODEL,
-  IMAGE_COST,
-  VIDEO_MODEL,
-  VIDEO_COST,
-  VOICE_MODEL,
-  VOICE_COST,
   MAX_IN_FLIGHT_JOBS,
+  VIDEO_MODEL,
+  VOICE_MODEL,
 } from "./config";
 
-const MODEL_AND_COST_BY_TYPE = {
-  image: [IMAGE_MODEL, IMAGE_COST],
-  video: [VIDEO_MODEL, VIDEO_COST],
-  voice: [VOICE_MODEL, VOICE_COST],
+const MODEL_BY_TYPE = {
+  image: IMAGE_MODEL,
+  video: VIDEO_MODEL,
+  voice: VOICE_MODEL,
 } as const;
 
 export async function submitGenerationJob(
   userId: string,
   request: unknown,
 ): Promise<SubmitJobResult> {
-  // Validate and parse the request
-  let parsedRequest;
-  try {
-    parsedRequest = parseSubmitJobRequest(request);
-  } catch (error) {
-    throw new InvalidJobRequest("Invalid request shape or unknown fields");
-  }
+  // Shape validation. Rethrown as-is so the route can surface the specific
+  // reason -- a generic "invalid request" makes parameter errors undebuggable
+  // for the client.
+  const parsedRequest = parseSubmitJobRequest(request);
 
-  // Resolve model and cost from configuration
-  const [model, cost] = MODEL_AND_COST_BY_TYPE[parsedRequest.type];
+  // Model comes from server config, never the client.
+  const model = MODEL_BY_TYPE[parsedRequest.type];
 
-  // Submit to database
+  // Model-aware validation: a resolution or duration the configured model does
+  // not support is rejected before any credits move.
+  assertParamsSupportedByModel(parsedRequest.params, model);
+
+  // Cost is derived from the parameters actually requested, then persisted on
+  // the job row so a later pricing change never alters this job's refund value.
+  const creditsCost = creditCostFor(parsedRequest.params, CREDIT_PRICING);
+
   const jobRecord = await dbSubmitJob(prismaStore, {
     userId,
     type: parsedRequest.type,
     prompt: parsedRequest.prompt,
-    ...(parsedRequest.voiceStyle === undefined ? {} : { voiceStyle: parsedRequest.voiceStyle }),
+    params: parsedRequest.params,
+    inputAssets: parsedRequest.inputAssets,
     model,
-    creditsCost: cost,
+    creditsCost,
     maxInFlight: MAX_IN_FLIGHT_JOBS,
   });
 
-  // Enqueue the job
   const queue = getQueue();
   try {
     await queue.add("generate", { jobId: jobRecord.job.id }, generationJobOptions(jobRecord.job.id));
   } catch (error) {
-    // If enqueueing fails, compensate
+    // If enqueueing fails, compensate.
     await failAndRefund(prismaStore, jobRecord.job.id, "Submission failed. Your credits have been refunded.");
     throw error;
   }
 
   return jobRecord;
 }
+
+export { InvalidJobRequest };

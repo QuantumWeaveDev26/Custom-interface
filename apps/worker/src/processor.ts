@@ -5,9 +5,8 @@ import type {
 } from "@creative-ai/modelark-client";
 import {
   AUDIO_GENERATION_PROFILE,
-  IMAGE_PROFILE,
+  IMAGE_OUTPUT_PROFILE,
   JobStatus,
-  VIDEO_PROFILE,
   VOICE_PROFILE,
   type JobStatusEvent,
 } from "@creative-ai/shared-types";
@@ -119,10 +118,15 @@ async function processImage(
   dependencies: GenerationProcessorDependencies,
   job: JobRecord,
 ): Promise<JobStatusEvent> {
+  const params = job.inputParams.params;
+  if (params.type !== "image") {
+    throw new Error(`Image job ${job.id} has ${params.type} params`);
+  }
   const response = await dependencies.modelArk.createImage({
     model: job.model,
     prompt: job.inputParams.prompt,
-    ...IMAGE_PROFILE,
+    size: params.size,
+    ...IMAGE_OUTPUT_PROFILE,
   });
   const media = await imageMedia(dependencies, response);
   const storageUrl = await dependencies.storage.upload({
@@ -142,8 +146,12 @@ async function processVoice(
   dependencies: GenerationProcessorDependencies,
   job: JobRecord,
 ): Promise<JobStatusEvent> {
+  const params = job.inputParams.params;
+  if (params.type !== "voice") {
+    throw new Error(`Voice job ${job.id} has ${params.type} params`);
+  }
   const result =
-    job.inputParams.voiceStyle === "expressive"
+    params.style === "expressive"
       ? await dependencies.voice.createAudioGeneration({
           model: AUDIO_GENERATION_PROFILE.model,
           text_prompt: job.inputParams.prompt,
@@ -205,12 +213,19 @@ async function processVideo(
   job: JobRecord,
   resumedTaskId: string | null,
 ): Promise<JobStatusEvent> {
+  const params = job.inputParams.params;
+  if (params.type !== "video") {
+    throw new Error(`Video job ${job.id} has ${params.type} params`);
+  }
+
   let externalTaskId = resumedTaskId;
   if (externalTaskId === null) {
     const createdTask = await dependencies.modelArk.createVideoTask({
       model: job.model,
       content: [{ type: "text", text: job.inputParams.prompt }],
-      ...VIDEO_PROFILE,
+      resolution: params.resolution,
+      ratio: params.ratio,
+      duration: params.durationSeconds,
     });
     if (createdTask.id.trim().length === 0) {
       throw new Error("Video creation returned an empty task ID");

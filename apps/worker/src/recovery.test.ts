@@ -15,7 +15,10 @@ function queuedJob(id: string, createdAt: Date): JobRecord {
     type: "image",
     model: "seedream-5-0-lite-260128",
     status: "queued",
-    inputParams: { prompt: "test prompt" },
+    inputParams: {
+      prompt: "test prompt",
+      params: { type: "image", size: "4K" },
+    },
     externalTaskId: null,
     errorMessage: null,
     creditsCost: 1,

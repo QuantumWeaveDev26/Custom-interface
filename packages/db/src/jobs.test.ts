@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { InputAssetNotOwnedError } from "./contracts.js";
 import type {
   AssetRecord,
   DatabaseStore,
   DatabaseTransaction,
+  JobInputAssetRecord,
   JobRecord,
   JobStatus,
   SubmitJobCommand,
@@ -17,6 +19,7 @@ import {
   completeJobWithAsset,
   failAndRefund,
   findStaleQueuedJobs,
+  loadJobInputAssets,
   saveExternalTaskId,
   submitJob,
 } from "./jobs.js";
@@ -32,14 +35,17 @@ interface FakeState {
     createdAt: Date;
   }>;
   assets: AssetRecord[];
+  jobInputAssets: JobInputAssetRecord[];
   nextJobId: number;
   nextLedgerId: number;
   nextAssetId: number;
+  nextJobInputAssetId: number;
 }
 
 interface FakeStoreOptions {
   balance?: number;
   jobs?: JobRecord[];
+  assets?: AssetRecord[];
   serializableConflicts?: number;
   assetCreateError?: Error;
 }
@@ -60,7 +66,15 @@ function jobFixture(
     userId: "user-1",
     type: "video",
     model: "dreamina-seedance-2-0-fast-260128",
-    inputParams: { prompt: "orbital sunrise" },
+    inputParams: {
+      prompt: "orbital sunrise",
+      params: {
+        type: "video",
+        resolution: "720p",
+        ratio: "21:9",
+        durationSeconds: 5,
+      },
+    },
     externalTaskId: null,
     errorMessage: null,
     creditsCost: 14,
@@ -81,9 +95,11 @@ function cloneState(state: FakeState): FakeState {
     ),
     ledgers: state.ledgers.map((ledger) => ({ ...ledger })),
     assets: state.assets.map((asset) => ({ ...asset })),
+    jobInputAssets: state.jobInputAssets.map((link) => ({ ...link })),
     nextJobId: state.nextJobId,
     nextLedgerId: state.nextLedgerId,
     nextAssetId: state.nextAssetId,
+    nextJobInputAssetId: state.nextJobInputAssetId,
   };
 }
 
@@ -92,9 +108,11 @@ function replaceState(target: FakeState, source: FakeState): void {
   target.jobs = source.jobs;
   target.ledgers = source.ledgers;
   target.assets = source.assets;
+  target.jobInputAssets = source.jobInputAssets;
   target.nextJobId = source.nextJobId;
   target.nextLedgerId = source.nextLedgerId;
   target.nextAssetId = source.nextAssetId;
+  target.nextJobInputAssetId = source.nextJobInputAssetId;
 }
 
 function matchesStatus(
@@ -222,6 +240,29 @@ function fakeTransaction(
         state.assets.push(asset);
         return asset;
       },
+      findMany: async ({ where }) =>
+        state.assets.filter(
+          (asset) =>
+            where.id.in.includes(asset.id) && asset.userId === where.userId,
+        ),
+    },
+    jobInputAsset: {
+      createMany: async ({ data }) => {
+        for (const link of data) {
+          state.jobInputAssets.push({
+            id: `job-input-${state.nextJobInputAssetId++}`,
+            jobId: link.jobId,
+            assetId: link.assetId,
+            role: link.role,
+            position: link.position,
+          });
+        }
+        return { count: data.length };
+      },
+      findMany: async ({ where }) =>
+        state.jobInputAssets
+          .filter((link) => link.jobId === where.jobId)
+          .sort((left, right) => left.position - right.position),
     },
   };
 }
@@ -231,10 +272,12 @@ function fakeStore(options: FakeStoreOptions = {}): FakeStoreHarness {
     balance: options.balance ?? 100,
     jobs: new Map((options.jobs ?? []).map((job) => [job.id, job])),
     ledgers: [],
-    assets: [],
+    assets: [...(options.assets ?? [])],
+    jobInputAssets: [],
     nextJobId: 1,
     nextLedgerId: 1,
     nextAssetId: 1,
+    nextJobInputAssetId: 1,
   };
   let remainingConflicts = options.serializableConflicts ?? 0;
   let transactionCallCount = 0;
@@ -272,6 +315,12 @@ const VIDEO_COMMAND: SubmitJobCommand = {
   userId: "user-1",
   type: "video",
   prompt: "orbital sunrise",
+  params: {
+    type: "video",
+    resolution: "720p",
+    ratio: "21:9",
+    durationSeconds: 5,
+  },
   model: "dreamina-seedance-2-0-fast-260128",
   creditsCost: 14,
   maxInFlight: 3,
@@ -285,10 +334,159 @@ test("submission stores the server-resolved model and immutable cost", async () 
   assert.equal(result.job.model, "dreamina-seedance-2-0-fast-260128");
   assert.equal(result.job.creditsCost, 14);
   assert.equal(result.job.status, "queued");
-  assert.deepEqual(result.job.inputParams, { prompt: "orbital sunrise" });
+  // Params are persisted alongside the prompt so a later config change never
+  // retroactively alters what this job actually ran with.
+  assert.deepEqual(result.job.inputParams, {
+    prompt: "orbital sunrise",
+    params: {
+      type: "video",
+      resolution: "720p",
+      ratio: "21:9",
+      durationSeconds: 5,
+    },
+  });
   assert.equal(result.ledger.reason, `generation:${result.job.id}`);
   assert.equal(result.ledger.delta, -14);
   assert.equal(harness.state().balance, 86);
+});
+
+// --- Input assets -----------------------------------------------------------
+
+function assetFixture(id: string, userId: string): AssetRecord {
+  return {
+    id,
+    jobId: "some-earlier-job",
+    userId,
+    type: "image",
+    storageUrl: `tos://bucket/${id}.png`,
+    thumbnailUrl: null,
+    createdAt: FIXED_TIME,
+  };
+}
+
+test("submission links input assets the user owns", async () => {
+  const harness = fakeStore({
+    balance: 100,
+    assets: [assetFixture("asset-a", "user-1"), assetFixture("asset-b", "user-1")],
+  });
+
+  const result = await submitJob(harness.store, {
+    ...VIDEO_COMMAND,
+    inputAssets: [
+      { assetId: "asset-a", role: "first_frame" },
+      { assetId: "asset-b", role: "reference" },
+    ],
+  });
+
+  const links = harness.state().jobInputAssets;
+  assert.equal(links.length, 2);
+  assert.deepEqual(
+    links.map((link) => ({ assetId: link.assetId, role: link.role, position: link.position })),
+    [
+      { assetId: "asset-a", role: "first_frame", position: 0 },
+      { assetId: "asset-b", role: "reference", position: 1 },
+    ],
+  );
+  assert.ok(links.every((link) => link.jobId === result.job.id));
+});
+
+test("submission refuses an asset owned by another user and charges nothing", async () => {
+  const harness = fakeStore({
+    balance: 100,
+    // The asset exists, but belongs to someone else.
+    assets: [assetFixture("someone-elses", "user-2")],
+  });
+
+  await assert.rejects(
+    submitJob(harness.store, {
+      ...VIDEO_COMMAND,
+      inputAssets: [{ assetId: "someone-elses", role: "first_frame" }],
+    }),
+    InputAssetNotOwnedError,
+  );
+
+  // The whole transaction must roll back: no debit, no job, no links.
+  assert.equal(harness.state().balance, 100);
+  assert.equal(harness.state().jobs.size, 0);
+  assert.equal(harness.state().ledgers.length, 0);
+  assert.equal(harness.state().jobInputAssets.length, 0);
+});
+
+test("submission refuses an asset id that does not exist", async () => {
+  const harness = fakeStore({ balance: 100, assets: [] });
+
+  await assert.rejects(
+    submitJob(harness.store, {
+      ...VIDEO_COMMAND,
+      inputAssets: [{ assetId: "ghost", role: "reference" }],
+    }),
+    InputAssetNotOwnedError,
+  );
+  assert.equal(harness.state().balance, 100);
+});
+
+test("submission rejects if any one of several assets is unowned", async () => {
+  const harness = fakeStore({
+    balance: 100,
+    assets: [assetFixture("mine", "user-1"), assetFixture("theirs", "user-2")],
+  });
+
+  await assert.rejects(
+    submitJob(harness.store, {
+      ...VIDEO_COMMAND,
+      inputAssets: [
+        { assetId: "mine", role: "first_frame" },
+        { assetId: "theirs", role: "reference" },
+      ],
+    }),
+    InputAssetNotOwnedError,
+  );
+  assert.equal(harness.state().jobs.size, 0);
+});
+
+test("loadJobInputAssets resolves links to storage URLs in position order", async () => {
+  const harness = fakeStore({
+    balance: 100,
+    assets: [assetFixture("asset-a", "user-1"), assetFixture("asset-b", "user-1")],
+  });
+
+  const result = await submitJob(harness.store, {
+    ...VIDEO_COMMAND,
+    inputAssets: [
+      { assetId: "asset-b", role: "reference" },
+      { assetId: "asset-a", role: "first_frame" },
+    ],
+  });
+
+  const resolved = await loadJobInputAssets(harness.store, result.job.id, "user-1");
+  assert.deepEqual(
+    resolved.map((asset) => ({ assetId: asset.assetId, role: asset.role, storageUrl: asset.storageUrl })),
+    [
+      { assetId: "asset-b", role: "reference", storageUrl: "tos://bucket/asset-b.png" },
+      { assetId: "asset-a", role: "first_frame", storageUrl: "tos://bucket/asset-a.png" },
+    ],
+  );
+});
+
+test("loadJobInputAssets returns nothing for a different user", async () => {
+  const harness = fakeStore({
+    balance: 100,
+    assets: [assetFixture("asset-a", "user-1")],
+  });
+  const result = await submitJob(harness.store, {
+    ...VIDEO_COMMAND,
+    inputAssets: [{ assetId: "asset-a", role: "reference" }],
+  });
+
+  // Defense in depth: even with a valid jobId, the wrong userId resolves nothing.
+  const resolved = await loadJobInputAssets(harness.store, result.job.id, "user-2");
+  assert.deepEqual(resolved, []);
+});
+
+test("submission with no input assets creates no links", async () => {
+  const harness = fakeStore({ balance: 100 });
+  await submitJob(harness.store, VIDEO_COMMAND);
+  assert.equal(harness.state().jobInputAssets.length, 0);
 });
 
 test("submission rejects the fourth queued or processing job before debit", async () => {

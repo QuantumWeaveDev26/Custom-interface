@@ -63,7 +63,9 @@ export function StudioClient({
           body: JSON.stringify({
             type: state.mode,
             prompt: state.prompt,
-            ...(state.mode === "voice" ? { voiceStyle: state.voiceStyle } : {}),
+            ...(state.mode === "voice"
+              ? { params: { style: state.voiceStyle } }
+              : {}),
           }),
         });
       } catch {

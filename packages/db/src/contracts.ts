@@ -1,3 +1,9 @@
+import type {
+  GenerationParams,
+  InputAssetRole,
+  JobInputAssetRef,
+} from "@creative-ai/shared-types";
+
 export interface UserRecord {
   id: string;
   email: string;
@@ -50,13 +56,19 @@ export type JobStatus = "queued" | "processing" | "complete" | "failed";
 // sets, not a type alias.
 export type AssetType = "image" | "video" | "audio";
 
+/** What a job was actually asked to generate. Persisted, never recomputed. */
+export interface JobInputParams {
+  prompt: string;
+  params: GenerationParams;
+}
+
 export interface JobRecord {
   id: string;
   userId: string;
   type: PhaseOneJobType;
   model: string;
   status: JobStatus;
-  inputParams: { prompt: string; voiceStyle?: "standard" | "expressive" };
+  inputParams: JobInputParams;
   externalTaskId: string | null;
   errorMessage: string | null;
   creditsCost: number;
@@ -74,11 +86,37 @@ export interface AssetRecord {
   createdAt: Date;
 }
 
+export interface JobInputAssetRecord {
+  id: string;
+  jobId: string;
+  assetId: string;
+  role: InputAssetRole;
+  position: number;
+}
+
+/** An input asset resolved to the storage URL the worker will actually use. */
+export interface ResolvedInputAsset {
+  assetId: string;
+  role: InputAssetRole;
+  position: number;
+  storageUrl: string;
+  type: AssetType;
+}
+
+export class InputAssetNotOwnedError extends Error {
+  constructor(public readonly assetIds: readonly string[]) {
+    super(`Input assets not found or not owned by this user: ${assetIds.join(", ")}`);
+    this.name = "InputAssetNotOwnedError";
+  }
+}
+
 export interface SubmitJobCommand {
   userId: string;
   type: PhaseOneJobType;
   prompt: string;
-  voiceStyle?: "standard" | "expressive";
+  params: GenerationParams;
+  /** Verified inside the submission transaction to belong to `userId`. */
+  inputAssets?: readonly JobInputAssetRef[];
   model: string;
   creditsCost: number;
   maxInFlight: number;
@@ -126,7 +164,7 @@ export interface DatabaseTransaction extends WelcomeGrantTransaction {
         type: PhaseOneJobType;
         model: string;
         status: "queued";
-        inputParams: { prompt: string; voiceStyle?: "standard" | "expressive" };
+        inputParams: JobInputParams;
         creditsCost: number;
       };
     }): Promise<JobRecord>;
@@ -161,6 +199,25 @@ export interface DatabaseTransaction extends WelcomeGrantTransaction {
         thumbnailUrl?: string | null;
       };
     }): Promise<AssetRecord>;
+    // Ownership filter is part of the query, not an afterthought: a caller
+    // cannot accidentally read another user's assets through this contract.
+    findMany(args: {
+      where: { id: { in: string[] }; userId: string };
+    }): Promise<AssetRecord[]>;
+  };
+  jobInputAsset: {
+    createMany(args: {
+      data: Array<{
+        jobId: string;
+        assetId: string;
+        role: InputAssetRole;
+        position: number;
+      }>;
+    }): Promise<CountResult>;
+    findMany(args: {
+      where: { jobId: string };
+      orderBy: { position: "asc" };
+    }): Promise<JobInputAssetRecord[]>;
   };
 }
 
