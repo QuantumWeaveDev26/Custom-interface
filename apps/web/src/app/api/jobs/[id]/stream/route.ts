@@ -29,6 +29,7 @@ export async function GET(
   const readable = new ReadableStream({
     async start(controller) {
       let closed = false;
+      let heartbeat: ReturnType<typeof setInterval> | undefined;
       const subscriber = createSubscriber();
 
       const cleanup = () => {
@@ -80,7 +81,7 @@ export async function GET(
         }
       }
 
-      const heartbeat = setInterval(() => {
+      heartbeat = setInterval(() => {
         if (closed) return;
         controller.enqueue(encoder.encode(": heartbeat\n\n"));
       }, HEARTBEAT_INTERVAL_MS);
