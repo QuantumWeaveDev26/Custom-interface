@@ -245,10 +245,14 @@ X-Api-Key: <Seed Speech API key>
 X-Api-Request-Id: <a fresh UUID per request>
 ```
 
-Body:
+Body — **CONFIRMED via official BytePlus docs** (docs.byteplus.com/en/docs/byteplusvoice/
+voicereplication-v3-voice-training), 2026-08-28, after a real live call using an invented
+`speaker_id` failed with `{"code":55000000,"message":"resource ID is mismatched with
+speaker related resource"}`:
+
 ```json
 {
-  "speaker_id": "your_speaker_id",
+  "speaker_id": "",
   "audio": {
     "data": "<base64-encoded audio file bytes, no newlines>",
     "format": "wav"
@@ -260,20 +264,51 @@ Body:
 }
 ```
 
-Notes:
+**Critical correction: `speaker_id` must be `""` to register a brand-new voice.** It is
+NOT a caller-chosen identifier — BytePlus assigns the real ID (e.g. `"S_abc123"`) and
+returns it in the response. Passing any other string throws the resource-mismatch error
+above, because `speaker_id` only ever accepts an ID that already exists (either one
+you've already registered this way, or a `custom_speaker_id`-based post-paid voice — see
+the docs' "Naming Requirements" section for that separate flow, not used by this
+project).
+
+**Response — confirmed via the same docs page:**
+```json
+{
+  "available_training_times": 15,
+  "create_time": 1772026663000,
+  "language": 1,
+  "speaker_id": "S_*******",
+  "speaker_status": [
+    { "demo_audio": "https://x.bytespeech.com/S_*******", "model_type": 5 }
+  ],
+  "status": 2
+}
+```
+- `speaker_id`: the real, server-assigned ID — save this to reuse the voice.
+- `status`: training status; TTS can be invoked once this is `2` or `4`.
+- `speaker_status[0].demo_audio`: a preview clip URL, valid for **1 hour**.
+- A top-level `code`/`message` pair is also documented for request-level status, but the
+  docs note failures come back as non-200 HTTP (already handled the same way as every
+  other Voice endpoint) — not yet seen a real example of a non-empty `code` on a 200
+  response.
+
+Other notes:
 - The reference audio sample is sent **inline as base64** in the request body — no
-  separate upload step or URL reference.
-- `speaker_id` is presumably a caller-chosen identifier for the new cloned voice (to be
-  reused later as the `speaker` value in Text-to-Speech / Audio generation calls) —
-  not confirmed whether it must be unique account-wide or can collide/overwrite.
-- `language` is a **numeric code** (`1` in the sample), not a string like `en`/`yue-CN`
-  seen elsewhere — the mapping of numbers to languages is not yet confirmed; check Voice
-  Library or the Completed Integration Guide link in the console for the code table.
-- `demo_text` under `extra_params` is optional — generates a sample utterance in the new
-  cloned voice so you can verify it immediately.
+  separate upload step or URL reference. Supported formats: wav, mp3, ogg, m4a, aac, pcm
+  (pcm must be 24kHz mono). Max 10MB, 10-15s recommended.
+- `language` is a **numeric code** (`1` = English, `0` = Chinese default; full table in
+  the docs page — 20 languages supported).
+- `demo_text` under `extra_params` must be 4-80 characters, in the same language as
+  `language`, or synthesis fails.
+- **This project's implementation is not yet live-tested against this corrected
+  contract** — the fix (send `""`, read the real ID back) was made from the official
+  docs, not a confirmed live call, since cloning spends the account's limited "Voice
+  Replication" quota (20 voice slots on this account, seen in console) rather than being
+  cheap to retry like TTS.
 - **Product/consent consideration, not just a technical one:** voice cloning of a real
-  person's voice needs their explicit consent — this project has no consent-capture flow
-  designed yet. Flagging this before implementation, not just as an API detail.
+  person's voice needs their explicit consent — `apps/web/src/app/voice-clone` has a
+  required consent checkbox gating the whole flow, not decorative.
 
 ---
 

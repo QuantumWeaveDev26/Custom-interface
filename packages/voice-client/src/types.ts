@@ -40,12 +40,24 @@ export interface CloneVoiceAudio {
 }
 
 export interface CloneVoiceRequest {
+  // Confirmed via official BytePlus docs: pass "" to register a brand-new voice --
+  // BytePlus assigns and returns the real ID (e.g. "S_abc123") in the response.
+  // Passing an arbitrary invented ID here throws "resource ID is mismatched with
+  // speaker related resource" -- speaker_id only ever accepts one you already own.
   speaker_id: string;
   audio: CloneVoiceAudio;
   language: number;
   extra_params?: {
     demo_text?: string;
   };
+}
+
+export interface CloneVoiceResult {
+  speakerId: string;
+  // Training status; per BytePlus docs, TTS can be invoked once this is 2 or 4.
+  status: number;
+  availableTrainingTimes: number;
+  demoAudioUrl: string | null;
 }
 
 export interface TranscriptionAudio {

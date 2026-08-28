@@ -8,7 +8,7 @@ import {
 } from "./voice-clone-state.js";
 
 test("starts idle with no file and no consent", () => {
-  assert.equal(INITIAL_VOICE_CLONE_STATE.status, "idle");
+  assert.equal(INITIAL_VOICE_CLONE_STATE.phase, "idle");
   assert.equal(INITIAL_VOICE_CLONE_STATE.fileName, null);
   assert.equal(INITIAL_VOICE_CLONE_STATE.consent, false);
 });
@@ -19,7 +19,7 @@ test("set consent updates only the consent field", () => {
     consent: true,
   });
   assert.equal(next.consent, true);
-  assert.equal(next.status, "idle");
+  assert.equal(next.phase, "idle");
 });
 
 test("set file preserves consent already given", () => {
@@ -31,26 +31,32 @@ test("set file preserves consent already given", () => {
 
 test("phase transitions through encoding and uploading", () => {
   let state = voiceCloneReducer(INITIAL_VOICE_CLONE_STATE, { type: "START_ENCODING" });
-  assert.equal(state.status, "encoding");
+  assert.equal(state.phase, "encoding");
   state = voiceCloneReducer(state, { type: "START_UPLOADING" });
-  assert.equal(state.status, "uploading");
+  assert.equal(state.phase, "uploading");
 });
 
-test("complete stores the speaker ID and raw response", () => {
+test("complete stores the speaker ID, training status, and demo audio URL", () => {
   const next = voiceCloneReducer(
-    { ...INITIAL_VOICE_CLONE_STATE, status: "uploading" },
-    { type: "COMPLETE", speakerId: "abc-123", raw: { code: 0 } },
+    { ...INITIAL_VOICE_CLONE_STATE, phase: "uploading" },
+    {
+      type: "COMPLETE",
+      speakerId: "S_abc123",
+      trainingStatus: 2,
+      demoAudioUrl: "https://x.bytespeech.com/S_abc123",
+    },
   );
-  assert.equal(next.status, "complete");
-  assert.equal(next.speakerId, "abc-123");
-  assert.deepEqual(next.raw, { code: 0 });
+  assert.equal(next.phase, "complete");
+  assert.equal(next.speakerId, "S_abc123");
+  assert.equal(next.trainingStatus, 2);
+  assert.equal(next.demoAudioUrl, "https://x.bytespeech.com/S_abc123");
 });
 
 test("error stores a message and moves to failed", () => {
   const next = voiceCloneReducer(
-    { ...INITIAL_VOICE_CLONE_STATE, status: "uploading" },
+    { ...INITIAL_VOICE_CLONE_STATE, phase: "uploading" },
     { type: "ERROR", message: "Cloning failed." },
   );
-  assert.equal(next.status, "failed");
+  assert.equal(next.phase, "failed");
   assert.equal(next.errorMessage, "Cloning failed.");
 });

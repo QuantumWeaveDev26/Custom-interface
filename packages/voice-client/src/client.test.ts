@@ -305,7 +305,7 @@ test("createAudioGeneration posts to tts/create with X-Api-Key and no resource h
   assert.equal(calls[0]?.init?.body, JSON.stringify(request));
 });
 
-test("cloneVoice posts to tts/voice_clone with a generated request ID", async () => {
+test("cloneVoice posts to tts/voice_clone with speaker_id \"\" and a generated request ID", async () => {
   const calls: Array<{ input: string; init?: RequestInit }> = [];
   const client = createVoiceClient({
     apiKey: "secret-key",
@@ -313,12 +313,17 @@ test("cloneVoice posts to tts/voice_clone with a generated request ID", async ()
     generateRequestId: () => "fixed-request-id",
     fetch: asFetch(async (input, init) => {
       calls.push({ input: String(input), ...(init === undefined ? {} : { init }) });
-      return Response.json({ status: "ok" });
+      return Response.json({
+        speaker_id: "S_abc123",
+        status: 2,
+        available_training_times: 15,
+        speaker_status: [{ model_type: 5, demo_audio: "https://x.bytespeech.com/S_abc123" }],
+      });
     }),
   });
 
   const request = {
-    speaker_id: "my-voice",
+    speaker_id: "",
     audio: { data: "base64data", format: "wav" as const },
     language: 1,
     extra_params: { demo_text: "hello" },
@@ -326,8 +331,14 @@ test("cloneVoice posts to tts/voice_clone with a generated request ID", async ()
 
   const result = await client.cloneVoice(request);
 
-  assert.deepEqual(result, { status: "ok" });
+  assert.deepEqual(result, {
+    speakerId: "S_abc123",
+    status: 2,
+    availableTrainingTimes: 15,
+    demoAudioUrl: "https://x.bytespeech.com/S_abc123",
+  });
   assert.equal(calls[0]?.input, `${BASE_URL}/tts/voice_clone`);
+  assert.equal(calls[0]?.init?.body, JSON.stringify(request));
   const headers = new Headers(calls[0]?.init?.headers);
   assert.equal(headers.get("X-Api-Key"), "secret-key");
   assert.equal(headers.get("X-Api-Request-Id"), "fixed-request-id");

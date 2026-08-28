@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { VoiceApiError, VoiceHttpError, VoiceResponseShapeError } from "./errors.js";
 import type {
   CloneVoiceRequest,
+  CloneVoiceResult,
   CreateAudioGenerationRequest,
   CreateSpeechRequest,
   CreateSpeechResult,
@@ -28,7 +29,7 @@ export interface VoiceClient {
   createAudioGeneration(
     params: CreateAudioGenerationRequest,
   ): Promise<CreateSpeechResult>;
-  cloneVoice(params: CloneVoiceRequest): Promise<unknown>;
+  cloneVoice(params: CloneVoiceRequest): Promise<CloneVoiceResult>;
   submitTranscription(
     params: SubmitTranscriptionRequest,
   ): Promise<SubmitTranscriptionResult>;
@@ -190,8 +191,16 @@ export function createVoiceClient(config: VoiceClientConfig): VoiceClient {
     return parseAudioResponse(response);
   }
 
-  async function cloneVoice(params: CloneVoiceRequest): Promise<unknown> {
-    return requestJson(
+  async function cloneVoice(params: CloneVoiceRequest): Promise<CloneVoiceResult> {
+    // Confirmed via official BytePlus docs (docs.byteplus.com/en/docs/byteplusvoice/
+    // voicereplication-v3-voice-training) -- not yet exercised by a real live call, so
+    // treat this shape as high-confidence but unverified until a real response is seen.
+    const raw = await requestJson<{
+      speaker_id?: string;
+      status?: number;
+      available_training_times?: number;
+      speaker_status?: Array<{ demo_audio?: string }>;
+    }>(
       "/tts/voice_clone",
       {
         "X-Api-Key": apiKey,
@@ -199,6 +208,13 @@ export function createVoiceClient(config: VoiceClientConfig): VoiceClient {
       },
       params,
     );
+
+    return {
+      speakerId: raw.speaker_id ?? "",
+      status: raw.status ?? 0,
+      availableTrainingTimes: raw.available_training_times ?? 0,
+      demoAudioUrl: raw.speaker_status?.[0]?.demo_audio ?? null,
+    };
   }
 
   async function submitTranscription(

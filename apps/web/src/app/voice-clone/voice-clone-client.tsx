@@ -1,18 +1,26 @@
 "use client";
 
-import { useCallback, useReducer, useRef, useState } from "react";
+import { useCallback, useReducer, useRef } from "react";
 import {
   INITIAL_VOICE_CLONE_STATE,
   voiceCloneReducer,
 } from "./voice-clone-state";
 import { AudioDecodeError, encodeToWav16kMono } from "@/lib/audio-encode";
 
+// Per BytePlus docs, TTS can be invoked on a cloned voice once training status is 2 or 4.
+const READY_TRAINING_STATUSES = new Set([2, 4]);
+
+interface CloneVoiceResponse {
+  speakerId: string;
+  status: number;
+  demoAudioUrl: string | null;
+}
+
 export function VoiceCloneClient() {
   const [state, dispatch] = useReducer(voiceCloneReducer, INITIAL_VOICE_CLONE_STATE);
-  const [showRaw, setShowRaw] = useState(false);
   const fileRef = useRef<File | null>(null);
 
-  const isBusy = state.status === "encoding" || state.status === "uploading";
+  const isBusy = state.phase === "encoding" || state.phase === "uploading";
 
   const handleFileChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -57,8 +65,13 @@ export function VoiceCloneClient() {
       return;
     }
 
-    const result = (await response.json()) as { speakerId: string; raw: unknown };
-    dispatch({ type: "COMPLETE", speakerId: result.speakerId, raw: result.raw });
+    const result = (await response.json()) as CloneVoiceResponse;
+    dispatch({
+      type: "COMPLETE",
+      speakerId: result.speakerId,
+      trainingStatus: result.status,
+      demoAudioUrl: result.demoAudioUrl,
+    });
   }, [isBusy, state.consent]);
 
   return (
@@ -116,39 +129,45 @@ export function VoiceCloneClient() {
           className="btn-primary w-full gap-2"
         >
           {isBusy && <span className="spinner" aria-hidden="true" />}
-          {state.status === "encoding" && "Preparing audio..."}
-          {state.status === "uploading" && "Cloning voice..."}
+          {state.phase === "encoding" && "Preparing audio..."}
+          {state.phase === "uploading" && "Cloning voice..."}
           {!isBusy && "Clone Voice"}
         </button>
       </div>
 
       <div className="mt-6" aria-live="polite">
-        {state.status === "failed" && (
+        {state.phase === "failed" && (
           <div className="card border-[var(--danger)]/30 p-4">
             <p className="text-sm text-[var(--danger)]">{state.errorMessage}</p>
           </div>
         )}
-        {state.status === "complete" && (
+        {state.phase === "complete" && (
           <div className="card p-5">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--text-faint)]">
-              Voice cloned
+              {state.trainingStatus !== null && READY_TRAINING_STATUSES.has(state.trainingStatus)
+                ? "Voice cloned — ready to use"
+                : "Voice cloned — training"}
             </p>
             <p className="gradient-text mt-1 text-lg font-semibold">Your voice ID</p>
             <p className="mt-1 font-mono text-sm text-[var(--text)]">{state.speakerId}</p>
             <p className="mt-2 text-xs text-[var(--text-muted)]">
               Save this ID — it identifies your cloned voice for future generation.
             </p>
-            <button
-              type="button"
-              onClick={() => setShowRaw((prev) => !prev)}
-              className="mt-3 text-xs font-medium text-[var(--text-faint)] underline"
-            >
-              {showRaw ? "Hide" : "Show"} technical response
-            </button>
-            {showRaw && (
-              <pre className="mt-2 overflow-x-auto rounded-lg bg-[var(--bg-elevated)] p-3 text-xs text-[var(--text-muted)]">
-                {JSON.stringify(state.raw, null, 2)}
-              </pre>
+            {state.demoAudioUrl && (
+              <div className="mt-4">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--text-faint)]">
+                  Preview
+                </p>
+                <audio
+                  src={state.demoAudioUrl}
+                  controls
+                  preload="metadata"
+                  className="mt-2 w-full"
+                />
+                <p className="mt-1 text-[11px] text-[var(--text-faint)]">
+                  This preview link expires in about an hour.
+                </p>
+              </div>
             )}
           </div>
         )}

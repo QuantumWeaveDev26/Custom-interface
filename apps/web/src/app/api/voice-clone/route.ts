@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const wavBytes = new Uint8Array(await audio.arrayBuffer());
-    const outcome = await cloneVoiceFromAudio(session.user.id, wavBytes);
+    const outcome = await cloneVoiceFromAudio(wavBytes);
     return NextResponse.json(outcome, { status: 201 });
   } catch (error) {
     if (error instanceof VoiceHttpError) {
