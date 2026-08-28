@@ -111,25 +111,43 @@ Notes on the confirmed shape:
   variant, not the WebSocket streaming one — good, matches this project's existing
   synchronous-image / async-task patterns rather than needing new streaming plumbing.
 
-**Not yet confirmed — the sample code only shows the request:**
-- The exact response shape (JSON with a URL? JSON with base64 audio? Raw binary
-  `audio/mpeg` bytes as the HTTP body?). To confirm: in the Seed Speech → Text-to-Speech
-  playground, type text and click play/generate with browser DevTools' Network tab open,
-  then inspect the actual response to the `/tts/unidirectional` call — its
-  `Content-Type` header and body shape settle this immediately.
-- Whether errors follow the same `{"error": {"code", "message"}}` shape ModelArk uses,
-  or something else.
+**Response shape — CONFIRMED via a real live call** (curl with a real API key, response
+saved and inspected directly, 2026-08-28):
+
+```
+HTTP/1.1 200 OK
+Content-Type: text/plain; charset=utf-8
+```
+```json
+{
+  "code": 0,
+  "message": "",
+  "data": "<base64-encoded MP3 bytes>"
+}
+```
+
+Critical gotcha: **the `Content-Type` header lies** — it says `text/plain`, not
+`application/json`, even though the body is genuinely JSON. Any implementation that
+branches on `Content-Type` to decide whether to JSON-parse will silently mishandle this
+correctly-working response. `code: 0` decoded successfully to valid MP3 bytes (verified:
+starts with the `ID3` tag signature). Non-zero `code` values are presumed to indicate an
+API-level error (with `message` describing it) even though the HTTP status is 200, based
+on this field-naming convention — not yet observed directly since the test call
+succeeded, but implement defensively for it.
+
+**Still not confirmed:**
+- The exact non-zero `code` values and what they mean (only `code: 0` observed)
 - Full list of valid `speaker` IDs and `X-Api-Resource-Id` values beyond the one example
   (`seed-tts-2.0`) — check Voice Library for the speaker list; there may be other
   resource IDs for different quality/language tiers.
+- Whether `tts/create` (Audio generation), `tts/voice_clone` (Voice Replication), and
+  `auc/bigmodel/submit`/`query` (Speech-to-Text) share this exact `{code, message, data}`
+  envelope, or differ — only `tts/unidirectional` has been live-verified so far.
 
 **Implementation note:** since this uses different auth (`x-api-key` + a separate key)
 and a different base URL/host (`voice.ap-southeast-1.bytepluses.com`, not
-`ark.ap-southeast.bytepluses.com`) than ModelArk, this should be its own client —
-not bolted onto `packages/modelark-client`. Built as `packages/voice-client`, mirroring
-`modelark-client`'s injectable-fetch pattern. Response shape not yet live-verified (see
-above) — `createSpeech()` handles both plausible shapes and throws a clear error if
-neither matches.
+`ark.ap-southeast.bytepluses.com`) than ModelArk, this is its own client,
+`packages/voice-client`, mirroring `modelark-client`'s injectable-fetch pattern.
 
 ---
 

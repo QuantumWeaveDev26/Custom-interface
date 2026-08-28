@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { VoiceHttpError, VoiceResponseShapeError } from "./errors.js";
+import { VoiceApiError, VoiceHttpError, VoiceResponseShapeError } from "./errors.js";
 import type {
   CloneVoiceRequest,
   CreateAudioGenerationRequest,
@@ -62,22 +62,35 @@ export function createVoiceClient(config: VoiceClientConfig): VoiceClient {
     response: Response,
   ): Promise<CreateSpeechResult> {
     const contentType = response.headers.get("content-type") ?? "";
+    const buffer = await response.arrayBuffer();
 
-    if (contentType.startsWith("audio/")) {
-      const audio = new Uint8Array(await response.arrayBuffer());
-      return { audio, contentType };
+    // Confirmed live: BytePlus Voice's Content-Type header says "text/plain" even
+    // when the body is genuinely JSON -- don't trust the header, try JSON first
+    // regardless of what it claims, and only fall back to raw bytes if that fails.
+    const text = new TextDecoder().decode(buffer);
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      parsed = undefined;
     }
 
-    if (contentType.includes("application/json")) {
-      const body = (await response.json()) as { data?: unknown };
+    if (typeof parsed === "object" && parsed !== null) {
+      const body = parsed as { code?: unknown; message?: unknown; data?: unknown };
+      if (typeof body.code === "number" && body.code !== 0) {
+        throw new VoiceApiError(body.code, typeof body.message === "string" ? body.message : "");
+      }
       if (typeof body.data === "string" && body.data.length > 0) {
         return { audio: base64ToBytes(body.data), contentType: "audio/mpeg" };
       }
       throw new VoiceResponseShapeError(contentType, JSON.stringify(body).slice(0, 500));
     }
 
-    const bodyPreview = (await response.text()).slice(0, 500);
-    throw new VoiceResponseShapeError(contentType, bodyPreview);
+    if (contentType.startsWith("audio/")) {
+      return { audio: new Uint8Array(buffer), contentType };
+    }
+
+    throw new VoiceResponseShapeError(contentType, text.slice(0, 500));
   }
 
   async function requestJson<T>(

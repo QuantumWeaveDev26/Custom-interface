@@ -20,3 +20,16 @@ export class VoiceResponseShapeError extends Error {
     this.name = "VoiceResponseShapeError";
   }
 }
+
+// Confirmed live: BytePlus Voice returns HTTP 200 with a {code, message, data} JSON
+// envelope even on failure -- code 0 is success, a non-zero code is an API-level error
+// the caller needs to see, distinct from an HTTP-level failure (VoiceHttpError).
+export class VoiceApiError extends Error {
+  constructor(
+    public readonly code: number,
+    public readonly apiMessage: string,
+  ) {
+    super(`BytePlus Voice API error (code ${code}): ${apiMessage || "no message"}`);
+    this.name = "VoiceApiError";
+  }
+}

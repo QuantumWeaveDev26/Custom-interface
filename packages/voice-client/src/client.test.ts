@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createVoiceClient } from "./client.js";
-import { VoiceHttpError, VoiceResponseShapeError } from "./errors.js";
+import { VoiceApiError, VoiceHttpError, VoiceResponseShapeError } from "./errors.js";
 
 const BASE_URL = "https://voice.example.test/api/v3";
 
@@ -160,6 +160,61 @@ test("HTTP failures expose status and at most 1000 response characters", async (
       assert.ok(error instanceof VoiceHttpError);
       assert.equal(error.status, 429);
       assert.equal(error.responseBody, "x".repeat(1_000));
+      return true;
+    },
+  );
+});
+
+test("decodes a real-world response: Content-Type text/plain with a JSON {code,message,data} body", async () => {
+  // Confirmed live against the real API 2026-08-28: BytePlus Voice's Content-Type
+  // header says text/plain even though the body is genuinely JSON. Must not trust
+  // the header to decide whether to JSON-parse.
+  const audioBytes = new Uint8Array([73, 68, 51]); // "ID3" -- real MP3 tag signature
+  const base64 = Buffer.from(audioBytes).toString("base64");
+  const client = createVoiceClient({
+    apiKey: "secret-key",
+    fetch: asFetch(async () =>
+      new Response(JSON.stringify({ code: 0, message: "", data: base64 }), {
+        status: 200,
+        headers: { "Content-Type": "text/plain; charset=utf-8" },
+      }),
+    ),
+  });
+
+  const result = await client.createSpeech({
+    req_params: {
+      text: "hi",
+      speaker: "voice-1",
+      audio_params: { format: "mp3", sample_rate: 24000 },
+    },
+  });
+
+  assert.deepEqual(Array.from(result.audio), [73, 68, 51]);
+});
+
+test("throws VoiceApiError when the response envelope has a non-zero code", async () => {
+  const client = createVoiceClient({
+    apiKey: "secret-key",
+    fetch: asFetch(async () =>
+      new Response(JSON.stringify({ code: 3001, message: "invalid speaker" }), {
+        status: 200,
+        headers: { "Content-Type": "text/plain; charset=utf-8" },
+      }),
+    ),
+  });
+
+  await assert.rejects(
+    client.createSpeech({
+      req_params: {
+        text: "hi",
+        speaker: "not-a-real-speaker",
+        audio_params: { format: "mp3", sample_rate: 24000 },
+      },
+    }),
+    (error: unknown) => {
+      assert.ok(error instanceof VoiceApiError);
+      assert.equal(error.code, 3001);
+      assert.equal(error.apiMessage, "invalid speaker");
       return true;
     },
   );
