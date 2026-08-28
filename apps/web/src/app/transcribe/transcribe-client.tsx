@@ -5,7 +5,7 @@ import {
   INITIAL_TRANSCRIBE_STATE,
   transcribeReducer,
 } from "./transcribe-state";
-import { AudioDecodeError, encodeToWav16kMono } from "./audio-encode";
+import { AudioDecodeError, encodeToWav16kMono } from "@/lib/audio-encode";
 
 const POLL_INTERVAL_MS = 1500;
 const MAX_POLL_ATTEMPTS = 60; // 90 seconds

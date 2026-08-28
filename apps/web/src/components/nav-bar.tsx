@@ -8,6 +8,7 @@ const LINKS = [
   { href: "/director", label: "Director" },
   { href: "/marketing", label: "Marketing" },
   { href: "/transcribe", label: "Transcribe" },
+  { href: "/voice-clone", label: "Voice Clone" },
   { href: "/gallery", label: "Gallery" },
 ] as const;
 

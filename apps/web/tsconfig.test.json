@@ -14,6 +14,8 @@
     "src/app/marketing/marketing-state.ts",
     "src/app/marketing/marketing-state.test.ts",
     "src/app/transcribe/transcribe-state.ts",
-    "src/app/transcribe/transcribe-state.test.ts"
+    "src/app/transcribe/transcribe-state.test.ts",
+    "src/app/voice-clone/voice-clone-state.ts",
+    "src/app/voice-clone/voice-clone-state.test.ts"
   ]
 }

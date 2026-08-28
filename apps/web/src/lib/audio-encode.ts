@@ -8,10 +8,12 @@ export class AudioDecodeError extends Error {
 }
 
 // BytePlus Speech-to-Text needs raw PCM at a known, fixed encoding (confirmed live:
-// format "wav", codec "raw", 16kHz, 16-bit, mono). Rather than trying to detect an
-// arbitrary uploaded file's real encoding, decode it with the Web Audio API (which
-// handles mp3/wav/m4a/etc. uniformly) and re-encode to that exact fixed target -- the
-// encoding we send is always correct by construction.
+// format "wav", codec "raw", 16kHz, 16-bit, mono) -- reused for Voice Cloning too since
+// its "wav" audio field has no documented rate/bit constraints, and this is a
+// known-good, already-validated combination. Rather than trying to detect an arbitrary
+// uploaded file's real encoding, decode it with the Web Audio API (which handles
+// mp3/wav/m4a/etc. uniformly) and re-encode to that exact fixed target -- the encoding
+// we send is always correct by construction.
 export async function encodeToWav16kMono(file: File): Promise<Blob> {
   const arrayBuffer = await file.arrayBuffer();
   const decodeContext = new AudioContext();
