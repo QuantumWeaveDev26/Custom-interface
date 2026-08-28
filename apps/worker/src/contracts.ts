@@ -5,6 +5,7 @@ import type {
 } from "@creative-ai/db";
 import type { ModelArkClient } from "@creative-ai/modelark-client";
 import type { JobStatusEvent } from "@creative-ai/shared-types";
+import type { VoiceClient } from "@creative-ai/voice-client";
 
 export interface DownloadedMedia {
   body: Uint8Array;
@@ -14,7 +15,7 @@ export interface DownloadedMedia {
 export interface StorageUploadInput extends DownloadedMedia {
   userId: string;
   jobId: string;
-  type: "image" | "video";
+  type: "image" | "video" | "audio";
 }
 
 export interface AssetStorage {
@@ -34,6 +35,7 @@ export interface GenerationProcessorDependencies {
     ModelArkClient,
     "createImage" | "createVideoTask" | "pollVideoTaskUntilDone"
   >;
+  voice: Pick<VoiceClient, "createSpeech">;
   download(url: string): Promise<DownloadedMedia>;
   storage: AssetStorage;
   publish(event: JobStatusEvent): Promise<void>;

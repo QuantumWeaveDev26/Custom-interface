@@ -6,10 +6,11 @@ import {
   InvalidJobRequest,
   JobStatus,
   VIDEO_PROFILE,
+  VOICE_PROFILE,
   parseSubmitJobRequest,
 } from "./jobs.js";
 
-test("trims whitespace from image and video prompts", () => {
+test("trims whitespace from image, video, and voice prompts", () => {
   assert.deepEqual(parseSubmitJobRequest({ type: "image", prompt: "  neon portrait  " }), {
     type: "image",
     prompt: "neon portrait",
@@ -17,6 +18,10 @@ test("trims whitespace from image and video prompts", () => {
   assert.deepEqual(parseSubmitJobRequest({ type: "video", prompt: "\norbital sunrise\t" }), {
     type: "video",
     prompt: "orbital sunrise",
+  });
+  assert.deepEqual(parseSubmitJobRequest({ type: "voice", prompt: "  hello there  " }), {
+    type: "voice",
+    prompt: "hello there",
   });
 });
 
@@ -52,8 +57,8 @@ test("rejects every request-controlled generation setting", () => {
   }
 });
 
-test("rejects generation types outside Phase 1", () => {
-  for (const type of ["voice", "avatar", "director", "", 1, null]) {
+test("rejects generation types outside the supported set", () => {
+  for (const type of ["avatar", "director", "voice_clone", "transcription", "", 1, null]) {
     assert.throws(() => parseSubmitJobRequest({ type, prompt: "hello" }), InvalidJobRequest);
   }
 });
@@ -78,10 +83,17 @@ test("exposes immutable fixed generation profiles", () => {
     sequential_image_generation: "disabled",
   });
   assert.deepEqual(VIDEO_PROFILE, { resolution: "720p", ratio: "21:9", duration: 5 });
+  assert.deepEqual(VOICE_PROFILE, {
+    speaker: "en_female_stokie_uranus_bigtts",
+    format: "mp3",
+    sample_rate: 24000,
+  });
   assert.equal(Object.isFrozen(IMAGE_PROFILE), true);
   assert.equal(Object.isFrozen(VIDEO_PROFILE), true);
+  assert.equal(Object.isFrozen(VOICE_PROFILE), true);
   assert.equal(Reflect.set(IMAGE_PROFILE, "size", "1K"), false);
   assert.equal(Reflect.set(VIDEO_PROFILE, "duration", 30), false);
+  assert.equal(Reflect.set(VOICE_PROFILE, "speaker", "other"), false);
 });
 
 test("exposes only Phase 1 job statuses", () => {

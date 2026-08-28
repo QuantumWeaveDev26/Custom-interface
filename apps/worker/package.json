@@ -13,6 +13,7 @@
     "@creative-ai/db": "workspace:*",
     "@creative-ai/modelark-client": "workspace:*",
     "@creative-ai/shared-types": "workspace:*",
+    "@creative-ai/voice-client": "workspace:*",
     "@volcengine/tos-sdk": "^2.9.1",
     "bullmq": "6.3.1",
     "ioredis": "^6.0.0"

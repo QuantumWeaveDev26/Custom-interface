@@ -1,5 +1,5 @@
 export type SubmitJobRequest = {
-  type: "image" | "video";
+  type: "image" | "video" | "voice";
   prompt: string;
 };
 
@@ -19,7 +19,7 @@ export enum JobStatus {
 
 export type JobAssetSummary = {
   id: string;
-  type: "image" | "video";
+  type: "image" | "video" | "audio";
   url: string;
 };
 
@@ -44,6 +44,12 @@ export const VIDEO_PROFILE = Object.freeze({
   duration: 5,
 } as const);
 
+export const VOICE_PROFILE = Object.freeze({
+  speaker: "en_female_stokie_uranus_bigtts",
+  format: "mp3",
+  sample_rate: 24000,
+} as const);
+
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   if (value === null || typeof value !== "object" || Array.isArray(value)) {
     return false;
@@ -63,8 +69,8 @@ export function parseSubmitJobRequest(value: unknown): SubmitJobRequest {
     throw new InvalidJobRequest("Only type and prompt are allowed");
   }
 
-  if (value.type !== "image" && value.type !== "video") {
-    throw new InvalidJobRequest("Type must be image or video");
+  if (value.type !== "image" && value.type !== "video" && value.type !== "voice") {
+    throw new InvalidJobRequest("Type must be image, video, or voice");
   }
 
   if (typeof value.prompt !== "string") {

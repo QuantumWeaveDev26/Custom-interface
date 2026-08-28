@@ -10,7 +10,21 @@ import {
   generationJobOptions,
 } from "@creative-ai/shared-types";
 import { getQueue } from "./queue";
-import { IMAGE_MODEL, IMAGE_COST, VIDEO_MODEL, VIDEO_COST, MAX_IN_FLIGHT_JOBS } from "./config";
+import {
+  IMAGE_MODEL,
+  IMAGE_COST,
+  VIDEO_MODEL,
+  VIDEO_COST,
+  VOICE_MODEL,
+  VOICE_COST,
+  MAX_IN_FLIGHT_JOBS,
+} from "./config";
+
+const MODEL_AND_COST_BY_TYPE = {
+  image: [IMAGE_MODEL, IMAGE_COST],
+  video: [VIDEO_MODEL, VIDEO_COST],
+  voice: [VOICE_MODEL, VOICE_COST],
+} as const;
 
 export async function submitGenerationJob(
   userId: string,
@@ -25,10 +39,7 @@ export async function submitGenerationJob(
   }
 
   // Resolve model and cost from configuration
-  const [model, cost] =
-    parsedRequest.type === "image"
-      ? [IMAGE_MODEL, IMAGE_COST]
-      : [VIDEO_MODEL, VIDEO_COST];
+  const [model, cost] = MODEL_AND_COST_BY_TYPE[parsedRequest.type];
 
   // Submit to database
   const jobRecord = await dbSubmitJob(prismaStore, {

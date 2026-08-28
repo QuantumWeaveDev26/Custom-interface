@@ -59,6 +59,30 @@ test("TOS storage uses the media content type to choose a safe extension", async
   assert.deepEqual(keys, ["u1/j2/video-video-id.mp4"]);
 });
 
+test("TOS storage uploads audio with an mp3 extension", async () => {
+  const keys: string[] = [];
+  const storage = createTosStorage({
+    bucket: "phase-one-assets",
+    client: {
+      putObject: async (input) => {
+        keys.push(input.key);
+        return {};
+      },
+    },
+    randomId: () => "audio-id",
+  });
+
+  await storage.upload({
+    userId: "u1",
+    jobId: "j3",
+    type: "audio",
+    body: new Uint8Array([73, 68, 51]),
+    contentType: "audio/mpeg",
+  });
+
+  assert.deepEqual(keys, ["u1/j3/audio-audio-id.mp3"]);
+});
+
 test("parseTosUrl extracts a strict bucket and key", () => {
   assert.deepEqual(parseTosUrl("tos://phase-one-assets/u1/j1/image-a.png"), {
     bucket: "phase-one-assets",

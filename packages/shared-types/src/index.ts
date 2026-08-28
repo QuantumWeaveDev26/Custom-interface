@@ -3,6 +3,7 @@ export {
   InvalidJobRequest,
   JobStatus,
   VIDEO_PROFILE,
+  VOICE_PROFILE,
   parseSubmitJobRequest,
 } from "./jobs.js";
 export type { JobAssetSummary, JobStatusEvent, SubmitJobRequest } from "./jobs.js";

@@ -2,9 +2,11 @@ import { Prisma, type PrismaClient } from "@prisma/client";
 
 import { prisma } from "./client.js";
 import type {
+  AssetType,
   DatabaseStore,
   DatabaseTransaction,
   JobStatus,
+  PhaseOneJobType,
 } from "./contracts.js";
 
 type PrismaDelegateClient = Prisma.TransactionClient | PrismaClient;
@@ -54,7 +56,7 @@ function toDatabaseTransaction(
         });
         return {
           ...job,
-          type: job.type as "image" | "video",
+          type: job.type as PhaseOneJobType,
           status: job.status as JobStatus,
           inputParams: job.inputParams as { prompt: string },
         };
@@ -89,7 +91,7 @@ function toDatabaseTransaction(
           ? null
           : {
               ...job,
-              type: job.type as "image" | "video",
+              type: job.type as PhaseOneJobType,
               status: job.status as JobStatus,
               inputParams: job.inputParams as { prompt: string },
             };
@@ -98,7 +100,7 @@ function toDatabaseTransaction(
         const jobs = await client.job.findMany({ where, orderBy, take });
         return jobs.map((job) => ({
           ...job,
-          type: job.type as "image" | "video",
+          type: job.type as PhaseOneJobType,
           status: job.status as JobStatus,
           inputParams: job.inputParams as { prompt: string },
         }));
@@ -119,7 +121,7 @@ function toDatabaseTransaction(
         });
         return {
           ...asset,
-          type: asset.type as "image" | "video",
+          type: asset.type as AssetType,
         };
       },
     },

@@ -1,4 +1,5 @@
 import { createModelArkClient } from "@creative-ai/modelark-client";
+import { createVoiceClient } from "@creative-ai/voice-client";
 import {
   claimQueuedJob,
   completeJobWithAsset,
@@ -34,6 +35,8 @@ export interface WorkerRuntimeConfig {
   tosBucket: string;
   imageModel: string;
   videoModel: string;
+  voiceApiKey: string;
+  voiceBaseUrl: string;
 }
 
 export interface WorkerRuntime {
@@ -83,6 +86,13 @@ export async function createWorkerRuntime(
   const modelArk = createModelArkClient({
     apiKey: config.modelArkApiKey,
     baseUrl: config.modelArkBaseUrl,
+    fetch,
+  });
+
+  // Create BytePlus Voice client (genuinely separate product/auth from ModelArk)
+  const voice = createVoiceClient({
+    apiKey: config.voiceApiKey,
+    baseUrl: config.voiceBaseUrl,
     fetch,
   });
 
@@ -142,6 +152,9 @@ export async function createWorkerRuntime(
       createImage: modelArk.createImage.bind(modelArk),
       createVideoTask: modelArk.createVideoTask.bind(modelArk),
       pollVideoTaskUntilDone: modelArk.pollVideoTaskUntilDone.bind(modelArk),
+    },
+    voice: {
+      createSpeech: voice.createSpeech.bind(voice),
     },
     download: downloadUrl,
     storage,

@@ -90,6 +90,9 @@ importers:
       '@creative-ai/shared-types':
         specifier: workspace:*
         version: link:../../packages/shared-types
+      '@creative-ai/voice-client':
+        specifier: workspace:*
+        version: link:../../packages/voice-client
       '@volcengine/tos-sdk':
         specifier: ^2.9.1
         version: 2.9.1

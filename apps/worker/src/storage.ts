@@ -34,9 +34,10 @@ function requireKeySegment(value: string, name: string): string {
   return value;
 }
 
-function extensionFor(input: StorageUploadInput): "png" | "mp4" {
+function extensionFor(input: StorageUploadInput): "png" | "mp4" | "mp3" {
   if (input.type === "image" && input.contentType === "image/png") return "png";
   if (input.type === "video" && input.contentType === "video/mp4") return "mp4";
+  if (input.type === "audio" && input.contentType === "audio/mpeg") return "mp3";
   throw new Error(`Unsupported ${input.type} content type`);
 }
 

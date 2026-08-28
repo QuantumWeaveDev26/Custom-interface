@@ -7,6 +7,7 @@ import {
   IMAGE_PROFILE,
   JobStatus,
   VIDEO_PROFILE,
+  VOICE_PROFILE,
   type JobStatusEvent,
 } from "@creative-ai/shared-types";
 
@@ -70,7 +71,7 @@ async function failAndPublish(
 
 function completeEvent(
   jobId: string,
-  type: "image" | "video",
+  type: "image" | "video" | "audio",
   assetId: string,
 ): JobStatusEvent {
   return {
@@ -134,6 +135,34 @@ async function processImage(
     storageUrl,
   });
   return completeEvent(job.id, "image", completed.asset.id);
+}
+
+async function processVoice(
+  dependencies: GenerationProcessorDependencies,
+  job: JobRecord,
+): Promise<JobStatusEvent> {
+  const result = await dependencies.voice.createSpeech({
+    req_params: {
+      text: job.inputParams.prompt,
+      speaker: VOICE_PROFILE.speaker,
+      audio_params: {
+        format: VOICE_PROFILE.format,
+        sample_rate: VOICE_PROFILE.sample_rate,
+      },
+    },
+  });
+  const storageUrl = await dependencies.storage.upload({
+    userId: job.userId,
+    jobId: job.id,
+    type: "audio",
+    body: result.audio,
+    contentType: result.contentType,
+  });
+  const completed = await dependencies.completeJobWithAsset(job.id, {
+    type: "audio",
+    storageUrl,
+  });
+  return completeEvent(job.id, "audio", completed.asset.id);
 }
 
 function assertSucceededVideo(
@@ -216,8 +245,8 @@ async function processGeneration(
     ) {
       return null;
     }
-    if (currentJob.type === "image") {
-      throw new Error("An image job was already processing");
+    if (currentJob.type === "image" || currentJob.type === "voice") {
+      throw new Error(`A ${currentJob.type} job was already processing`);
     }
     if (currentJob.externalTaskId === null) {
       throw new Error("A processing video has no persisted provider task ID");
@@ -228,9 +257,9 @@ async function processGeneration(
     await dependencies.publish({ jobId, status: JobStatus.Processing });
   }
 
-  return job.type === "image"
-    ? processImage(dependencies, job)
-    : processVideo(dependencies, job, resumedVideoTaskId);
+  if (job.type === "image") return processImage(dependencies, job);
+  if (job.type === "voice") return processVoice(dependencies, job);
+  return processVideo(dependencies, job, resumedVideoTaskId);
 }
 
 export function createGenerationProcessor(

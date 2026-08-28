@@ -168,6 +168,11 @@ function createVideoHarness(
         return options.pollResult ?? videoResponse();
       },
     },
+    voice: {
+      createSpeech: async () => {
+        throw new Error("video flow must not call voice");
+      },
+    },
     download: async (url) => {
       operations.push(`download:${url}`);
       return {
@@ -275,6 +280,11 @@ function createImageFailureHarness(options: ImageFailureHarnessOptions): {
         throw new Error("image flow must not poll");
       },
     },
+    voice: {
+      createSpeech: async () => {
+        throw new Error("image flow must not call voice");
+      },
+    },
     download: async () => {
       downloadCalls += 1;
       if (options.downloadError !== undefined) throw options.downloadError;
@@ -370,6 +380,11 @@ test("claims an image job, creates once without polling, and publishes after dur
       pollVideoTaskUntilDone: async () => {
         pollCalls += 1;
         throw new Error("image flow must not poll");
+      },
+    },
+    voice: {
+      createSpeech: async () => {
+        throw new Error("image flow must not call voice");
       },
     },
     download: async (url) => {
@@ -468,6 +483,11 @@ test("an already-processing image fails and refunds without replaying createImag
       },
       pollVideoTaskUntilDone: async () => {
         throw new Error("image flow must not poll");
+      },
+    },
+    voice: {
+      createSpeech: async () => {
+        throw new Error("image flow must not call voice");
       },
     },
     download: async () => {
