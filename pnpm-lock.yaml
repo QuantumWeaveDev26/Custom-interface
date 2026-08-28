@@ -125,6 +125,8 @@ importers:
 
   packages/shared-types: {}
 
+  packages/voice-client: {}
+
 packages:
 
   '@alloc/quick-lru@5.2.0':
