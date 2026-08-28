@@ -164,3 +164,119 @@ test("HTTP failures expose status and at most 1000 response characters", async (
     },
   );
 });
+
+test("createAudioGeneration posts to tts/create with X-Api-Key and no resource header", async () => {
+  const calls: Array<{ input: string; init?: RequestInit }> = [];
+  const client = createVoiceClient({
+    apiKey: "secret-key",
+    baseUrl: BASE_URL,
+    fetch: asFetch(async (input, init) => {
+      calls.push({ input: String(input), ...(init === undefined ? {} : { init }) });
+      return new Response(new Uint8Array([5, 6, 7]), {
+        status: 200,
+        headers: { "Content-Type": "audio/mpeg" },
+      });
+    }),
+  });
+
+  const request = {
+    model: "seed-audio-1.0",
+    text_prompt: "A dramatic announcer voice for a football stadium",
+    audio_config: { format: "mp3" as const, sample_rate: 48000 },
+  };
+
+  const result = await client.createAudioGeneration(request);
+
+  assert.deepEqual(Array.from(result.audio), [5, 6, 7]);
+  assert.equal(calls[0]?.input, `${BASE_URL}/tts/create`);
+  const headers = new Headers(calls[0]?.init?.headers);
+  assert.equal(headers.get("X-Api-Key"), "secret-key");
+  assert.equal(headers.has("X-Api-Resource-Id"), false);
+  assert.equal(calls[0]?.init?.body, JSON.stringify(request));
+});
+
+test("cloneVoice posts to tts/voice_clone with a generated request ID", async () => {
+  const calls: Array<{ input: string; init?: RequestInit }> = [];
+  const client = createVoiceClient({
+    apiKey: "secret-key",
+    baseUrl: BASE_URL,
+    generateRequestId: () => "fixed-request-id",
+    fetch: asFetch(async (input, init) => {
+      calls.push({ input: String(input), ...(init === undefined ? {} : { init }) });
+      return Response.json({ status: "ok" });
+    }),
+  });
+
+  const request = {
+    speaker_id: "my-voice",
+    audio: { data: "base64data", format: "wav" as const },
+    language: 1,
+    extra_params: { demo_text: "hello" },
+  };
+
+  const result = await client.cloneVoice(request);
+
+  assert.deepEqual(result, { status: "ok" });
+  assert.equal(calls[0]?.input, `${BASE_URL}/tts/voice_clone`);
+  const headers = new Headers(calls[0]?.init?.headers);
+  assert.equal(headers.get("X-Api-Key"), "secret-key");
+  assert.equal(headers.get("X-Api-Request-Id"), "fixed-request-id");
+});
+
+test("submitTranscription posts to auc/bigmodel/submit and returns the request ID", async () => {
+  const calls: Array<{ input: string; init?: RequestInit }> = [];
+  const client = createVoiceClient({
+    apiKey: "secret-key",
+    baseUrl: BASE_URL,
+    generateRequestId: () => "submit-id-123",
+    fetch: asFetch(async (input, init) => {
+      calls.push({ input: String(input), ...(init === undefined ? {} : { init }) });
+      return Response.json({ acknowledged: true });
+    }),
+  });
+
+  const request = {
+    user: { uid: "demo" },
+    audio: {
+      url: "https://example.test/audio.mp3",
+      language: "en-US",
+      format: "wav",
+      codec: "raw",
+      rate: 16000,
+      bits: 16,
+      channel: 1,
+    },
+    request: { model_name: "bigmodel", show_utterances: true },
+  };
+
+  const result = await client.submitTranscription(request);
+
+  assert.equal(result.requestId, "submit-id-123");
+  assert.deepEqual(result.raw, { acknowledged: true });
+  assert.equal(calls[0]?.input, `${BASE_URL}/auc/bigmodel/submit`);
+  const headers = new Headers(calls[0]?.init?.headers);
+  assert.equal(headers.get("x-api-key"), "secret-key");
+  assert.equal(headers.get("X-Api-Resource-Id"), "volc.seedasr.auc");
+  assert.equal(headers.get("X-Api-Request-Id"), "submit-id-123");
+  assert.equal(headers.get("X-Api-Sequence"), "-1");
+});
+
+test("queryTranscription posts to auc/bigmodel/query reusing the same request ID", async () => {
+  const calls: Array<{ input: string; init?: RequestInit }> = [];
+  const client = createVoiceClient({
+    apiKey: "secret-key",
+    baseUrl: BASE_URL,
+    fetch: asFetch(async (input, init) => {
+      calls.push({ input: String(input), ...(init === undefined ? {} : { init }) });
+      return Response.json({ result: "transcript text" });
+    }),
+  });
+
+  const result = await client.queryTranscription("submit-id-123");
+
+  assert.deepEqual(result, { result: "transcript text" });
+  assert.equal(calls[0]?.input, `${BASE_URL}/auc/bigmodel/query`);
+  const headers = new Headers(calls[0]?.init?.headers);
+  assert.equal(headers.get("X-Api-Request-Id"), "submit-id-123");
+  assert.equal(calls[0]?.init?.body, "{}");
+});
