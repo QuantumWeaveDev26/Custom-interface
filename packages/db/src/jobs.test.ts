@@ -245,6 +245,19 @@ function fakeTransaction(
           (asset) =>
             where.id.in.includes(asset.id) && asset.userId === where.userId,
         ),
+      createUploaded: async ({ data }) => {
+        const asset: AssetRecord = {
+          id: `asset-${state.nextAssetId++}`,
+          jobId: null,
+          userId: data.userId,
+          type: data.type,
+          storageUrl: data.storageUrl,
+          thumbnailUrl: null,
+          createdAt: FIXED_TIME,
+        };
+        state.assets.push(asset);
+        return asset;
+      },
     },
     jobInputAsset: {
       createMany: async ({ data }) => {

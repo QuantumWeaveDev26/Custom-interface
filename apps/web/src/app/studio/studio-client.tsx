@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useReducer, useRef } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import {
   IMAGE_SIZES,
   VIDEO_RATIOS,
@@ -56,6 +56,49 @@ export function StudioClient({
 }: StudioClientProps) {
   const [state, dispatch] = useReducer(studioReducer, INITIAL_STUDIO_STATE);
   const eventSourceRef = useRef<EventSource | null>(null);
+
+  // Images uploaded during this session, newest first. Kept in component state
+  // rather than refetching the page so the picker updates immediately.
+  const [uploadedIds, setUploadedIds] = useState<string[]>([]);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const pickableImageIds = useMemo(
+    () => [...uploadedIds, ...recentImageIds],
+    [uploadedIds, recentImageIds],
+  );
+
+  const handleUpload = useCallback(
+    async (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      // Reset immediately so re-picking the same file still fires onChange.
+      event.target.value = "";
+      if (!file) return;
+
+      setUploadError(null);
+      setUploading(true);
+      try {
+        const formData = new FormData();
+        formData.append("image", file);
+        const response = await fetch("/api/uploads", {
+          method: "POST",
+          body: formData,
+        });
+        if (!response.ok) {
+          const body = (await response.json().catch(() => ({}))) as { error?: string };
+          setUploadError(body.error ?? "Upload failed.");
+          return;
+        }
+        const { assetId } = (await response.json()) as { assetId: string };
+        setUploadedIds((previous) => [assetId, ...previous]);
+        dispatch({ type: "SET_FIRST_FRAME", assetId });
+      } catch {
+        setUploadError("Could not reach the server.");
+      } finally {
+        setUploading(false);
+      }
+    },
+    [],
+  );
 
   // Built once here and reused for both the cost preview and the request body,
   // so the price shown can never drift from the price submitted.
@@ -256,13 +299,39 @@ export function StudioClient({
         </div>
       )}
 
-      {state.mode === "video" && recentImageIds.length > 0 && (
+      {state.mode === "video" && (
         <div className="mt-3">
           <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-[var(--text-faint)]">
             Animate an image <span className="normal-case tracking-normal">(optional)</span>
           </p>
           <div className="flex gap-2 overflow-x-auto pb-1">
-            {recentImageIds.map((assetId) => {
+            <label
+              htmlFor="upload-image"
+              className={`flex h-16 w-16 shrink-0 flex-col items-center justify-center gap-0.5 rounded-lg border border-dashed text-[10px] transition-colors ${
+                isBusy || uploading
+                  ? "cursor-not-allowed opacity-50"
+                  : "cursor-pointer hover:border-[var(--border-strong)]"
+              }`}
+              style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}
+            >
+              {uploading ? (
+                <span className="spinner h-4 w-4" aria-hidden="true" />
+              ) : (
+                <>
+                  <span className="text-base leading-none">+</span>
+                  <span>Upload</span>
+                </>
+              )}
+            </label>
+            <input
+              id="upload-image"
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              onChange={handleUpload}
+              disabled={isBusy || uploading}
+              className="sr-only"
+            />
+            {pickableImageIds.map((assetId) => {
               const selected = state.firstFrameAssetId === assetId;
               return (
                 <button
@@ -295,6 +364,9 @@ export function StudioClient({
               );
             })}
           </div>
+          {uploadError !== null && (
+            <p className="mt-1.5 text-[11px] text-[var(--danger)]">{uploadError}</p>
+          )}
           {state.firstFrameAssetId !== null && (
             <p className="mt-1.5 text-[11px] text-[var(--text-muted)]">
               This image becomes the first frame. Your prompt describes the motion.

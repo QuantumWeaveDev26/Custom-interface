@@ -91,8 +91,11 @@ model Job {
 
 model Asset {
   id           String   @id @default(cuid())
-  jobId        String
-  job          Job      @relation(fields: [jobId], references: [id])
+  // Null for user-uploaded assets: they have no generating job. Every asset
+  // still belongs to exactly one user via userId, which is what ownership
+  // checks read — jobId is provenance, not authorization.
+  jobId        String?
+  job          Job?     @relation(fields: [jobId], references: [id])
   userId       String
   type         String // "image" | "video" | "audio"
   storageUrl   String

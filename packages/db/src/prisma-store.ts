@@ -183,6 +183,16 @@ function toDatabaseTransaction(
           type: asset.type as AssetType,
         }));
       },
+      createUploaded: async ({ data }) => {
+        const asset = await client.asset.create({
+          data: {
+            userId: data.userId,
+            type: data.type,
+            storageUrl: data.storageUrl,
+          },
+        });
+        return { ...asset, type: asset.type as AssetType };
+      },
     },
     jobInputAsset: {
       createMany: async ({ data }) =>

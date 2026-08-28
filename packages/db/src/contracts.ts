@@ -78,7 +78,8 @@ export interface JobRecord {
 
 export interface AssetRecord {
   id: string;
-  jobId: string;
+  /** Null for user-uploaded assets — they have no generating job. */
+  jobId: string | null;
   userId: string;
   type: AssetType;
   storageUrl: string;
@@ -204,6 +205,14 @@ export interface DatabaseTransaction extends WelcomeGrantTransaction {
     findMany(args: {
       where: { id: { in: string[] }; userId: string };
     }): Promise<AssetRecord[]>;
+    /** Creates an asset with no generating job (a user upload). */
+    createUploaded(args: {
+      data: {
+        userId: string;
+        type: AssetType;
+        storageUrl: string;
+      };
+    }): Promise<AssetRecord>;
   };
   jobInputAsset: {
     createMany(args: {
