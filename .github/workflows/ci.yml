@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: typecheck / test / build
+    runs-on: ubuntu-latest
+
+    env:
+      # Dummy values only — no real credentials.
+      #
+      # These exist because a few modules read env at import time (notably
+      # packages/db instantiates PrismaClient at module scope), and Next.js
+      # imports route modules while collecting page data during `next build`.
+      # Nothing here contacts a real service: typecheck, unit tests, and build
+      # are all offline. Every test injects its own fetch, so no live API call
+      # is ever made in CI.
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+      REDIS_URL: redis://localhost:6379
+      NEXTAUTH_SECRET: ci-placeholder-secret-not-a-real-value
+      NEXTAUTH_URL: http://localhost:3000
+      ARK_API_KEY: ci-placeholder
+      BYTEPLUS_VOICE_API_KEY: ci-placeholder
+      TOS_ACCESS_KEY: ci-placeholder
+      TOS_SECRET_KEY: ci-placeholder
+      TOS_BUCKET: ci-placeholder-bucket
+      TOS_ENDPOINT: https://tos-ci.invalid
+      AUTH_RESEND_KEY: ci-placeholder
+      AUTH_EMAIL_FROM: ci@example.invalid
+      GOOGLE_CLIENT_ID: ci-placeholder
+      GOOGLE_CLIENT_SECRET: ci-placeholder
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Version comes from the "packageManager" field in package.json.
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Not part of the turbo pipeline, but @prisma/client's generated types are
+      # required before anything typechecks.
+      - name: Generate Prisma client
+        run: pnpm db:generate
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
