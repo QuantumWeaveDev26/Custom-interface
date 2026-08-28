@@ -86,8 +86,21 @@ see the setup guidance in this conversation if Docker isn't installed):
 docker compose -f infra/docker-compose.yml up -d  # Starts PostgreSQL and Redis
 ```
 
-Run dev servers (two terminals — the worker has no watch/dev mode, so rebuild
-it after each change):
+Run dev servers (two terminals).
+
+⚠️ **The worker has no watch mode. After ANY change under `apps/worker` or a
+package it depends on, you must rebuild *and restart* it.** Rebuilding alone is
+not enough — the old process keeps running the old code in memory, and the
+symptom is silent: the feature simply does nothing while everything looks fine.
+This has caused real debugging sessions on this project more than once. To
+check what a running worker is actually executing, compare its start time to the
+build output:
+
+```bash
+# process start time vs compiled file mtime — start time must be LATER
+powershell -Command "Get-CimInstance Win32_Process -Filter \"Name = 'node.exe'\" | Where-Object { $_.CommandLine -like '*dist/index.js*' } | Select ProcessId, CreationDate"
+```
+
 ```bash
 pnpm --filter @creative-ai/web dev                                     # Next.js on :3000
 pnpm --filter @creative-ai/worker build && pnpm --filter @creative-ai/worker start  # BullMQ consumer

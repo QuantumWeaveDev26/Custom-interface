@@ -135,6 +135,16 @@ async function processImage(
     referenceUrls.push(await dependencies.signAssetUrl(asset.storageUrl));
   }
 
+  if (referenceUrls.length > 0) {
+    // Logged because a silently-ignored reference looks identical to a working
+    // one from the UI: you get a plausible image that just isn't your subject.
+    // This line is how you tell "references weren't sent" from "the model
+    // underweighted them".
+    console.log(
+      `Job ${job.id}: sending ${referenceUrls.length} reference image(s)`,
+    );
+  }
+
   const response = await dependencies.modelArk.createImage({
     model: job.model,
     prompt: job.inputParams.prompt,
