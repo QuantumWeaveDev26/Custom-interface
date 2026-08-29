@@ -44,7 +44,7 @@ and saw the correct result.
 | Image generation | `/studio` | ✅ Verified live |
 | Video generation | `/studio` | ✅ Verified live |
 | Gallery | `/gallery` | ✅ Verified live |
-| Director agent (brief → shots → video) | `/director` | ✅ Verified live (7-shot plan) |
+| Director agent (brief → shots → video) | `/director` | ✅ Verified live (7-shot plan). Lens/look direction added 2026-08-29, **not yet re-checked in the browser**. |
 | Marketing agent (URL → ad) | `/marketing` | ✅ Verified live (apple.com/airpods-pro) |
 | Voice — Standard TTS | `/studio` (Voice tab) | ✅ Verified live |
 | Design system (dark theme) | all pages | ✅ Verified live |
@@ -230,7 +230,7 @@ previous agent (this project has been burned by an agent self-reporting
 
 ```bash
 pnpm typecheck   # all 8 packages
-pnpm test        # 307 tests, all must pass
+pnpm test        # 315 tests, all must pass
 pnpm build       # full monorepo build
 ```
 

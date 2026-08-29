@@ -197,10 +197,12 @@ order-preserving), 8 lens presets with focal length and aperture, 10 look
 presets — composed onto the user's description by `composeShotPrompt`. Studio
 exposes all three and shows the composed result before submitting.
 
-**Still open:** presets are Studio-only. The Director agent still picks a single
-`cameraPresetId` per shot and never sets lens or look, so its output is less
-directed than a hand-built shot. Wiring the new axes into the Director's tool
-schema is the follow-on.
+**Director wired in ✅ DONE** (2026-08-29, `fd20589`) — it now picks a lens per
+shot and one look for the whole plan, composing through the same
+`composeShotPrompt` Studio uses so the two cannot drift.
+
+**Still open:** Director picks one camera move per shot, never a stack of two.
+Marketing does not use the grammar at all.
 
 ### C6 — Video extension and editing ✅ DONE (2026-08-29, `cb6d918`)
 Studio Video mode takes up to three of the user's clips. One extends; two or
