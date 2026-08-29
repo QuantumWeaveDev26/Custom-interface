@@ -69,8 +69,11 @@ server modules now take injected dependencies and are covered: user-scoped
 storage keys, signed URLs never leaking the private tos:// location, upload
 ordering, and the `speaker_id: ""` regression guard.
 
-**Still open:** route handlers themselves (auth rejection) are untested; the
-logic beneath them is covered.
+**Route auth covered structurally** (2026-08-29, `a59c099`): a test walks
+`src/app/api` and asserts every `route.ts` checks the session and returns 401,
+plus a second that no route trusts a caller-supplied `userId`. Chosen over
+per-handler tests because the risk is a *new* route shipping unguarded, which
+per-handler tests cannot catch.
 
 ### F4 — Deployment path
 Nothing is deployed. `infra/` has local docker-compose only.
@@ -262,8 +265,8 @@ text; the file arrives under `content.file_url`. The one thing on this roadmap
 Higgsfield does not offer.
 
 **Still open:**
-- **Image-to-3D is not wired.** The model supports it; the input shape is
-  presumed to be an `image_url` content item but was never confirmed.
+- ~~Image-to-3D~~ ✅ DONE (2026-08-29, `a59c099`) — confirmed live and wired:
+  an `image_url` item beside the text, no role. Attach a photo in the 3D tab.
 - Output is glb only. obj/stl/fbx/usdz are documented but the selecting flag is
   unknown.
 - `--mesh_mode` and `--addons` are not exposed - only one sample value each is
