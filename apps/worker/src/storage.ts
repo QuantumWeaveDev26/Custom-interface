@@ -34,10 +34,23 @@ function requireKeySegment(value: string, name: string): string {
   return value;
 }
 
-function extensionFor(input: StorageUploadInput): "png" | "mp4" | "mp3" {
+// A glb file begins with the ASCII magic "glTF" (glTF binary container).
+const GLB_MAGIC = "glTF";
+
+function extensionFor(input: StorageUploadInput): "png" | "mp4" | "mp3" | "glb" {
   if (input.type === "image" && input.contentType === "image/png") return "png";
   if (input.type === "video" && input.contentType === "video/mp4") return "mp4";
   if (input.type === "audio" && input.contentType === "audio/mpeg") return "mp3";
+  if (input.type === "model3d") {
+    // The provider serves meshes as "binary/octet-stream", which says nothing
+    // about the format. The magic bytes do, so they are what is checked — the
+    // same reasoning as the upload path in C3.
+    const magic = Buffer.from(input.body.subarray(0, 4)).toString("ascii");
+    if (magic !== GLB_MAGIC) {
+      throw new Error(`Expected a glb mesh, got magic bytes ${JSON.stringify(magic)}`);
+    }
+    return "glb";
+  }
   throw new Error(`Unsupported ${input.type} content type`);
 }
 

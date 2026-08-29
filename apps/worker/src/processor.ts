@@ -7,6 +7,7 @@ import type {
 import {
   AUDIO_GENERATION_PROFILE,
   IMAGE_OUTPUT_PROFILE,
+  MODEL3D_QUALITY_PRESETS,
   JobStatus,
   VOICE_PROFILE,
   type InputAssetRole,
@@ -83,7 +84,7 @@ async function failAndPublish(
 
 function completeEvent(
   jobId: string,
-  type: "image" | "video" | "audio",
+  type: "image" | "video" | "audio" | "model3d",
   assetIds: readonly string[],
 ): JobStatusEvent {
   return {
@@ -204,6 +205,79 @@ async function processImage(
     "image",
     completed.assets.map((asset) => asset.id),
   );
+}
+
+/**
+ * Text-to-3D (MODELARK_API_REFERENCE.md, R5).
+ *
+ * Reuses the video task endpoint — the difference is the model, the settings
+ * carried as CLI-style flags inside the prompt text rather than as JSON fields,
+ * and the finished file arriving under `content.file_url` instead of
+ * `video_url`.
+ *
+ * Only flags with a confirmed sample value are sent. `--material PBR` came from
+ * the provider's own sample and `--quality_override` is bounded by the
+ * documented polygon range; nothing else is guessed at, because an unaccepted
+ * value fails after the user has already been charged.
+ */
+async function processModel3d(
+  dependencies: GenerationProcessorDependencies,
+  job: JobRecord,
+  resumedTaskId: string | null,
+): Promise<JobStatusEvent> {
+  const params = job.inputParams.params;
+  if (params.type !== "model3d") {
+    throw new Error(`3D job ${job.id} has ${params.type} params`);
+  }
+
+  let externalTaskId = resumedTaskId;
+  if (externalTaskId === null) {
+    const budget = MODEL3D_QUALITY_PRESETS[params.quality];
+    const createdTask = await dependencies.modelArk.createVideoTask({
+      model: job.model,
+      content: [
+        {
+          type: "text",
+          text: `${job.inputParams.prompt} --material PBR --quality_override ${budget}`,
+        },
+      ],
+    });
+    if (createdTask.id.length === 0) {
+      throw new Error("3D task creation returned an empty task ID");
+    }
+    externalTaskId = createdTask.id;
+    // Persisted before polling so a crash mid-generation resumes the existing
+    // task instead of paying for a second one.
+    await dependencies.saveExternalTaskId(job.id, externalTaskId);
+  }
+
+  const task = await dependencies.modelArk.pollVideoTaskUntilDone(externalTaskId);
+  if (task.status === "failed") {
+    throw new ProviderResponseError(
+      task.error?.code ?? "model3d_failed",
+      task.error?.message ?? "3D generation failed",
+    );
+  }
+  if (task.status !== "succeeded") {
+    throw new Error(`3D poll returned non-terminal status ${task.status}`);
+  }
+  if (task.content.file_url.length === 0) {
+    throw new Error("3D response has no file URL");
+  }
+
+  // The provider's URL is pre-signed and expires in 7 days, so the mesh is
+  // copied into our own storage rather than linked to.
+  const media = await dependencies.download(task.content.file_url);
+  const storageUrl = await dependencies.storage.upload({
+    userId: job.userId,
+    jobId: job.id,
+    type: "model3d",
+    ...media,
+  });
+  const completed = await dependencies.completeJobWithAssets(job.id, [
+    { type: "model3d", storageUrl },
+  ]);
+  return completeEvent(job.id, "model3d", [completed.assets[0]!.id]);
 }
 
 async function processVoice(
@@ -387,7 +461,9 @@ async function processGeneration(
       throw new Error(`A ${currentJob.type} job was already processing`);
     }
     if (currentJob.externalTaskId === null) {
-      throw new Error("A processing video has no persisted provider task ID");
+      throw new Error(
+        `A processing ${currentJob.type} job has no persisted provider task ID`,
+      );
     }
     job = currentJob;
     resumedVideoTaskId = currentJob.externalTaskId;
@@ -397,6 +473,9 @@ async function processGeneration(
 
   if (job.type === "image") return processImage(dependencies, job);
   if (job.type === "voice") return processVoice(dependencies, job);
+  if (job.type === "model3d") {
+    return processModel3d(dependencies, job, resumedVideoTaskId);
+  }
   return processVideo(dependencies, job, resumedVideoTaskId);
 }
 

@@ -15,7 +15,7 @@ export interface SubmitJobDependencies {
   store: DatabaseStore;
   /** Only the one method used, so tests don't need a whole BullMQ Queue. */
   enqueue(jobId: string): Promise<unknown>;
-  modelByType: Readonly<Record<"image" | "video" | "voice", string>>;
+  modelByType: Readonly<Record<"image" | "video" | "voice" | "model3d", string>>;
   pricing: CreditPricing;
   maxInFlight: number;
 }

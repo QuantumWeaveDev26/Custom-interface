@@ -49,12 +49,12 @@ export interface WelcomeGrantTransaction {
   };
 }
 
-export type PhaseOneJobType = "image" | "video" | "voice";
+export type PhaseOneJobType = "image" | "video" | "voice" | "model3d";
 export type JobStatus = "queued" | "processing" | "complete" | "failed";
 // A voice job produces an "audio" asset, not a "voice" one -- the job describes the
 // generation type, the asset describes the resulting media format. Genuinely different
 // sets, not a type alias.
-export type AssetType = "image" | "video" | "audio";
+export type AssetType = "image" | "video" | "audio" | "model3d";
 
 /** What a job was actually asked to generate. Persisted, never recomputed. */
 export interface JobInputParams {

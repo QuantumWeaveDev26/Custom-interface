@@ -3,6 +3,7 @@ import { Prisma, type PrismaClient } from "@prisma/client";
 import { prisma } from "./client.js";
 import {
   DEFAULT_IMAGE_PARAMS,
+  DEFAULT_MODEL3D_PARAMS,
   DEFAULT_VIDEO_PARAMS,
   type GenerationParams,
   type InputAssetRole,
@@ -55,6 +56,9 @@ function normalizeInputParams(
   }
   if (jobType === "video") {
     return { prompt, params: DEFAULT_VIDEO_PARAMS };
+  }
+  if (jobType === "model3d") {
+    return { prompt, params: DEFAULT_MODEL3D_PARAMS };
   }
   return {
     prompt,

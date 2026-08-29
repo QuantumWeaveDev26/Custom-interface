@@ -1,4 +1,5 @@
 import { MAX_BATCH_IMAGES } from "@creative-ai/shared-types";
+import type { Model3dQuality } from "@creative-ai/shared-types";
 import type {
   CameraPresetId,
   LensPresetId,
@@ -10,13 +11,13 @@ import type {
   VideoResolution,
 } from "@creative-ai/shared-types";
 
-export type StudioMode = "image" | "video" | "voice";
+export type StudioMode = "image" | "video" | "voice" | "model3d";
 export type VoiceStyle = "standard" | "expressive";
 export type { ImageSize, VideoRatio, VideoResolution };
 
 export interface StudioAsset {
   id: string;
-  type: "image" | "video" | "audio";
+  type: "image" | "video" | "audio" | "model3d";
   url: string;
 }
 
@@ -41,6 +42,8 @@ export interface StudioState {
   /** Asset id the video should end on. Together with a first frame this is a
    * keyframe transition: generate the motion between two stills. */
   lastFrameAssetId: string | null;
+  /** Polygon budget preset for a 3D mesh. */
+  model3dQuality: Model3dQuality;
   /** How many images a single image job should return (batch). */
   imageCount: number;
   /**
@@ -75,6 +78,7 @@ export const INITIAL_STUDIO_STATE: StudioState = {
   voiceStyle: "standard",
   imageSize: "4K",
   imageCount: 1,
+  model3dQuality: "standard",
   resolution: "720p",
   ratio: "21:9",
   durationSeconds: 5,
@@ -97,6 +101,7 @@ export type StudioAction =
   | { type: "SET_VOICE_STYLE"; voiceStyle: VoiceStyle }
   | { type: "SET_IMAGE_SIZE"; imageSize: ImageSize }
   | { type: "SET_IMAGE_COUNT"; imageCount: number }
+  | { type: "SET_MODEL3D_QUALITY"; quality: Model3dQuality }
   | { type: "SET_RESOLUTION"; resolution: VideoResolution }
   | { type: "SET_RATIO"; ratio: VideoRatio }
   | { type: "SET_DURATION"; durationSeconds: number }
@@ -160,6 +165,8 @@ export function studioReducer(
       return { ...state, imageSize: action.imageSize };
     case "SET_IMAGE_COUNT":
       return { ...state, imageCount: action.imageCount };
+    case "SET_MODEL3D_QUALITY":
+      return { ...state, model3dQuality: action.quality };
     case "SET_RESOLUTION":
       return { ...state, resolution: action.resolution };
     case "SET_RATIO":

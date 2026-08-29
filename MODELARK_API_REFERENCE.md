@@ -562,13 +562,39 @@ flags, after the description.
 accepted range for every flag is not documented anywhere. Treat any other value
 as unconfirmed until a live call proves it.
 
+### Poll response — CONFIRMED LIVE 2026-08-29
+
+`GET /contents/generations/tasks/{id}`, same as video. The file arrives under
+**`content.file_url`**, not `video_url`:
+
+```json
+{
+  "id": "cgt-20260829181636-sh5zj",
+  "model": "hyper3d-gen2-260112",
+  "status": "succeeded",
+  "content": { "file_url": "https://ark-common-storage-prod-ap-southeast-1.tos-...glb?X-Tos-Signature=..." },
+  "usage": { "completion_tokens": 30000, "total_tokens": 30000 },
+  "created_at": 1787998596,
+  "updated_at": 1787998694
+}
+```
+
+Observed on that call:
+- **~98 seconds** from create to `succeeded`. Poll budgets tuned for image or
+  short video are too short.
+- **30,000 tokens** for one chair with only `--material PBR` set. Against the
+  150K free quota that is roughly five generations, so this is not a capability
+  to leave un-metered.
+- The returned URL is pre-signed and **expires in 604,800 seconds (7 days)** —
+  longer than video's 24 hours, but still transient. Download and re-store it.
+- Extension is `.glb`. The other documented formats (obj/stl/fbx/usdz) were not
+  requested, and which flag selects them is still unknown.
+
 ### Still unconfirmed
 
-- **The poll response shape.** It is the same endpoint family as video, so
-  `GET /contents/generations/tasks/{id}` almost certainly applies, but the
-  `content` payload for a 3D task will not be `video_url` — the Model list says
-  output is glb / obj / stl / fbx / usdz. The field name carrying that file is
-  unknown. **Confirm with one live call before writing the download path.**
+- Which flag selects an output format other than glb.
+- Accepted values for `--material`, `--mesh_mode`, and `--addons` beyond the one
+  sample value each.
 - Image-to-3D input shape (presumably an `image_url` content item alongside the
   text, matching video).
 

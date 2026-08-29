@@ -64,6 +64,29 @@ export const IMAGE_SIZES: readonly ImageSize[] = Object.freeze([
 ] as const);
 
 /** Discriminated by job type so every branch is exhaustively checkable. */
+/**
+ * Polygon budget for a 3D mesh, passed as `--quality_override` (R5).
+ *
+ * The Model list documents a triangular mesh range of 500 to 1,000,000. Only
+ * the top of that range appears in the provider's own sample, so the presets
+ * below stay inside the documented bounds rather than inventing values — the
+ * project has already shipped one setting ("1K" image size) that the provider
+ * had never accepted.
+ */
+export const MODEL3D_QUALITY_PRESETS = Object.freeze({
+  draft: 100_000,
+  standard: 500_000,
+  high: 1_000_000,
+} as const);
+
+export type Model3dQuality = keyof typeof MODEL3D_QUALITY_PRESETS;
+
+export const MODEL3D_QUALITIES: readonly Model3dQuality[] = Object.freeze([
+  "draft",
+  "standard",
+  "high",
+] as const);
+
 export type GenerationParams =
   | { type: "image"; size: ImageSize; count: number }
   | {
@@ -72,7 +95,8 @@ export type GenerationParams =
       ratio: VideoRatio;
       durationSeconds: number;
     }
-  | { type: "voice"; style: VoiceStyle };
+  | { type: "voice"; style: VoiceStyle }
+  | { type: "model3d"; quality: Model3dQuality };
 
 // --- Model capabilities -----------------------------------------------------
 
@@ -131,6 +155,9 @@ export function videoCapabilitiesFor(model: string): VideoModelCapabilities {
 // omits parameters behaves identically to before this file existed.
 export const DEFAULT_IMAGE_PARAMS: Extract<GenerationParams, { type: "image" }> =
   Object.freeze({ type: "image", size: "4K", count: 1 });
+
+export const DEFAULT_MODEL3D_PARAMS: Extract<GenerationParams, { type: "model3d" }> =
+  Object.freeze({ type: "model3d", quality: "standard" });
 
 export const DEFAULT_VIDEO_PARAMS: Extract<GenerationParams, { type: "video" }> =
   Object.freeze({
@@ -210,6 +237,8 @@ export interface CreditPricing {
   voiceCredits: number;
   /** Reference rate; scaled by duration and resolution. */
   videoCreditsPerSecond720p: number;
+  /** Base rate for a 3D mesh; scaled by the polygon budget. */
+  model3dCredits: number;
 }
 
 /**
@@ -230,6 +259,13 @@ export function creditCostFor(
   }
   if (params.type === "voice") {
     return Math.max(1, Math.ceil(pricing.voiceCredits));
+  }
+  if (params.type === "model3d") {
+    // Scaled off the polygon budget, since that is what drives provider spend.
+    // "standard" is the reference point, so it costs exactly model3dCredits.
+    const budget = MODEL3D_QUALITY_PRESETS[params.quality];
+    const multiplier = budget / MODEL3D_QUALITY_PRESETS.standard;
+    return Math.max(1, Math.ceil(pricing.model3dCredits * multiplier));
   }
 
   const multiplier = RESOLUTION_COST_MULTIPLIER[params.resolution];

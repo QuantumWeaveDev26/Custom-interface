@@ -9,6 +9,7 @@ const TYPE_LABELS: Record<string, string> = {
   image: "Image",
   video: "Video",
   audio: "Voice",
+  model3d: "3D",
 };
 
 export default async function GalleryPage() {
@@ -76,6 +77,21 @@ export default async function GalleryPage() {
                     preload="metadata"
                     className="aspect-square w-full object-cover"
                   />
+                )}
+                {asset.type === "model3d" && (
+                  <div className="flex aspect-square w-full flex-col items-center justify-center gap-3 bg-[var(--bg-elevated)] p-6 text-center">
+                    <span className="gradient-ring h-10 w-10 rounded-2xl opacity-60" aria-hidden="true" />
+                    <p className="text-xs text-[var(--text-muted)]">
+                      3D mesh (.glb)
+                    </p>
+                    <a
+                      href={`/api/assets/${asset.id}`}
+                      download
+                      className="btn-secondary !px-3 !py-1.5 text-xs"
+                    >
+                      Download
+                    </a>
+                  </div>
                 )}
                 {asset.type === "audio" && (
                   <div className="flex aspect-square w-full items-center justify-center bg-[var(--bg-elevated)] p-6">

@@ -5,6 +5,7 @@ import {
   CREDIT_PRICING,
   IMAGE_MODEL,
   MAX_IN_FLIGHT_JOBS,
+  MODEL3D_MODEL,
   VIDEO_MODEL,
   VOICE_MODEL,
 } from "./config";
@@ -27,6 +28,7 @@ export function jobDependencies(): SubmitJobDependencies {
       image: IMAGE_MODEL,
       video: VIDEO_MODEL,
       voice: VOICE_MODEL,
+      model3d: MODEL3D_MODEL,
     },
     pricing: CREDIT_PRICING,
     maxInFlight: MAX_IN_FLIGHT_JOBS,

@@ -7,6 +7,8 @@ import {
   RESOLUTION_COST_MULTIPLIER,
   VIDEO_MODEL_CAPABILITIES,
   creditCostFor,
+  MODEL3D_QUALITIES,
+  MODEL3D_QUALITY_PRESETS,
   videoCapabilitiesFor,
   type CreditPricing,
 } from "./generation.js";
@@ -15,6 +17,7 @@ const PRICING: CreditPricing = {
   imageCredits: 1,
   voiceCredits: 1,
   videoCreditsPerSecond720p: DEFAULT_VIDEO_CREDITS_PER_SECOND_720P,
+  model3dCredits: 20,
 };
 
 // The single most important assertion in this file: the previous flat price for
@@ -69,6 +72,7 @@ test("cost is never zero even at the smallest settings", () => {
     imageCredits: 0,
     voiceCredits: 0,
     videoCreditsPerSecond720p: 0,
+  model3dCredits: 20,
   };
   assert.equal(creditCostFor({ type: "image", size: "2K", count: 1 }, nearlyFree), 1);
   assert.equal(creditCostFor({ type: "voice", style: "standard" }, nearlyFree), 1);
@@ -130,4 +134,23 @@ test("the capability registry is frozen against mutation", () => {
     Reflect.set(VIDEO_MODEL_CAPABILITIES, "injected-model", {}),
     false,
   );
+});
+
+// --- 3D generation (C8) -----------------------------------------------------
+
+test("3D cost scales with the polygon budget, standard being the reference", () => {
+  assert.equal(creditCostFor({ type: "model3d", quality: "standard" }, PRICING), 20);
+  // draft is 100k of standard's 500k, high is 1M.
+  assert.equal(creditCostFor({ type: "model3d", quality: "draft" }, PRICING), 4);
+  assert.equal(creditCostFor({ type: "model3d", quality: "high" }, PRICING), 40);
+});
+
+test("every 3D quality preset stays inside the documented polygon range", () => {
+  // The Model list documents 500 to 1,000,000 for a triangular mesh. Shipping a
+  // value outside it repeats the "1K image size" mistake: an option the picker
+  // offers and the provider has never accepted.
+  for (const quality of MODEL3D_QUALITIES) {
+    const budget = MODEL3D_QUALITY_PRESETS[quality];
+    assert.ok(budget >= 500 && budget <= 1_000_000, quality);
+  }
 });

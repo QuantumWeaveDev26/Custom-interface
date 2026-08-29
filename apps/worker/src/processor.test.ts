@@ -1328,3 +1328,151 @@ test("a short batch completes with what came back rather than failing", async ()
   assert.equal(completeEvent?.status, "complete");
   assert.equal(completeEvent?.assets?.length, 2);
 });
+
+// --- 3D generation (C8) -----------------------------------------------------
+// Confirmed contract (MODELARK_API_REFERENCE.md R5): the video task endpoint,
+// settings as CLI flags inside the prompt text, file under content.file_url.
+
+function model3dJob(status: JobRecord["status"] = "queued"): JobRecord {
+  return {
+    id: "model3d-job",
+    userId: "user-1",
+    type: "model3d",
+    model: "hyper3d-gen2-260112",
+    status,
+    inputParams: {
+      prompt: "a wooden chair",
+      params: { type: "model3d", quality: "high" },
+    },
+    externalTaskId: null,
+    errorMessage: null,
+    creditsCost: 40,
+    createdAt: FIXED_TIME,
+    updatedAt: FIXED_TIME,
+  };
+}
+
+function create3dHarness(fileUrl = "https://provider.example/mesh.glb") {
+  let currentJob = model3dJob();
+  const createRequests: CreateContentGenerationTaskRequest[] = [];
+  const uploads: StorageUploadInput[] = [];
+  const events: JobStatusEvent[] = [];
+  const savedTaskIds: string[] = [];
+
+  const dependencies: GenerationProcessorDependencies = {
+    loadJob: async () => currentJob,
+    claimQueuedJob: async () => {
+      currentJob = { ...currentJob, status: "processing" };
+      return true;
+    },
+    failAndRefund: async () => {
+      throw new Error("3D happy path must not refund");
+    },
+    saveExternalTaskId: async (_jobId, taskId) => {
+      savedTaskIds.push(taskId);
+      currentJob = { ...currentJob, externalTaskId: taskId };
+    },
+    completeJobWithAssets: async (_jobId, assetInputs) => {
+      currentJob = { ...currentJob, status: "complete" };
+      return {
+        job: currentJob,
+        assets: assetInputs.map((assetInput) => ({
+          id: "mesh-asset-1",
+          jobId: currentJob.id,
+          userId: currentJob.userId,
+          type: assetInput.type,
+          storageUrl: assetInput.storageUrl,
+          thumbnailUrl: null,
+          createdAt: FIXED_TIME,
+        })),
+      };
+    },
+    modelArk: {
+      createImage: async () => {
+        throw new Error("3D flow must not call image generation");
+      },
+      createVideoTask: async (request) => {
+        createRequests.push(request);
+        return { id: "cgt-3d-1" };
+      },
+      pollVideoTaskUntilDone: async () => ({
+        id: "cgt-3d-1",
+        model: "hyper3d-gen2-260112",
+        status: "succeeded" as const,
+        content: { video_url: "", last_frame_url: "", file_url: fileUrl },
+        created_at: 1,
+        updated_at: 2,
+      }),
+    },
+    voice: {
+      createSpeech: async () => {
+        throw new Error("3D flow must not call voice");
+      },
+      createAudioGeneration: async () => {
+        throw new Error("3D flow must not call voice");
+      },
+    },
+    download: async () => ({
+      body: Uint8Array.from([0x67, 0x6c, 0x54, 0x46]),
+      contentType: "binary/octet-stream",
+    }),
+    storage: {
+      upload: async (input) => {
+        uploads.push(input);
+        return "tos://assets/user-1/model3d-job/mesh.glb";
+      },
+    },
+    publish: async (event) => {
+      events.push(event);
+    },
+    loadInputAssets: async () => [],
+    signAssetUrl: async (storageUrl) => `https://signed.example/${storageUrl}`,
+  };
+
+  return { dependencies, createRequests, uploads, events, savedTaskIds };
+}
+
+test("3D settings ride inside the prompt text as CLI flags, not as JSON fields", async () => {
+  const harness = create3dHarness();
+
+  await createGenerationProcessor(harness.dependencies)("model3d-job");
+
+  const request = harness.createRequests[0];
+  assert.equal(request?.model, "hyper3d-gen2-260112");
+  // "high" is the 1,000,000-polygon preset.
+  assert.equal(
+    request?.content[0]?.text,
+    "a wooden chair --material PBR --quality_override 1000000",
+  );
+  // Nothing 3D-specific may leak into the JSON body — the provider has no such
+  // fields and would reject or ignore them.
+  assert.equal("quality" in (request ?? {}), false);
+});
+
+test("the task ID is persisted before polling, so a crash does not double-charge", async () => {
+  const harness = create3dHarness();
+
+  await createGenerationProcessor(harness.dependencies)("model3d-job");
+
+  assert.deepEqual(harness.savedTaskIds, ["cgt-3d-1"]);
+});
+
+test("the mesh is taken from content.file_url and stored as a model3d asset", async () => {
+  const harness = create3dHarness();
+
+  await createGenerationProcessor(harness.dependencies)("model3d-job");
+
+  // video_url is empty on a 3D task; reading it instead would silently fail.
+  assert.equal(harness.uploads[0]?.type, "model3d");
+  assert.equal(harness.events.at(-1)?.status, "complete");
+  assert.equal(harness.events.at(-1)?.assets?.[0]?.type, "model3d");
+});
+
+test("a 3D task with no file URL fails rather than completing empty", async () => {
+  const harness = create3dHarness("");
+
+  await assert.rejects(async () => {
+    // failAndRefund throws in this harness, so the refund path surfaces here.
+    await createGenerationProcessor(harness.dependencies)("model3d-job");
+  });
+});

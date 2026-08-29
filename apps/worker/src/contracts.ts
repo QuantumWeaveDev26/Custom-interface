@@ -16,7 +16,7 @@ export interface DownloadedMedia {
 export interface StorageUploadInput extends DownloadedMedia {
   userId: string;
   jobId: string;
-  type: "image" | "video" | "audio";
+  type: "image" | "video" | "audio" | "model3d";
 }
 
 export interface AssetStorage {

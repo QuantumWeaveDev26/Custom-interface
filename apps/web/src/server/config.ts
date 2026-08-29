@@ -33,8 +33,21 @@ export const VOICE_COST = parseInt(process.env.VOICE_CREDITS_COST || "1", 10);
 // -> Model Square ("Dola-Seed-2.1-turbo", reasoning/agent model).
 export const DIRECTOR_MODEL = process.env.MODELARK_CHAT_MODEL || "dola-seed-2-1-turbo-260628";
 
+// Phase C8: 3D generation. Model ID confirmed live via the console model card
+// and one real call (MODELARK_API_REFERENCE.md §R5) -- there is no published
+// documentation for this capability at all.
+//
+// ⚠️ Cost is a placeholder anchored to one observation, not a rate card: a
+// single chair at default settings burned 30,000 completion tokens, and the
+// model bills at 13.3 USD per million. That is ~$0.40 a mesh, far dearer than
+// an image. MODEL3D_COST is the "standard" quality price and is scaled by the
+// polygon budget in creditCostFor. Verify against real invoices before launch.
+export const MODEL3D_MODEL = process.env.MODELARK_3D_MODEL || "hyper3d-gen2-260112";
+export const MODEL3D_COST = parseInt(process.env.MODEL3D_CREDITS_COST || "20", 10);
+
 export const CREDIT_PRICING: CreditPricing = {
   imageCredits: IMAGE_COST,
   voiceCredits: VOICE_COST,
   videoCreditsPerSecond720p: VIDEO_CREDITS_PER_SECOND_720P,
+  model3dCredits: MODEL3D_COST,
 };

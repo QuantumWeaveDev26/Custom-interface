@@ -447,3 +447,26 @@ test("mode switch resets the count", () => {
   const next = studioReducer(state, { type: "SET_MODE", mode: "video" });
   assert.equal(next.imageCount, 1);
 });
+
+// --- 3D generation (C8) -----------------------------------------------------
+
+test("3D detail defaults to standard and is independently settable", () => {
+  assert.equal(INITIAL_STUDIO_STATE.model3dQuality, "standard");
+
+  const next = studioReducer(INITIAL_STUDIO_STATE, {
+    type: "SET_MODEL3D_QUALITY",
+    quality: "high",
+  });
+  assert.equal(next.model3dQuality, "high");
+  assert.equal(next.imageSize, "4K");
+});
+
+test("mode switch resets 3D detail", () => {
+  const state: StudioState = {
+    ...INITIAL_STUDIO_STATE,
+    mode: "model3d",
+    model3dQuality: "high",
+  };
+  const next = studioReducer(state, { type: "SET_MODE", mode: "image" });
+  assert.equal(next.model3dQuality, "standard");
+});

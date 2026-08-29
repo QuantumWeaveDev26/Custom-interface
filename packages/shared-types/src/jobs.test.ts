@@ -500,3 +500,36 @@ test("references and generated images share the batch ceiling", () => {
     InvalidJobRequest,
   );
 });
+
+// --- 3D generation (C8) -----------------------------------------------------
+
+test("a 3D job defaults to standard detail", () => {
+  const parsed = parseSubmitJobRequest({ type: "model3d", prompt: "a wooden chair" });
+  assert.deepEqual(parsed.params, { type: "model3d", quality: "standard" });
+});
+
+test("an unknown 3D quality is rejected rather than passed through", () => {
+  // The provider has no published parameter documentation, so anything not on
+  // the confirmed list would fail after the user was charged.
+  assert.throws(
+    () =>
+      parseSubmitJobRequest({
+        type: "model3d",
+        prompt: "a chair",
+        params: { quality: "ultra" },
+      }),
+    InvalidJobRequest,
+  );
+});
+
+test("a 3D job rejects video-only input roles", () => {
+  assert.throws(
+    () =>
+      parseSubmitJobRequest({
+        type: "model3d",
+        prompt: "a chair",
+        inputAssets: [{ assetId: "a", role: "first_frame" }],
+      }),
+    InvalidJobRequest,
+  );
+});

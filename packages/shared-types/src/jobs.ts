@@ -4,7 +4,10 @@ import {
   DEFAULT_VOICE_PARAMS,
   IMAGE_SIZES,
   INPUT_ASSET_ROLES,
+  DEFAULT_MODEL3D_PARAMS,
   MAX_BATCH_IMAGES,
+  MODEL3D_QUALITIES,
+  type Model3dQuality,
   MAX_INPUT_ASSETS_PER_JOB,
   MAX_SOURCE_VIDEOS_PER_JOB,
   VIDEO_RATIOS,
@@ -20,7 +23,7 @@ import {
   type VoiceStyle,
 } from "./generation.js";
 
-export type JobType = "image" | "video" | "voice";
+export type JobType = "image" | "video" | "voice" | "model3d";
 
 export type SubmitJobRequest = {
   type: JobType;
@@ -47,7 +50,7 @@ export enum JobStatus {
 
 export type JobAssetSummary = {
   id: string;
-  type: "image" | "video" | "audio";
+  type: "image" | "video" | "audio" | "model3d";
   url: string;
 };
 
@@ -131,6 +134,23 @@ function parseImageParams(raw: unknown): GenerationParams {
   }
 
   return { type: "image", size, count };
+}
+
+function parseModel3dParams(raw: unknown): GenerationParams {
+  if (raw === undefined) return DEFAULT_MODEL3D_PARAMS;
+  if (!isPlainObject(raw)) {
+    throw new InvalidJobRequest("params must be an object");
+  }
+  assertNoUnknownFields(raw, ["quality"], "model3d params");
+
+  const quality =
+    raw.quality === undefined ? DEFAULT_MODEL3D_PARAMS.quality : raw.quality;
+  if (!MODEL3D_QUALITIES.includes(quality as Model3dQuality)) {
+    throw new InvalidJobRequest(
+      `quality must be one of ${MODEL3D_QUALITIES.join(", ")}`,
+    );
+  }
+  return { type: "model3d", quality: quality as Model3dQuality };
 }
 
 function parseVideoParams(raw: unknown): GenerationParams {
@@ -262,8 +282,13 @@ export function parseSubmitJobRequest(value: unknown): SubmitJobRequest {
     "request",
   );
 
-  if (value.type !== "image" && value.type !== "video" && value.type !== "voice") {
-    throw new InvalidJobRequest("Type must be image, video, or voice");
+  if (
+    value.type !== "image" &&
+    value.type !== "video" &&
+    value.type !== "voice" &&
+    value.type !== "model3d"
+  ) {
+    throw new InvalidJobRequest("Type must be image, video, voice, or model3d");
   }
 
   if (typeof value.prompt !== "string") {
@@ -279,7 +304,9 @@ export function parseSubmitJobRequest(value: unknown): SubmitJobRequest {
       ? parseImageParams(value.params)
       : value.type === "video"
         ? parseVideoParams(value.params)
-        : parseVoiceParams(value.params);
+        : value.type === "model3d"
+          ? parseModel3dParams(value.params)
+          : parseVoiceParams(value.params);
 
   const inputAssets = parseInputAssets(value.inputAssets);
 

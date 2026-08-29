@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "r
 import {
   IMAGE_SIZES,
   MAX_BATCH_IMAGES,
+  MODEL3D_QUALITIES,
+  MODEL3D_QUALITY_PRESETS,
   MAX_SOURCE_VIDEOS_PER_JOB,
   VIDEO_RATIOS,
   creditCostFor,
@@ -30,6 +32,7 @@ export interface StudioClientProps {
   imageModelLabel: string;
   videoModelLabel: string;
   voiceModelLabel: string;
+  model3dModelLabel: string;
   /** Only what the configured video model actually supports. */
   videoResolutions: readonly VideoResolution[];
   minDurationSeconds: number;
@@ -49,11 +52,12 @@ interface JobStatusMessage {
   assets?: StudioAsset[];
 }
 
-const MODES: StudioMode[] = ["image", "video", "voice"];
+const MODES: StudioMode[] = ["image", "video", "voice", "model3d"];
 const MODE_LABELS: Record<StudioMode, string> = {
   image: "Image",
   video: "Video",
   voice: "Voice",
+  model3d: "3D",
 };
 
 export function StudioClient({
@@ -61,6 +65,7 @@ export function StudioClient({
   imageModelLabel,
   videoModelLabel,
   voiceModelLabel,
+  model3dModelLabel,
   videoResolutions,
   minDurationSeconds,
   maxDurationSeconds,
@@ -188,6 +193,8 @@ export function StudioClient({
     if (state.mode === "image")
       return { type: "image", size: state.imageSize, count: state.imageCount };
     if (state.mode === "voice") return { type: "voice", style: state.voiceStyle };
+    if (state.mode === "model3d")
+      return { type: "model3d", quality: state.model3dQuality };
     return {
       type: "video",
       resolution: state.resolution,
@@ -198,6 +205,7 @@ export function StudioClient({
     state.mode,
     state.imageSize,
     state.imageCount,
+    state.model3dQuality,
     state.voiceStyle,
     state.resolution,
     state.ratio,
@@ -348,7 +356,9 @@ export function StudioClient({
       ? imageModelLabel
       : state.mode === "video"
         ? videoModelLabel
-        : voiceModelLabel;
+        : state.mode === "model3d"
+          ? model3dModelLabel
+          : voiceModelLabel;
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-10 sm:py-14">
@@ -879,7 +889,7 @@ export function StudioClient({
         </div>
       )}
 
-      {state.mode !== "voice" && (
+      {(state.mode === "image" || state.mode === "video") && (
         <div className="mt-3 space-y-3">
           {state.mode === "video" && (
             <div>
@@ -994,6 +1004,40 @@ export function StudioClient({
         </div>
       )}
 
+      {state.mode === "model3d" && (
+        <div className="mt-3">
+          <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-[var(--text-faint)]">
+            Detail
+          </p>
+          <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Mesh detail">
+            {MODEL3D_QUALITIES.map((quality) => (
+              <button
+                key={quality}
+                type="button"
+                role="radio"
+                aria-checked={state.model3dQuality === quality}
+                disabled={isBusy}
+                data-active={state.model3dQuality === quality}
+                onClick={() => dispatch({ type: "SET_MODEL3D_QUALITY", quality })}
+                className="pill !px-3 !py-1.5 text-xs capitalize"
+                style={
+                  state.model3dQuality !== quality
+                    ? { background: "var(--surface)", border: "1px solid var(--border)" }
+                    : undefined
+                }
+              >
+                {quality}
+              </button>
+            ))}
+          </div>
+          <p className="mt-1.5 text-[11px] text-[var(--text-muted)]">
+            {MODEL3D_QUALITY_PRESETS[state.model3dQuality].toLocaleString()} polygons,
+            PBR materials, exported as .glb. Takes a couple of minutes and the file
+            is large — around 25 MB.
+          </p>
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="mt-5 space-y-3">
         <label htmlFor="prompt" className="block text-xs font-medium text-[var(--text-muted)]">
           {state.mode === "voice" ? "Text to speak" : "Prompt"}
@@ -1074,6 +1118,22 @@ export function StudioClient({
                   alt="Generated result"
                   className="card w-full object-cover"
                 />
+              );
+            }
+            if (asset.type === "model3d") {
+              return (
+                <div key={asset.id} className="card p-4">
+                  <p className="text-sm text-[var(--text-muted)]">
+                    3D mesh ready — .glb with PBR materials.
+                  </p>
+                  <a
+                    href={asset.url}
+                    download
+                    className="btn-secondary mt-3 !px-4 !py-2 text-sm"
+                  >
+                    Download mesh
+                  </a>
+                </div>
               );
             }
             if (asset.type === "audio") {

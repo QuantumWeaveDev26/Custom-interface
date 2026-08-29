@@ -1,7 +1,13 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@creative-ai/db";
-import { CREDIT_PRICING, IMAGE_MODEL, VIDEO_MODEL, VOICE_MODEL } from "@/server/config";
+import {
+  CREDIT_PRICING,
+  IMAGE_MODEL,
+  MODEL3D_MODEL,
+  VIDEO_MODEL,
+  VOICE_MODEL,
+} from "@/server/config";
 import { videoCapabilitiesFor } from "@creative-ai/shared-types";
 import { listCharacters } from "@/server/characters";
 import { StudioClient } from "./studio-client";
@@ -52,6 +58,7 @@ export default async function StudioPage() {
       imageModelLabel={IMAGE_MODEL}
       videoModelLabel={VIDEO_MODEL}
       voiceModelLabel={VOICE_MODEL}
+      model3dModelLabel={MODEL3D_MODEL}
       videoResolutions={[...videoCapabilities.resolutions]}
       minDurationSeconds={videoCapabilities.minDurationSeconds}
       maxDurationSeconds={videoCapabilities.maxDurationSeconds}

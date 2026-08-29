@@ -23,12 +23,14 @@ const PRICING: CreditPricing = {
   imageCredits: 1,
   voiceCredits: 1,
   videoCreditsPerSecond720p: 2.8,
+  model3dCredits: 20,
 };
 
 const MODELS = {
   image: "seedream-5-0-lite-260128",
   video: "dreamina-seedance-2-0-fast-260128",
   voice: "seed-tts-2.0",
+  model3d: "hyper3d-gen2-260112",
 } as const;
 
 interface HarnessOptions {
