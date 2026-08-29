@@ -261,3 +261,62 @@ test("loading a character preserves its saved order", () => {
   });
   assert.deepEqual(next.referenceAssetIds, ["c", "a", "b"]);
 });
+
+// --- Last frame / keyframe transitions --------------------------------------
+
+test("first and last frames are independent slots", () => {
+  let state = studioReducer(INITIAL_STUDIO_STATE, {
+    type: "SET_FIRST_FRAME",
+    assetId: "start",
+  });
+  state = studioReducer(state, { type: "SET_LAST_FRAME", assetId: "end" });
+
+  assert.equal(state.firstFrameAssetId, "start");
+  assert.equal(state.lastFrameAssetId, "end");
+});
+
+test("mode switch clears the selected last frame", () => {
+  const state: StudioState = {
+    ...INITIAL_STUDIO_STATE,
+    mode: "video",
+    lastFrameAssetId: "end",
+  };
+  const next = studioReducer(state, { type: "SET_MODE", mode: "image" });
+  assert.equal(next.lastFrameAssetId, null);
+});
+
+test("adaptive ratio survives while any keyframe remains", () => {
+  let state: StudioState = {
+    ...INITIAL_STUDIO_STATE,
+    mode: "video",
+    firstFrameAssetId: "start",
+    lastFrameAssetId: "end",
+    ratio: "adaptive",
+  };
+  state = studioReducer(state, { type: "SET_FIRST_FRAME", assetId: null });
+  assert.equal(state.ratio, "adaptive");
+});
+
+test("clearing the last keyframe drops adaptive back to the default ratio", () => {
+  // The server rejects adaptive with no input asset, so leaving it selected
+  // would make the form unsubmittable with no visible cause.
+  const state: StudioState = {
+    ...INITIAL_STUDIO_STATE,
+    mode: "video",
+    firstFrameAssetId: "start",
+    ratio: "adaptive",
+  };
+  const next = studioReducer(state, { type: "SET_FIRST_FRAME", assetId: null });
+  assert.equal(next.ratio, INITIAL_STUDIO_STATE.ratio);
+});
+
+test("a non-adaptive ratio is left alone when keyframes are cleared", () => {
+  const state: StudioState = {
+    ...INITIAL_STUDIO_STATE,
+    mode: "video",
+    firstFrameAssetId: "start",
+    ratio: "9:16",
+  };
+  const next = studioReducer(state, { type: "SET_FIRST_FRAME", assetId: null });
+  assert.equal(next.ratio, "9:16");
+});

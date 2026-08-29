@@ -7,6 +7,7 @@ import {
   MAX_INPUT_ASSETS_PER_JOB,
   VIDEO_RATIOS,
   VIDEO_RESOLUTIONS,
+  ratioRequiresInputImage,
   videoCapabilitiesFor,
   type GenerationParams,
   type ImageSize,
@@ -268,6 +269,16 @@ export function parseSubmitJobRequest(value: unknown): SubmitJobRequest {
     if (videoOnly.length > 0) {
       throw new InvalidJobRequest(
         "first_frame, last_frame, and source_video input assets are only valid for video jobs",
+      );
+    }
+  }
+
+  // "adaptive" has nothing to adapt to without an input image, so a
+  // text-to-video job asking for it is a client bug, not a valid request.
+  if (params.type === "video" && ratioRequiresInputImage(params.ratio)) {
+    if (inputAssets.length === 0) {
+      throw new InvalidJobRequest(
+        "ratio adaptive requires at least one input asset to take its ratio from",
       );
     }
   }

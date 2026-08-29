@@ -377,3 +377,50 @@ test("exposes immutable non-selectable output profiles", () => {
 test("exposes only Phase 1 job statuses", () => {
   assert.deepEqual(Object.values(JobStatus), ["queued", "processing", "complete", "failed"]);
 });
+
+// --- Adaptive ratio ---------------------------------------------------------
+
+test("rejects ratio adaptive on a job with no input assets", () => {
+  // "adaptive" means "match the input image"; there is nothing to match here.
+  assert.throws(
+    () =>
+      parseSubmitJobRequest({
+        type: "video",
+        prompt: "a slow dolly in",
+        params: { ratio: "adaptive" },
+      }),
+    InvalidJobRequest,
+  );
+});
+
+test("accepts ratio adaptive when a keyframe is supplied", () => {
+  const request = parseSubmitJobRequest({
+    type: "video",
+    prompt: "a slow dolly in",
+    params: { ratio: "adaptive" },
+    inputAssets: [{ assetId: "asset-1", role: "first_frame" }],
+  });
+
+  assert.deepEqual(request.params, {
+    type: "video",
+    resolution: "720p",
+    ratio: "adaptive",
+    durationSeconds: 5,
+  });
+});
+
+test("accepts both keyframes on one video job", () => {
+  const request = parseSubmitJobRequest({
+    type: "video",
+    prompt: "morph between the two",
+    inputAssets: [
+      { assetId: "start", role: "first_frame" },
+      { assetId: "end", role: "last_frame" },
+    ],
+  });
+
+  assert.deepEqual(request.inputAssets, [
+    { assetId: "start", role: "first_frame" },
+    { assetId: "end", role: "last_frame" },
+  ]);
+});

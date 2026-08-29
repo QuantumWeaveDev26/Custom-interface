@@ -15,11 +15,17 @@
 
 export type VideoResolution = "480p" | "720p" | "1080p" | "4K";
 // Confirmed from BytePlus docs 2026-08-28 (R2). "3:4" was missing before —
-// a real gap, since it is a common portrait format. A further value,
-// "adaptive" (match the source image's ratio), is documented for image-driven
-// generation; it will be added when C2 wires image-to-video, where it is the
-// sensible default.
-export type VideoRatio = "16:9" | "9:16" | "1:1" | "4:3" | "3:4" | "21:9";
+// a real gap, since it is a common portrait format. "adaptive" means "match the
+// source image's ratio" and is documented only for image-driven generation, so
+// callers must not offer it for text-to-video.
+export type VideoRatio =
+  | "16:9"
+  | "9:16"
+  | "1:1"
+  | "4:3"
+  | "3:4"
+  | "21:9"
+  | "adaptive";
 export type ImageSize = "1K" | "2K" | "4K";
 export type VoiceStyle = "standard" | "expressive";
 
@@ -37,7 +43,16 @@ export const VIDEO_RATIOS: readonly VideoRatio[] = Object.freeze([
   "4:3",
   "3:4",
   "21:9",
+  "adaptive",
 ] as const);
+
+/**
+ * "adaptive" derives the output ratio from an input image, so it is only
+ * meaningful when the job carries one. Text-to-video has nothing to adapt to.
+ */
+export function ratioRequiresInputImage(ratio: VideoRatio): boolean {
+  return ratio === "adaptive";
+}
 
 export const IMAGE_SIZES: readonly ImageSize[] = Object.freeze([
   "1K",

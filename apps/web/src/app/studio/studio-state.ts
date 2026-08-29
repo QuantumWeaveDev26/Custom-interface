@@ -32,6 +32,9 @@ export interface StudioState {
   durationSeconds: number;
   /** Asset id used as the video's first frame (image-to-video), if any. */
   firstFrameAssetId: string | null;
+  /** Asset id the video should end on. Together with a first frame this is a
+   * keyframe transition: generate the motion between two stills. */
+  lastFrameAssetId: string | null;
   /**
    * Reference images for multi-reference image-to-image. Order is meaningful:
    * prompts address them positionally ("image 1", "image 2").
@@ -54,6 +57,7 @@ export const INITIAL_STUDIO_STATE: StudioState = {
   ratio: "21:9",
   durationSeconds: 5,
   firstFrameAssetId: null,
+  lastFrameAssetId: null,
   referenceAssetIds: [],
   phase: "idle",
   jobId: null,
@@ -70,6 +74,7 @@ export type StudioAction =
   | { type: "SET_RATIO"; ratio: VideoRatio }
   | { type: "SET_DURATION"; durationSeconds: number }
   | { type: "SET_FIRST_FRAME"; assetId: string | null }
+  | { type: "SET_LAST_FRAME"; assetId: string | null }
   | { type: "TOGGLE_REFERENCE"; assetId: string }
   | { type: "SET_REFERENCES"; assetIds: readonly string[] }
   | { type: "SUBMIT_START" }
@@ -81,6 +86,20 @@ export type StudioAction =
       errorMessage?: string;
       assets?: readonly StudioAsset[];
     };
+
+/**
+ * "adaptive" takes its ratio from an input image, so clearing the last keyframe
+ * would otherwise leave a ratio the server rejects. Falling back to the default
+ * keeps the form always submittable.
+ */
+function withValidRatio(state: StudioState): StudioState {
+  const hasInputImage =
+    state.firstFrameAssetId !== null || state.lastFrameAssetId !== null;
+  if (state.ratio === "adaptive" && !hasInputImage) {
+    return { ...state, ratio: INITIAL_STUDIO_STATE.ratio };
+  }
+  return state;
+}
 
 export function studioReducer(
   state: StudioState,
@@ -102,7 +121,9 @@ export function studioReducer(
     case "SET_DURATION":
       return { ...state, durationSeconds: action.durationSeconds };
     case "SET_FIRST_FRAME":
-      return { ...state, firstFrameAssetId: action.assetId };
+      return withValidRatio({ ...state, firstFrameAssetId: action.assetId });
+    case "SET_LAST_FRAME":
+      return withValidRatio({ ...state, lastFrameAssetId: action.assetId });
     case "SET_REFERENCES":
       return { ...state, referenceAssetIds: action.assetIds };
     case "TOGGLE_REFERENCE": {

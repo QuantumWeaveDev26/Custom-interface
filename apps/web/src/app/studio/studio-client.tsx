@@ -5,6 +5,7 @@ import {
   IMAGE_SIZES,
   VIDEO_RATIOS,
   creditCostFor,
+  ratioRequiresInputImage,
   type CreditPricing,
   type GenerationParams,
   type VideoResolution,
@@ -65,6 +66,11 @@ export function StudioClient({
   const [uploadedIds, setUploadedIds] = useState<string[]>([]);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  // Which keyframe slot a thumbnail click fills. UI-only: the reducer holds the
+  // resulting selection, not the pointer to it.
+  const [frameSlot, setFrameSlot] = useState<"first_frame" | "last_frame">(
+    "first_frame",
+  );
   const [savedCharacters, setSavedCharacters] = useState(characters);
   const [characterName, setCharacterName] = useState("");
   const [savingCharacter, setSavingCharacter] = useState(false);
@@ -101,7 +107,9 @@ export function StudioClient({
         dispatch(
           state.mode === "image"
             ? { type: "TOGGLE_REFERENCE", assetId }
-            : { type: "SET_FIRST_FRAME", assetId },
+            : frameSlot === "last_frame"
+              ? { type: "SET_LAST_FRAME", assetId }
+              : { type: "SET_FIRST_FRAME", assetId },
         );
       } catch {
         setUploadError("Could not reach the server.");
@@ -109,7 +117,7 @@ export function StudioClient({
         setUploading(false);
       }
     },
-    [state.mode],
+    [state.mode, frameSlot],
   );
 
 
@@ -183,6 +191,25 @@ export function StudioClient({
     state.durationSeconds,
   ]);
 
+  const videoInputAssets = useMemo(
+    () =>
+      [
+        { assetId: state.firstFrameAssetId, role: "first_frame" as const },
+        { assetId: state.lastFrameAssetId, role: "last_frame" as const },
+      ].flatMap(({ assetId, role }) => (assetId === null ? [] : [{ assetId, role }])),
+    [state.firstFrameAssetId, state.lastFrameAssetId],
+  );
+
+  // "adaptive" copies the ratio of an input image, so it is only offered once
+  // there is one — otherwise the server would reject the submission.
+  const ratioOptions = useMemo(
+    () =>
+      VIDEO_RATIOS.filter(
+        (ratio) => !ratioRequiresInputImage(ratio) || videoInputAssets.length > 0,
+      ),
+    [videoInputAssets],
+  );
+
   // Same function the server charges with — a preview, still authoritative
   // server-side.
   const estimatedCost = useMemo(
@@ -219,12 +246,8 @@ export function StudioClient({
             prompt: state.prompt,
             // `type` is the request discriminator, not a params field.
             params: (({ type: _ignored, ...rest }) => rest)(params),
-            ...(state.mode === "video" && state.firstFrameAssetId !== null
-              ? {
-                  inputAssets: [
-                    { assetId: state.firstFrameAssetId, role: "first_frame" },
-                  ],
-                }
+            ...(state.mode === "video" && videoInputAssets.length > 0
+              ? { inputAssets: videoInputAssets }
               : {}),
             ...(state.mode === "image" && state.referenceAssetIds.length > 0
               ? {
@@ -276,7 +299,7 @@ export function StudioClient({
         source.close();
       };
     },
-    [isBusy, state.mode, state.prompt, params, state.firstFrameAssetId, state.referenceAssetIds],
+    [isBusy, state.mode, state.prompt, params, videoInputAssets, state.referenceAssetIds],
   );
 
   const modelLabel =
@@ -516,6 +539,27 @@ export function StudioClient({
           <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-[var(--text-faint)]">
             Animate an image <span className="normal-case tracking-normal">(optional)</span>
           </p>
+          <div className="mb-2 flex gap-2" role="radiogroup" aria-label="Keyframe slot">
+            {(["first_frame", "last_frame"] as const).map((slot) => (
+              <button
+                key={slot}
+                type="button"
+                role="radio"
+                aria-checked={frameSlot === slot}
+                disabled={isBusy}
+                data-active={frameSlot === slot}
+                onClick={() => setFrameSlot(slot)}
+                className="pill !px-3 !py-1.5 text-xs"
+                style={
+                  frameSlot !== slot
+                    ? { background: "var(--surface)", border: "1px solid var(--border)" }
+                    : undefined
+                }
+              >
+                {slot === "first_frame" ? "First frame" : "Last frame"}
+              </button>
+            ))}
+          </div>
           <div className="flex gap-2 overflow-x-auto pb-1">
             <label
               htmlFor="upload-image"
@@ -544,27 +588,39 @@ export function StudioClient({
               className="sr-only"
             />
             {pickableImageIds.map((assetId) => {
-              const selected = state.firstFrameAssetId === assetId;
+              const isFirst = state.firstFrameAssetId === assetId;
+              const isLast = state.lastFrameAssetId === assetId;
+              const selectedInActiveSlot =
+                frameSlot === "first_frame" ? isFirst : isLast;
+              const badge = isFirst ? "1st" : isLast ? "last" : null;
               return (
                 <button
                   key={assetId}
                   type="button"
                   disabled={isBusy}
-                  aria-pressed={selected}
-                  aria-label={selected ? "Deselect first frame" : "Use as first frame"}
-                  // Clicking the selected image clears it, so text-to-video is
-                  // always reachable without a separate "none" control.
+                  aria-pressed={isFirst || isLast}
+                  aria-label={
+                    selectedInActiveSlot
+                      ? `Remove as ${frameSlot === "first_frame" ? "first" : "last"} frame`
+                      : `Use as ${frameSlot === "first_frame" ? "first" : "last"} frame`
+                  }
+                  // Clicking the image already in the active slot clears it, so
+                  // text-to-video is always reachable without a "none" control.
                   onClick={() =>
                     dispatch({
-                      type: "SET_FIRST_FRAME",
-                      assetId: selected ? null : assetId,
+                      type:
+                        frameSlot === "first_frame"
+                          ? "SET_FIRST_FRAME"
+                          : "SET_LAST_FRAME",
+                      assetId: selectedInActiveSlot ? null : assetId,
                     })
                   }
-                  className="shrink-0 overflow-hidden rounded-lg transition-all disabled:opacity-50"
+                  className="relative shrink-0 overflow-hidden rounded-lg transition-all disabled:opacity-50"
                   style={{
-                    border: selected
-                      ? "2px solid var(--accent-via)"
-                      : "2px solid var(--border)",
+                    border:
+                      isFirst || isLast
+                        ? "2px solid var(--accent-via)"
+                        : "2px solid var(--border)",
                   }}
                 >
                   <img
@@ -572,6 +628,14 @@ export function StudioClient({
                     alt=""
                     className="h-16 w-16 object-cover"
                   />
+                  {badge !== null && (
+                    <span
+                      className="absolute right-1 top-1 rounded-full px-1.5 text-[9px] font-bold text-white"
+                      style={{ background: "var(--accent-via)" }}
+                    >
+                      {badge}
+                    </span>
+                  )}
                 </button>
               );
             })}
@@ -579,9 +643,13 @@ export function StudioClient({
           {uploadError !== null && (
             <p className="mt-1.5 text-[11px] text-[var(--danger)]">{uploadError}</p>
           )}
-          {state.firstFrameAssetId !== null && (
+          {videoInputAssets.length > 0 && (
             <p className="mt-1.5 text-[11px] text-[var(--text-muted)]">
-              This image becomes the first frame. Your prompt describes the motion.
+              {state.firstFrameAssetId !== null && state.lastFrameAssetId !== null
+                ? "The clip starts on the first image and ends on the last. Your prompt describes the motion between them."
+                : state.firstFrameAssetId !== null
+                  ? "This image becomes the first frame. Your prompt describes the motion."
+                  : "The clip ends on this image. Your prompt describes how it gets there."}
             </p>
           )}
         </div>
@@ -621,7 +689,7 @@ export function StudioClient({
               Aspect ratio
             </p>
             <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Aspect ratio">
-              {VIDEO_RATIOS.map((ratio) => (
+              {ratioOptions.map((ratio) => (
                 <button
                   key={ratio}
                   type="button"

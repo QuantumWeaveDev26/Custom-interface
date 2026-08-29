@@ -28,6 +28,7 @@ export {
   VIDEO_RATIOS,
   VIDEO_RESOLUTIONS,
   creditCostFor,
+  ratioRequiresInputImage,
   videoCapabilitiesFor,
 } from "./generation.js";
 export type {
