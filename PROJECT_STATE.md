@@ -72,7 +72,7 @@ and saw the correct result.
 
 | 3D generation (C8) | `/studio` (3D tab) | Built, tests pass, **not yet exercised in the browser**. The underlying API was proven with a direct call: a .glb mesh came back in ~98s. |
 
-Five items are currently built but unproven: saved named characters, the cinema
+Six items are currently built but unproven: saved named characters (now in both Image and Video), the cinema
 presets, batch image generation, semantic search, and 3D generation. These are queued for one
 batched browser-test pass rather than being verified one at a time.
 

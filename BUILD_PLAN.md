@@ -187,9 +187,12 @@ what the user sees. `seedream-5-0-lite` already supports it — no model upgrade
 reload it into any later generation. Ownership checked inside the creation
 transaction; delete is userId-scoped and 404s rather than 403s.
 
-**Still open:** characters are only usable in Studio's Image tab. Higgsfield
-surfaces a saved identity across *every* tool (video, lipsync, Director).
-Wiring them into Video mode's first-frame/reference slots is the next step.
+**Characters in Video ✅ DONE** (2026-08-29, `faf14fb`) — the same ordered reference
+images and saved-character shelf now appear in Video mode, sent as omni
+reference (R4). The picker is one shared component rather than a copy.
+
+**Still open:** Director and Marketing cannot load a saved character, so an
+identity does not survive into agent-planned work.
 
 ### C5 — Cinema Studio depth ✅ DONE (2026-08-29, `3220188`)
 `packages/prompt-library` now carries three axes — 32 camera moves (stackable,
@@ -298,9 +301,17 @@ signup-abuse guard before any public launch.
 ---
 
 ## Polish backlog
-- **P1** Responsive pass — `sm:` breakpoints exist, never checked on a real device
-- **P2** Empty/error states for Director, Marketing, Transcribe (Gallery has one)
-- **P3** Accessibility — focus rings, keyboard nav, `aria-live`, contrast audit
+- **P1** Responsive pass - checked at 375px on 2026-08-29 for sign-in and the
+  nav, which already carries a mobile scroll row. Studio, Director, Marketing,
+  and Gallery sit behind auth and were **not** checked in a real mobile browser.
+- **P2** Empty states ✅ DONE (2026-08-29, `faf14fb`) — Director, Marketing, and
+  Transcribe each state what the tool does and offer an example to run.
+  Per-page *error* states already existed.
+- **P3** Accessibility — focus and contrast ✅ DONE (2026-08-29, `faf14fb`): one
+  systemic `:focus-visible` rule where there had been none at all, `--text-faint`
+  raised from 3.47:1 to above 4.5:1 on every surface, and a
+  `prefers-reduced-motion` block. **Still open:** `aria-live` on the generation
+  status regions, and a full keyboard walkthrough of Studio.
 
 ---
 
