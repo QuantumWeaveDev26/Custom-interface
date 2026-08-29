@@ -201,8 +201,13 @@ exposes all three and shows the composed result before submitting.
 shot and one look for the whole plan, composing through the same
 `composeShotPrompt` Studio uses so the two cannot drift.
 
-**Still open:** Director picks one camera move per shot, never a stack of two.
-Marketing does not use the grammar at all.
+**Marketing wired in ✅** (2026-08-29, `dd5e985`) — it picks camera, lens, and
+look too, constrained to stay consistent with the ad style it already chose.
+All three agents and Studio now compose through one grammar.
+
+**Still open:** Director and Marketing each pick a single camera move, never a
+stack of two, so the ordering behaviour `composeShotPrompt` supports is only
+reachable from Studio.
 
 ### C6 — Video extension and editing ✅ DONE (2026-08-29, `cb6d918`)
 Studio Video mode takes up to three of the user's clips. One extends; two or
