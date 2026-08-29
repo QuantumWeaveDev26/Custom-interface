@@ -1,4 +1,8 @@
-import { createVoiceClient } from "@creative-ai/voice-client";
+import {
+  createVoiceClient,
+  type CloneVoiceRequest,
+  type CloneVoiceResult,
+} from "@creative-ai/voice-client";
 
 function voiceClient() {
   const baseUrl = process.env.BYTEPLUS_VOICE_BASE_URL;
@@ -6,6 +10,14 @@ function voiceClient() {
     apiKey: process.env.BYTEPLUS_VOICE_API_KEY || "",
     ...(baseUrl ? { baseUrl } : {}),
   });
+}
+
+export interface VoiceCloneDependencies {
+  cloneVoice(params: CloneVoiceRequest): Promise<CloneVoiceResult>;
+}
+
+export function defaultVoiceCloneDependencies(): VoiceCloneDependencies {
+  return { cloneVoice: (params) => voiceClient().cloneVoice(params) };
 }
 
 export interface CloneVoiceOutcome {
@@ -22,10 +34,11 @@ export interface CloneVoiceOutcome {
 // already exists, it isn't a name you get to pick up front.
 export async function cloneVoiceFromAudio(
   wavBytes: Uint8Array,
+  dependencies: VoiceCloneDependencies = defaultVoiceCloneDependencies(),
 ): Promise<CloneVoiceOutcome> {
   const base64 = Buffer.from(wavBytes).toString("base64");
 
-  const result = await voiceClient().cloneVoice({
+  const result = await dependencies.cloneVoice({
     speaker_id: "",
     audio: { data: base64, format: "wav" },
     language: 1,
