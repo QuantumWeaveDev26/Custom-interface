@@ -61,7 +61,7 @@ and saw the correct result.
 | Upload own images (C3) | `/studio` | ✅ Verified live 2026-08-29 |
 | **Multi-reference / character consistency (C4)** | `/studio` (Image tab) | ✅ **Verified live 2026-08-29** — subject and second reference both carried into the result. First attempt failed because a stale worker process was serving pre-C4 code; see §4 Windows gotchas. |
 | Saved named characters | `/studio` (Image tab) | ⚠️ Built, tests pass, **not yet exercised in the browser** |
-| First/last keyframes + adaptive ratio | `/studio` (Video tab) | ⚠️ Built, tests pass, **not yet exercised in the browser** |
+| First/last keyframes + adaptive ratio | `/studio` (Video tab) | ⚠️ **UI verified live 2026-08-29** — slot toggle, `1st`/`last` badges, and adaptive appearing only once a keyframe is picked all behave. A generated clip has **not** been produced yet: the first attempt was refused by BytePlus for a real-person input image (see §4). |
 
 Two items are currently built but unproven: saved named characters, and
 first/last keyframes.
@@ -159,6 +159,8 @@ reference docs; this is the index.
 | `20000000` is a generic company-wide "OK" code reused across unrelated endpoints | Do not treat seeing it once as proof of a specific job state |
 | ModelArk chat model ID is `dola-seed-2-1-turbo-260628` | Confirmed via console Model Square; an earlier guessed ID 404'd |
 | Image generation is **synchronous**; video is **async** (create → poll) | Do not build a poll loop for images |
+| **BytePlus refuses input images that may depict a real person** — `InputImageSensitiveContentDetected.PrivacyInformation`, HTTP 400, naming the offending `content[n]` | Confirmed live 2026-08-29 on a keyframe job. Scope-relevant: this is a hard limit on any feature that feeds a real photo in — face-consistent characters from real photos, and OmniHuman lipsync (B2). Ask support whether a per-account allowlist exists before planning around it. |
+| That error's code contains the word "Sensitive", which naively matches a content-filter pattern | It is an *input image* rejection, not a prompt rejection. The worker checks for it first (`safeFailureMessage`); telling the user to reword sends them at the wrong problem. |
 
 ### Windows-specific operational gotchas
 

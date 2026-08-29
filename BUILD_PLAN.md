@@ -223,6 +223,12 @@ Blocked on BytePlus support. Four hypotheses already ruled out — read
 Blocked on model ID confirmation via Model Square (folds into R1). Higgsfield's
 Lipsync Studio equivalent.
 
+**Second blocker found 2026-08-29:** BytePlus rejects input images that may show
+a real person (`InputImageSensitiveContentDetected.PrivacyInformation`,
+confirmed live). A talking avatar of a real person is exactly that input, so
+confirm with support whether a per-account allowlist or consent flow exists
+before building B2 — the model ID alone is not enough to unblock it.
+
 ### B3 — Phase 4: Billing, Admin
 Blocked on payment provider, pricing tiers, and audience (real customers vs
 internal demo). `ARCHITECTURE.md` §8 notes the 100-credit welcome grant needs a
