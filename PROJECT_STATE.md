@@ -65,7 +65,10 @@ and saw the correct result.
 
 | **Video extend / edit (C6)** | `/studio` (Video tab) | ✅ **Verified live 2026-08-29** — a two-clip extend job completed. Confirmed on the wire, not just in the UI: the job carried two `source_video` inputs at positions 0 and 1. |
 
-One item is currently built but unproven: saved named characters.
+| Cinema presets — camera / lens / look (C5) | `/studio` | ⚠️ Built, tests pass, **not yet exercised in the browser** |
+
+Two items are currently built but unproven: saved named characters, and the
+cinema presets.
 
 ---
 
@@ -194,7 +197,7 @@ previous agent (this project has been burned by an agent self-reporting
 
 ```bash
 pnpm typecheck   # all 8 packages
-pnpm test        # 261 tests, all must pass
+pnpm test        # 274 tests, all must pass
 pnpm build       # full monorepo build
 ```
 

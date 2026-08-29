@@ -190,10 +190,16 @@ transaction; delete is userId-scoped and 404s rather than 403s.
 surfaces a saved identity across *every* tool (video, lipsync, Director).
 Wiring them into Video mode's first-frame/reference slots is the next step.
 
-### C5 — Cinema Studio depth
-Expand `packages/prompt-library` toward Higgsfield's ~70 presets: camera bodies,
-lens types, aperture/DoF, and stacking multiple moves per shot. Pure prompt
-engineering — no new API surface, so it can proceed in parallel.
+### C5 — Cinema Studio depth ✅ DONE (2026-08-29, `3220188`)
+`packages/prompt-library` now carries three axes — 32 camera moves (stackable,
+order-preserving), 8 lens presets with focal length and aperture, 10 look
+presets — composed onto the user's description by `composeShotPrompt`. Studio
+exposes all three and shows the composed result before submitting.
+
+**Still open:** presets are Studio-only. The Director agent still picks a single
+`cameraPresetId` per shot and never sets lens or look, so its output is less
+directed than a hand-built shot. Wiring the new axes into the Director's tool
+schema is the follow-on.
 
 ### C6 — Video extension and editing ✅ DONE (2026-08-29, `cb6d918`)
 Studio Video mode takes up to three of the user's clips. One extends; two or
