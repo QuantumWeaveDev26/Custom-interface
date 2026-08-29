@@ -223,13 +223,8 @@ export function MarketingClient({
                   type="button"
                   aria-pressed={active}
                   onClick={() => setCastId(active ? null : character.id)}
-                  className="pill !px-3 !py-1.5 text-xs"
+                  className="opt"
                   data-active={active}
-                  style={
-                    active
-                      ? undefined
-                      : { background: "var(--surface)", border: "1px solid var(--border)" }
-                  }
                 >
                   {character.name}
                 </button>
@@ -305,7 +300,7 @@ export function MarketingClient({
                   disabled={busy}
                   data-active={adType === type}
                   onClick={() => setAdType(type)}
-                  className="pill !px-3 !py-1.5 text-xs"
+                  className="opt"
                 >
                   {type === "image" ? "Image" : "Video"}
                 </button>

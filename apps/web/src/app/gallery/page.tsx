@@ -79,13 +79,8 @@ export default async function GalleryPage({
                 key={option}
                 href={option === "all" ? "/gallery" : `/gallery?type=${option}`}
                 aria-current={active ? "page" : undefined}
-                className="pill !px-3 !py-1.5 text-xs"
+                className="opt"
                 data-active={active}
-                style={
-                  active
-                    ? undefined
-                    : { background: "var(--surface)", border: "1px solid var(--border)" }
-                }
               >
                 {FILTER_LABELS[option]}
               </Link>

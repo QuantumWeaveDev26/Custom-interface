@@ -431,7 +431,7 @@ export function StudioClient({
           : voiceModelLabel;
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-10 sm:py-14">
+    <div className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6">
       {/* The report header: what sheet this is, and what stock is left. */}
       <header
         className="flex flex-wrap items-end justify-between gap-4 border-b pb-3"
@@ -498,6 +498,14 @@ export function StudioClient({
         <span className="text-[var(--text-muted)]">{modelLabel}</span>
       </p>
 
+      {/* A workspace, not a column of stacked rows: setup on the left where a
+          form is filled, the viewer on the right where the work is judged, and
+          the notes field pinned across the foot so the primary action never
+          sits below the fold. Grid areas place them, so DOM order stays
+          fill-the-form then read-the-result for a keyboard user. */}
+      <div className="studio-grid mt-4">
+        <div className="setup-col space-y-4" style={{ gridArea: "setup" }}>
+
       {state.mode === "voice" && (
         <div className="mt-3 flex gap-2" role="radiogroup" aria-label="Voice style">
           {(["standard", "expressive"] as const).map((style) => (
@@ -509,7 +517,7 @@ export function StudioClient({
               disabled={isBusy}
               data-active={state.voiceStyle === style}
               onClick={() => dispatch({ type: "SET_VOICE_STYLE", voiceStyle: style })}
-              className="pill !px-3 !py-1.5 text-xs"
+              className="opt"
               style={
                 state.voiceStyle !== style
                   ? { background: "var(--surface)", border: "1px solid var(--border)" }
@@ -546,7 +554,7 @@ export function StudioClient({
             onSaveCharacter={handleSaveCharacter}
           />
 
-          <p className="mb-1.5 mt-3 text-[11px] font-medium uppercase tracking-wide text-[var(--text-faint)]">
+          <p className="field-label mb-1.5 mt-3 block">
             Size
           </p>
           <div className="flex gap-2" role="radiogroup" aria-label="Image size">
@@ -559,12 +567,7 @@ export function StudioClient({
                 disabled={isBusy}
                 data-active={state.imageSize === size}
                 onClick={() => dispatch({ type: "SET_IMAGE_SIZE", imageSize: size })}
-                className="pill !px-3 !py-1.5 text-xs"
-                style={
-                  state.imageSize !== size
-                    ? { background: "var(--surface)", border: "1px solid var(--border)" }
-                    : undefined
-                }
+                className="opt"
               >
                 {size}
               </button>
@@ -575,7 +578,7 @@ export function StudioClient({
 
       {state.mode === "video" && (
         <div className="mt-3">
-          <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-[var(--text-faint)]">
+          <p className="field-label mb-1.5 block">
             Animate an image <span className="normal-case tracking-normal">(optional)</span>
           </p>
           <div className="mb-2 flex gap-2" role="radiogroup" aria-label="Keyframe slot">
@@ -588,7 +591,7 @@ export function StudioClient({
                 disabled={isBusy}
                 data-active={frameSlot === slot}
                 onClick={() => setFrameSlot(slot)}
-                className="pill !px-3 !py-1.5 text-xs"
+                className="opt"
                 style={
                   frameSlot !== slot
                     ? { background: "var(--surface)", border: "1px solid var(--border)" }
@@ -720,7 +723,7 @@ export function StudioClient({
 
       {state.mode === "video" && recentVideoIds.length > 0 && (
         <div className="mt-3">
-          <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-[var(--text-faint)]">
+          <p className="field-label mb-1.5 block">
             Extend or edit a clip{" "}
             <span className="normal-case tracking-normal">
               (optional — pick up to {MAX_SOURCE_VIDEOS_PER_JOB})
@@ -781,7 +784,7 @@ export function StudioClient({
       {state.mode === "video" && (
         <div className="mt-3 space-y-3">
           <div>
-            <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-[var(--text-faint)]">
+            <p className="field-label mb-1.5 block">
               Resolution
             </p>
             <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Resolution">
@@ -794,12 +797,7 @@ export function StudioClient({
                   disabled={isBusy}
                   data-active={state.resolution === resolution}
                   onClick={() => dispatch({ type: "SET_RESOLUTION", resolution })}
-                  className="pill !px-3 !py-1.5 text-xs"
-                  style={
-                    state.resolution !== resolution
-                      ? { background: "var(--surface)", border: "1px solid var(--border)" }
-                      : undefined
-                  }
+                  className="opt"
                 >
                   {resolution}
                 </button>
@@ -808,7 +806,7 @@ export function StudioClient({
           </div>
 
           <div>
-            <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-[var(--text-faint)]">
+            <p className="field-label mb-1.5 block">
               Aspect ratio
             </p>
             <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Aspect ratio">
@@ -821,12 +819,7 @@ export function StudioClient({
                   disabled={isBusy}
                   data-active={state.ratio === ratio}
                   onClick={() => dispatch({ type: "SET_RATIO", ratio })}
-                  className="pill !px-3 !py-1.5 text-xs"
-                  style={
-                    state.ratio !== ratio
-                      ? { background: "var(--surface)", border: "1px solid var(--border)" }
-                      : undefined
-                  }
+                  className="opt"
                 >
                   {ratio}
                 </button>
@@ -837,7 +830,7 @@ export function StudioClient({
           <div>
             <label
               htmlFor="duration"
-              className="mb-1.5 flex items-center justify-between text-[11px] font-medium uppercase tracking-wide text-[var(--text-faint)]"
+              className="field-label mb-1.5 flex items-center justify-between"
             >
               <span>Duration</span>
               <span className="text-[var(--text)]">{state.durationSeconds}s</span>
@@ -870,7 +863,7 @@ export function StudioClient({
         <div className="mt-3 space-y-3">
           {state.mode === "video" && (
             <div>
-              <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-[var(--text-faint)]">
+              <p className="field-label mb-1.5 block">
                 Camera move{" "}
                 <span className="normal-case tracking-normal">
                   (optional — stack them, order matters)
@@ -890,7 +883,7 @@ export function StudioClient({
                       onClick={() =>
                         dispatch({ type: "TOGGLE_CAMERA_PRESET", presetId: preset.id })
                       }
-                      className="pill !px-2.5 !py-1 text-[11px]"
+                      className="opt"
                       data-active={selected}
                       style={
                         selected
@@ -908,7 +901,7 @@ export function StudioClient({
           )}
 
           <div>
-            <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-[var(--text-faint)]">
+            <p className="field-label mb-1.5 block">
               Lens <span className="normal-case tracking-normal">(optional)</span>
             </p>
             <div className="flex flex-wrap gap-1.5">
@@ -929,7 +922,7 @@ export function StudioClient({
                         presetId: selected ? null : preset.id,
                       })
                     }
-                    className="pill !px-2.5 !py-1 text-[11px]"
+                    className="opt"
                     data-active={selected}
                     style={
                       selected
@@ -945,7 +938,7 @@ export function StudioClient({
           </div>
 
           <div>
-            <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-[var(--text-faint)]">
+            <p className="field-label mb-1.5 block">
               Look <span className="normal-case tracking-normal">(optional)</span>
             </p>
             <div className="flex flex-wrap gap-1.5">
@@ -964,7 +957,7 @@ export function StudioClient({
                         presetId: selected ? null : preset.id,
                       })
                     }
-                    className="pill !px-2.5 !py-1 text-[11px]"
+                    className="opt"
                     data-active={selected}
                     style={
                       selected
@@ -983,7 +976,7 @@ export function StudioClient({
 
       {state.mode === "model3d" && (
         <div className="mt-3">
-          <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-[var(--text-faint)]">
+          <p className="field-label mb-1.5 block">
             Detail
           </p>
           <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Mesh detail">
@@ -996,12 +989,7 @@ export function StudioClient({
                 disabled={isBusy}
                 data-active={state.model3dQuality === quality}
                 onClick={() => dispatch({ type: "SET_MODEL3D_QUALITY", quality })}
-                className="pill !px-3 !py-1.5 text-xs capitalize"
-                style={
-                  state.model3dQuality !== quality
-                    ? { background: "var(--surface)", border: "1px solid var(--border)" }
-                    : undefined
-                }
+                className="opt capitalize"
               >
                 {quality}
               </button>
@@ -1016,6 +1004,9 @@ export function StudioClient({
         </div>
       )}
 
+        </div>
+
+        <div style={{ gridArea: "notes" }}>
       <form onSubmit={handleSubmit} className="mt-5 space-y-3">
         <label htmlFor="prompt" className="block text-xs font-medium text-[var(--text-muted)]">
           {state.mode === "voice" ? "Text to speak" : "Prompt"}
@@ -1089,7 +1080,9 @@ export function StudioClient({
           </p>
         )}
       </form>
+        </div>
 
+        <div style={{ gridArea: "viewer" }}>
       <div className="mt-6" aria-live="polite">
         {(state.phase === "queued" || state.phase === "processing") && (
           <div className="card flex items-center gap-3 p-4">
@@ -1228,6 +1221,8 @@ export function StudioClient({
               />
             );
           })}
+      </div>
+        </div>
       </div>
     </div>
   );

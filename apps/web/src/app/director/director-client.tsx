@@ -242,13 +242,8 @@ export function DirectorClient({
                   // Clicking the cast character again clears it, so an uncast
                   // film stays reachable without a separate "none" control.
                   onClick={() => setCastId(active ? null : character.id)}
-                  className="pill !px-3 !py-1.5 text-xs"
+                  className="opt"
                   data-active={active}
-                  style={
-                    active
-                      ? undefined
-                      : { background: "var(--surface)", border: "1px solid var(--border)" }
-                  }
                 >
                   {character.name}
                 </button>
