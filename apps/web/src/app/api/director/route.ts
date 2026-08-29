@@ -30,8 +30,8 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const shots = await planShotsForBrief(brief);
-    return NextResponse.json({ shots });
+    const film = await planShotsForBrief(brief);
+    return NextResponse.json(film);
   } catch (error) {
     if (error instanceof DirectorPlanError) {
       return NextResponse.json({ error: error.message }, { status: 502 });

@@ -22,9 +22,10 @@ test("rejects an empty creative brief before calling the model", async () => {
 test("parses a valid shot plan from the model response", async () => {
   const client = fakeChatClient(
     JSON.stringify({
+      lookPreset: "golden-hour",
       shots: [
-        { description: "A lone figure walks across a desert", cameraPreset: "aerial", durationSeconds: 5 },
-        { description: "Close on the figure's determined eyes", cameraPreset: "close-up", durationSeconds: 3 },
+        { description: "A lone figure walks across a desert", cameraPreset: "aerial", lensPreset: "wide", durationSeconds: 5 },
+        { description: "Close on the figure's determined eyes", cameraPreset: "close-up", lensPreset: "portrait", durationSeconds: 3 },
       ],
     }),
   );
@@ -34,23 +35,44 @@ test("parses a valid shot plan from the model response", async () => {
   assert.equal(plan.shots.length, 2);
   assert.equal(plan.shots[0]?.cameraPreset, "aerial");
   assert.equal(plan.shots[1]?.durationSeconds, 3);
+  assert.equal(plan.lookPreset, "golden-hour");
+  assert.equal(plan.shots[0]?.lensPreset, "wide");
+});
+
+test("rejects a plan with no look, since every shot is graded with it", async () => {
+  const client = fakeChatClient(
+    JSON.stringify({
+      shots: [{ description: "x", cameraPreset: "static", lensPreset: "wide", durationSeconds: 5 }],
+    }),
+  );
+  await assert.rejects(planShots(client, "brief"), DirectorPlanError);
+});
+
+test("rejects a shot with an unknown lens preset", async () => {
+  const client = fakeChatClient(
+    JSON.stringify({
+      lookPreset: "cinematic",
+      shots: [{ description: "x", cameraPreset: "static", lensPreset: "not-real", durationSeconds: 5 }],
+    }),
+  );
+  await assert.rejects(planShots(client, "brief"), DirectorPlanError);
 });
 
 test("rejects a response with no shots", async () => {
-  const client = fakeChatClient(JSON.stringify({ shots: [] }));
+  const client = fakeChatClient(JSON.stringify({ lookPreset: "cinematic", shots: [] }));
   await assert.rejects(planShots(client, "brief"), DirectorPlanError);
 });
 
 test("rejects a response with an unknown camera preset", async () => {
   const client = fakeChatClient(
-    JSON.stringify({ shots: [{ description: "x", cameraPreset: "not-real", durationSeconds: 5 }] }),
+    JSON.stringify({ lookPreset: "cinematic", shots: [{ description: "x", cameraPreset: "not-real", lensPreset: "wide", durationSeconds: 5 }] }),
   );
   await assert.rejects(planShots(client, "brief"), DirectorPlanError);
 });
 
 test("rejects a response with an out-of-range duration", async () => {
   const client = fakeChatClient(
-    JSON.stringify({ shots: [{ description: "x", cameraPreset: "static", durationSeconds: 999 }] }),
+    JSON.stringify({ lookPreset: "cinematic", shots: [{ description: "x", cameraPreset: "static", lensPreset: "wide", durationSeconds: 999 }] }),
   );
   await assert.rejects(planShots(client, "brief"), DirectorPlanError);
 });
@@ -60,12 +82,32 @@ test("rejects malformed JSON from the model", async () => {
   await assert.rejects(planShots(client, "brief"), DirectorPlanError);
 });
 
-test("buildShotPrompt combines the shot description with the preset's prompt fragment", () => {
-  const prompt = buildShotPrompt({
-    description: "A lone figure walks across a desert",
-    cameraPreset: "aerial",
-    durationSeconds: 5,
-  });
-  assert.match(prompt, /A lone figure walks across a desert/);
+test("buildShotPrompt stacks camera, lens, and the plan's look behind the description", () => {
+  const prompt = buildShotPrompt(
+    {
+      description: "A lone figure walks across a desert",
+      cameraPreset: "aerial",
+      lensPreset: "telephoto",
+      durationSeconds: 5,
+    },
+    "golden-hour",
+  );
+
+  assert.ok(prompt.startsWith("A lone figure walks across a desert,"));
   assert.match(prompt, /aerial drone shot/);
+  assert.match(prompt, /200mm telephoto/);
+  assert.match(prompt, /golden hour/);
+});
+
+test("every shot in a plan is graded with the same look", () => {
+  // A different grade per shot produces clips that do not belong to one film,
+  // which is why look lives on the plan rather than on the shot.
+  const shots = [
+    { description: "wide desert", cameraPreset: "aerial", lensPreset: "wide", durationSeconds: 5 },
+    { description: "tight eyes", cameraPreset: "close-up", lensPreset: "portrait", durationSeconds: 3 },
+  ] as const;
+
+  for (const shot of shots) {
+    assert.match(buildShotPrompt(shot, "film-noir"), /film noir lighting/);
+  }
 });

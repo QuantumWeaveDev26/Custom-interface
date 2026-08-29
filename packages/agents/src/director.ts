@@ -1,9 +1,15 @@
 import type { ChatCompletionResponse } from "@creative-ai/modelark-client";
 import {
   CAMERA_PRESETS,
-  getCameraPreset,
+  LENS_PRESETS,
+  LOOK_PRESETS,
+  composeShotPrompt,
   isCameraPresetId,
+  isLensPresetId,
+  isLookPresetId,
   type CameraPresetId,
+  type LensPresetId,
+  type LookPresetId,
 } from "@creative-ai/prompt-library";
 
 export interface ChatClient {
@@ -20,10 +26,19 @@ export interface ChatClient {
 export interface Shot {
   description: string;
   cameraPreset: CameraPresetId;
+  lensPreset: LensPresetId;
   durationSeconds: number;
 }
 
 export interface ShotPlan {
+  /**
+   * One grade for the whole plan.
+   *
+   * Chosen per plan rather than per shot on purpose: a film has a single look,
+   * and letting the model pick a different grade for every shot produces eight
+   * clips that do not belong to the same piece.
+   */
+  lookPreset: LookPresetId;
   shots: Shot[];
 }
 
@@ -57,6 +72,7 @@ function shotPlanJsonSchema(): Record<string, unknown> {
   return {
     type: "object",
     properties: {
+      lookPreset: { type: "string", enum: LOOK_PRESETS.map((preset) => preset.id) },
       shots: {
         type: "array",
         minItems: 1,
@@ -66,14 +82,15 @@ function shotPlanJsonSchema(): Record<string, unknown> {
           properties: {
             description: { type: "string" },
             cameraPreset: { type: "string", enum: CAMERA_PRESETS.map((preset) => preset.id) },
+            lensPreset: { type: "string", enum: LENS_PRESETS.map((preset) => preset.id) },
             durationSeconds: { type: "number" },
           },
-          required: ["description", "cameraPreset", "durationSeconds"],
+          required: ["description", "cameraPreset", "lensPreset", "durationSeconds"],
           additionalProperties: false,
         },
       },
     },
-    required: ["shots"],
+    required: ["lookPreset", "shots"],
     additionalProperties: false,
   };
 }
@@ -132,8 +149,15 @@ function validateShotPlan(value: unknown): ShotPlan {
     throw new DirectorPlanError(`Director agent returned more than ${MAX_SHOTS} shots`);
   }
 
+  const lookPreset = (value as { lookPreset?: unknown }).lookPreset;
+  if (typeof lookPreset !== "string" || !isLookPresetId(lookPreset)) {
+    throw new DirectorPlanError(
+      `Director agent returned an unknown look: ${String(lookPreset)}`,
+    );
+  }
+
   const shots = shotsValue.map((raw, index) => validateShot(raw, index));
-  return { shots };
+  return { lookPreset, shots };
 }
 
 function validateShot(raw: unknown, index: number): Shot {
@@ -141,13 +165,19 @@ function validateShot(raw: unknown, index: number): Shot {
     throw new DirectorPlanError(`Shot ${index} is not an object`);
   }
 
-  const { description, cameraPreset, durationSeconds } = raw as Record<string, unknown>;
+  const { description, cameraPreset, lensPreset, durationSeconds } = raw as Record<
+    string,
+    unknown
+  >;
 
   if (typeof description !== "string" || description.trim().length === 0) {
     throw new DirectorPlanError(`Shot ${index} is missing a description`);
   }
   if (typeof cameraPreset !== "string" || !isCameraPresetId(cameraPreset)) {
     throw new DirectorPlanError(`Shot ${index} has an unknown camera preset: ${String(cameraPreset)}`);
+  }
+  if (typeof lensPreset !== "string" || !isLensPresetId(lensPreset)) {
+    throw new DirectorPlanError(`Shot ${index} has an unknown lens preset: ${String(lensPreset)}`);
   }
   if (
     typeof durationSeconds !== "number" ||
@@ -158,10 +188,20 @@ function validateShot(raw: unknown, index: number): Shot {
     throw new DirectorPlanError(`Shot ${index} has an invalid duration`);
   }
 
-  return { description: description.trim(), cameraPreset, durationSeconds };
+  return { description: description.trim(), cameraPreset, lensPreset, durationSeconds };
 }
 
-export function buildShotPrompt(shot: Shot): string {
-  const preset = getCameraPreset(shot.cameraPreset);
-  return `${shot.description}, ${preset.promptFragment}`;
+/**
+ * Composes one shot into a prompt, using the same grammar Studio uses.
+ *
+ * The plan's look is passed in rather than read off the shot, so every clip in
+ * a plan is graded identically.
+ */
+export function buildShotPrompt(shot: Shot, lookPreset: LookPresetId): string {
+  return composeShotPrompt({
+    description: shot.description,
+    cameraPresetIds: [shot.cameraPreset],
+    lensPresetId: shot.lensPreset,
+    lookPresetId: lookPreset,
+  });
 }

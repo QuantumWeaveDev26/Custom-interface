@@ -64,8 +64,11 @@ export function DirectorClient() {
         return;
       }
 
-      const { shots } = (await response.json()) as { shots: DirectorShot[] };
-      dispatch({ type: "PLAN_SUCCESS", shots });
+      const { shots, lookLabel } = (await response.json()) as {
+        shots: DirectorShot[];
+        lookLabel: string;
+      };
+      dispatch({ type: "PLAN_SUCCESS", shots, lookLabel });
     },
     [state.brief, state.phase],
   );
@@ -181,8 +184,15 @@ export function DirectorClient() {
         </div>
       )}
 
+      {state.phase === "planned" && state.lookLabel !== null && (
+        <p className="mt-8 text-[11px] font-medium uppercase tracking-wide text-[var(--text-faint)]">
+          Graded as <span className="text-[var(--text)]">{state.lookLabel}</span> across
+          every shot
+        </p>
+      )}
+
       {state.phase === "planned" && (
-        <div className="mt-8 grid gap-4 sm:grid-cols-2">
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
           {state.shots.map((shot, index) => {
             const shotGeneration = generation[index] ?? IDLE_GENERATION;
             const busy =
@@ -197,7 +207,8 @@ export function DirectorClient() {
                     Shot {index + 1}
                   </span>
                   <span className="text-xs text-[var(--text-faint)]">
-                    {shot.cameraLabel} &middot; {shot.durationSeconds}s
+                    {shot.cameraLabel} &middot; {shot.lensLabel} &middot;{" "}
+                    {shot.durationSeconds}s
                   </span>
                 </div>
                 <p className="mt-3 text-sm text-[var(--text)]">{shot.description}</p>
