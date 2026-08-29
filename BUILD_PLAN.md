@@ -195,9 +195,15 @@ Expand `packages/prompt-library` toward Higgsfield's ~70 presets: camera bodies,
 lens types, aperture/DoF, and stacking multiple moves per shot. Pure prompt
 engineering — no new API surface, so it can proceed in parallel.
 
-### C6 — Video extension and editing
-Extend a clip past its end; edit an existing clip. Needs R4 and A2's input-asset
-support.
+### C6 — Video extension and editing ✅ DONE (2026-08-29, `cb6d918`)
+Studio Video mode takes up to three of the user's clips. One extends; two or
+three generate the transitions between them. Roles are mapped to their wire
+names at the worker boundary — this fixed reference images being sent unroled,
+which the provider reads as a first frame rather than as no role at all.
+
+**Still open:** `reference_audio` is documented but unwired, so audio-driven
+generation is not offered. Editing is reachable (a clip plus reference images
+plus a prompt) but has no dedicated UI framing separating it from extending.
 
 ### C7 — Community / explore feed
 Semantic search and "more like this" over generated assets via

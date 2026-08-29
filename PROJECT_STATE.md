@@ -63,7 +63,10 @@ and saw the correct result.
 | Saved named characters | `/studio` (Image tab) | ⚠️ Built, tests pass, **not yet exercised in the browser** |
 | **First/last keyframes + adaptive ratio** | `/studio` (Video tab) | ✅ **Verified live 2026-08-29** — tree as first frame, red car as last, adaptive ratio, 5s clip produced that moves between the two stills. An earlier attempt with astronaut photos was refused for a real-person input image (see §4). |
 
-One item is currently built but unproven: saved named characters.
+| Video extend / edit (C6) | `/studio` (Video tab) | ⚠️ Built, tests pass, **not yet exercised in the browser** |
+
+Two items are currently built but unproven: saved named characters, and video
+extend/edit.
 
 ---
 
@@ -192,7 +195,7 @@ previous agent (this project has been burned by an agent self-reporting
 
 ```bash
 pnpm typecheck   # all 8 packages
-pnpm test        # 253 tests, all must pass
+pnpm test        # 261 tests, all must pass
 pnpm build       # full monorepo build
 ```
 
