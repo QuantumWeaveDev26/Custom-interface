@@ -68,9 +68,11 @@ and saw the correct result.
 | Cinema presets — camera / lens / look (C5) | `/studio` | ⚠️ Built, tests pass, **not yet exercised in the browser** |
 | Batch image generation (C9) | `/studio` (Image tab) | ⚠️ Built, tests pass, **not yet exercised in the browser** |
 
-Three items are currently built but unproven: saved named characters, the
-cinema presets, and batch image generation. These are queued for one batched
-browser-test pass rather than being verified one at a time.
+| Semantic search + more-like-this (C7) | `/gallery` | ⚠️ Built, tests pass, **not yet exercised in the browser**. Nothing is indexed yet — the first search will return nothing until "Index up to 20" is run. |
+
+Four items are currently built but unproven: saved named characters, the cinema
+presets, batch image generation, and semantic search. These are queued for one
+batched browser-test pass rather than being verified one at a time.
 
 ---
 
@@ -180,6 +182,23 @@ reference docs; this is the index.
 | **BytePlus refuses input images that may depict a real person** — `InputImageSensitiveContentDetected.PrivacyInformation`, HTTP 400, naming the offending `content[n]` | Confirmed live 2026-08-29 on a keyframe job. Scope-relevant: this is a hard limit on any feature that feeds a real photo in — face-consistent characters from real photos, and OmniHuman lipsync (B2). Ask support whether a per-account allowlist exists before planning around it. |
 | That error's code contains the word "Sensitive", which naively matches a content-filter pattern | It is an *input image* rejection, not a prompt rejection. The worker checks for it first (`safeFailureMessage`); telling the user to reword sends them at the wrong problem. |
 
+### Semantic search storage — a deliberate, revisitable choice
+
+`AssetEmbedding.vector` is a plain `Float[]`, and cosine similarity runs in
+application code (`apps/web/src/server/semantic-search.ts`). **pgvector is not
+installed on this Postgres** — `pg_available_extensions` has no `vector` row —
+and the feature was not worth blocking on an extension install.
+
+This is correct for a per-user library of a few thousand vectors and wrong at
+scale. Move to pgvector when either becomes true: a single user passes roughly
+tens of thousands of assets, or search needs to span users (the community feed).
+At that point the migration is an extension, a column type change, and an
+index — the ranking logic itself is already isolated behind `rankBySimilarity`.
+
+Also note: embedding an image costs real tokens (~13,800 in the provider's own
+sample), which is why indexing is user-triggered and capped rather than
+automatic.
+
 ### Windows-specific operational gotchas
 
 - Stale `node` worker processes survive rebuilds and silently serve old compiled
@@ -211,7 +230,7 @@ previous agent (this project has been burned by an agent self-reporting
 
 ```bash
 pnpm typecheck   # all 8 packages
-pnpm test        # 287 tests, all must pass
+pnpm test        # 300 tests, all must pass
 pnpm build       # full monorepo build
 ```
 

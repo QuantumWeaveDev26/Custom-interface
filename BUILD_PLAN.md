@@ -94,7 +94,7 @@ lost days to building against unconfirmed BytePlus contracts.
 | ~~**R8**~~ | ✅ **DONE** — the real-face input restriction and its two documented workarounds (trusted same-account outputs; preset digital characters via `asset://`). See `MODELARK_API_REFERENCE.md` § R8. | B2, C4 |
 | **R5** | ⛔ **BLOCKED** — the two 3D models exist with generous free quota, but ModelArk publishes **no 3D tutorial or API reference at all**; the whole docs nav was enumerated to confirm it. Needs the console model card's API sample. See `MODELARK_API_REFERENCE.md` § R5. | C8 |
 | ~~**R9**~~ | ✅ **DONE** — batch image generation shape confirmed and recorded. | C9 |
-| **R6** | `skylark-embedding-vision` request shape | C7 |
+| ~~**R6**~~ | ✅ **DONE** — `POST /embeddings/multimodal` recorded in `MODELARK_API_REFERENCE.md`. Critical detail: the whole `input` array becomes **one** vector, so a query and an asset must be embedded separately. | C7 |
 | **R7** | Managed Agents / App Lab — replace or complement `packages/agents`? | future agent work |
 
 **R1 is partially done.** Enough to target models for C2/C4; not enough to rule
@@ -212,9 +212,25 @@ which the provider reads as a first frame rather than as no role at all.
 generation is not offered. Editing is reachable (a clip plus reference images
 plus a prompt) but has no dedicated UI framing separating it from extending.
 
-### C7 — Community / explore feed
-Semantic search and "more like this" over generated assets via
-`skylark-embedding-vision`. Needs R6. Overlaps Phase 4's community goal.
+### C7 — Semantic search ✅ DONE (2026-08-29, `f18cdc9`) / community feed still open
+Gallery ranks your own assets by meaning, with "more like this" from any
+result. Vectors live in a plain `Float[]` column and similarity is computed in
+application code — pgvector is not installed on the target Postgres and the
+feature was not worth blocking on a database extension.
+
+**Deliberately not built: the cross-user community feed.** That is not more of
+the same work — it needs a publish/visibility model (what is public, who can
+see it, how it is taken down), which is a product decision of the same kind as
+Phase 4's, not something to guess at. Search is per-user until that is decided.
+
+**Still open besides that:**
+- Indexing is manual and capped at 20 per call. New assets are not embedded on
+  completion, so the library drifts out of date until the user indexes again.
+  Embedding on completion would spend tokens per generation, which is a pricing
+  decision.
+- Changing `EMBEDDING_DIMENSIONS` or the model invalidates every stored vector.
+  Loads filter to the current model so nothing breaks, but there is no
+  reindexing path — old rows simply stop matching.
 
 ### C8 — 3D generation 🟢 differentiator — ⛔ BLOCKED on R5
 Text-to-3D and image-to-3D with PBR materials and glb/obj/fbx/usdz export.
