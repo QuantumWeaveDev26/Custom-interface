@@ -693,6 +693,33 @@ test("content-filter responses refund with a safe filter message", async () => {
   );
 });
 
+test("a rejected input image is reported as an image problem, not a prompt problem", async () => {
+  // Real BytePlus response, 2026-08-29. The word "Sensitive" in the code would
+  // otherwise match the content-filter test and tell the user to reword a
+  // prompt that was never the problem.
+  const harness = createImageFailureHarness({
+    response: {
+      model: "seedream-5-0-lite-260128",
+      created: 1_777_000_000,
+      data: [],
+      error: {
+        code: "InputImageSensitiveContentDetected.PrivacyInformation",
+        message:
+          "The request failed because the input image 'content[1]' may contain real person.",
+      },
+    },
+  });
+
+  await createGenerationProcessor(harness.dependencies)("image-job");
+
+  assertSafeFailure(
+    harness.refunds,
+    harness.events,
+    "One of your input images was rejected: the provider does not accept images that may show a real person. Try a different image. Your credits have been refunded.",
+    /content\[1\]|PrivacyInformation/i,
+  );
+});
+
 test("missing generated media refunds once", async () => {
   const harness = createImageFailureHarness({
     response: {

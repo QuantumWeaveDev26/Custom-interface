@@ -14,6 +14,7 @@ import {
 
 import {
   SAFE_CONTENT_FILTER_MESSAGE,
+  SAFE_INPUT_IMAGE_REJECTED_MESSAGE,
   SAFE_GENERATION_FAILURE_MESSAGE,
 } from "./config.js";
 import type {
@@ -46,8 +47,17 @@ function errorSearchText(error: unknown): string {
 }
 
 function safeFailureMessage(error: unknown): string {
+  const text = errorSearchText(error);
+
+  // Checked before the general filter test, which "sensitive" would otherwise
+  // match — telling the user their *prompt* was rejected when the prompt was
+  // fine and an input image was the problem.
+  if (/InputImageSensitiveContentDetected|input image/i.test(text)) {
+    return SAFE_INPUT_IMAGE_REJECTED_MESSAGE;
+  }
+
   return /content[\s_-]*filter|safety[\s_-]*(?:filter|violation)|moderation|sensitive/i.test(
-    errorSearchText(error),
+    text,
   )
     ? SAFE_CONTENT_FILTER_MESSAGE
     : SAFE_GENERATION_FAILURE_MESSAGE;
