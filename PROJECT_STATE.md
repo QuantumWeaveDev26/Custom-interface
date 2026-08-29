@@ -63,10 +63,9 @@ and saw the correct result.
 | Saved named characters | `/studio` (Image tab) | ⚠️ Built, tests pass, **not yet exercised in the browser** |
 | **First/last keyframes + adaptive ratio** | `/studio` (Video tab) | ✅ **Verified live 2026-08-29** — tree as first frame, red car as last, adaptive ratio, 5s clip produced that moves between the two stills. An earlier attempt with astronaut photos was refused for a real-person input image (see §4). |
 
-| Video extend / edit (C6) | `/studio` (Video tab) | ⚠️ Built, tests pass, **not yet exercised in the browser** |
+| **Video extend / edit (C6)** | `/studio` (Video tab) | ✅ **Verified live 2026-08-29** — a two-clip extend job completed. Confirmed on the wire, not just in the UI: the job carried two `source_video` inputs at positions 0 and 1. |
 
-Two items are currently built but unproven: saved named characters, and video
-extend/edit.
+One item is currently built but unproven: saved named characters.
 
 ---
 
