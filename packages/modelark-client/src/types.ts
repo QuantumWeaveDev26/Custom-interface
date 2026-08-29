@@ -176,3 +176,32 @@ export interface ChatCompletionResponse {
   choices: ChatCompletionChoice[];
   usage?: ChatCompletionUsage;
 }
+
+/**
+ * Multimodal embedding input (MODELARK_API_REFERENCE.md, R6).
+ *
+ * The whole array is vectorized as ONE vector — an image and a text together
+ * produce a single vector of the pair, not two comparable vectors. To compare
+ * two things, embed them in separate calls.
+ */
+export type EmbeddingInputItem =
+  | { type: "text"; text: string }
+  | { type: "image_url"; image_url: { url: string } }
+  | { type: "video_url"; video_url: { url: string } };
+
+export interface CreateEmbeddingRequest {
+  model: string;
+  input: EmbeddingInputItem[];
+  encoding_format?: "float" | "base64";
+  /** 1024 or 2048; 2048 is the provider default. */
+  dimensions?: number;
+  instructions?: string;
+}
+
+export interface CreateEmbeddingResponse {
+  created: number;
+  model: string;
+  data: { embedding: number[]; object: string };
+  usage?: { prompt_tokens: number; total_tokens?: number };
+  error?: { code: string; message: string };
+}

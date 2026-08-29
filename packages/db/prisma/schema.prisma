@@ -104,6 +104,28 @@ model Asset {
   createdAt    DateTime @default(now())
   usedAsInput  JobInputAsset[]
   characterRefs CharacterReference[]
+  embedding    AssetEmbedding?
+}
+
+// A semantic vector for one asset, used for search and "more like this".
+//
+// The vector is stored as a plain Float[] rather than a pgvector column
+// because pgvector is not installed on the target Postgres, and similarity is
+// computed in application code. That is fine for a per-user library of this
+// size and avoids making the whole feature wait on a database extension; see
+// PROJECT_STATE.md for when it stops being fine.
+model AssetEmbedding {
+  assetId    String   @id
+  asset      Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  userId     String
+  // Kept alongside the vector because a model or dimension change makes old
+  // vectors incomparable — mixing them silently returns nonsense rankings.
+  model      String
+  dimensions Int
+  vector     Float[]
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
 }
 
 // A named, reusable set of reference images — the "Soul ID" equivalent.

@@ -1,5 +1,7 @@
 import { ModelArkHttpError, ModelArkTimeoutError } from "./errors.js";
 import type {
+  CreateEmbeddingRequest,
+  CreateEmbeddingResponse,
   ChatCompletionRequest,
   ChatCompletionResponse,
   CreateContentGenerationTaskRequest,
@@ -30,6 +32,9 @@ export interface PollVideoTaskOptions {
 
 export interface ModelArkClient {
   createImage(params: GenerateImagesRequest): Promise<ImagesResponse>;
+  createEmbedding(
+    params: CreateEmbeddingRequest,
+  ): Promise<CreateEmbeddingResponse>;
   createVideoTask(
     params: CreateContentGenerationTaskRequest,
   ): Promise<CreateContentGenerationTaskResponse>;
@@ -106,6 +111,16 @@ export function createModelArkClient(config: ModelArkClientConfig): ModelArkClie
       method: "POST",
       body: JSON.stringify(params),
     });
+  }
+
+  async function createEmbedding(
+    params: CreateEmbeddingRequest,
+  ): Promise<CreateEmbeddingResponse> {
+    return requestJson<CreateEmbeddingResponse>(
+      "createEmbedding",
+      "/embeddings/multimodal",
+      { method: "POST", body: JSON.stringify(params) },
+    );
   }
 
   async function createVideoTask(
@@ -207,6 +222,7 @@ export function createModelArkClient(config: ModelArkClientConfig): ModelArkClie
 
   return {
     createImage,
+    createEmbedding,
     createVideoTask,
     getVideoTask,
     listVideoTasks,

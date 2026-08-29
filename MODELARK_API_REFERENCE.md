@@ -522,3 +522,61 @@ model IDs and unconfirmed shapes.
 **Next action (user):** open the console model card for `hyper3d-gen2` and copy
 its API sample — the exact endpoint path, request body, and whether it is
 synchronous or a create-then-poll task like video.
+
+---
+
+## Multimodal embeddings (R6) — CONFIRMED via official docs, 2026-08-29
+
+Source: ModelArk "Multimodal Vectorization API" (1523520). **Documented, not yet
+exercised by a live call.**
+
+```
+POST https://ark.ap-southeast.bytepluses.com/api/v3/embeddings/multimodal
+```
+
+```json
+{
+  "model": "skylark-embedding-vision-250615",
+  "encoding_format": "float",
+  "dimensions": 2048,
+  "input": [
+    { "type": "video_url", "video_url": { "url": "https://..." } },
+    { "type": "image_url", "image_url": { "url": "https://..." } },
+    { "type": "text", "text": "what's in the video and the image" }
+  ]
+}
+```
+
+**The whole `input` array is vectorized as ONE vector.** This is the single most
+important thing about this endpoint and the easiest to get wrong: passing an
+image and a text does not return two vectors to compare, it returns one vector
+of the pair together. To compare an image against a query, embed them in
+*separate calls* and compare the two results.
+
+Response is a single object, not a list despite `"object": "list"`:
+```json
+{ "created": 1743575029, "data": { "embedding": [-0.123, ...], "object": "embedding" },
+  "model": "...", "usage": { "prompt_tokens": 13987 } }
+```
+
+| Field | Values | Notes |
+|---|---|---|
+| `dimensions` | 1024 or 2048, default 2048 | `-250615` and later only |
+| `encoding_format` | `float` (default) or `base64` | |
+| `instructions` | string | Inference prompt; defaulted per modality if omitted |
+| `sparse_embedding.type` | `enabled` / `disabled` | **Text-only input.** Cannot be used for images |
+
+Input limits:
+- **Text:** UTF-8, ≤ 100,000 bytes, ≤ 8,000 tokens. Docs recommend ≤ 4,096
+  tokens total for quality.
+- **Images:** jpeg, png, webp, bmp, tiff, ico, dib, icns, sgi, jpeg2000; aspect
+  ratio within [1/100, 100]; **total pixels ≤ 36,000,000**. URL or a
+  `data:image/{fmt};base64,{...}` string.
+- **Video:** mp4, avi, mov, lowercase extension, ≤ 50 MB. Audio is ignored.
+
+Model IDs: `skylark-embedding-vision-251215` and `-250615`. The older `-250328`
+accepts only three fixed input combinations — do not target it.
+
+Billing is per token, and images are expensive: the doc's own sample burned
+13,800 image tokens on a single image. Backfilling an entire asset library
+therefore costs real money and should be metered, not run in one unbounded loop.

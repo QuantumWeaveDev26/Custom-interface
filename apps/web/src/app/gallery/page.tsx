@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { prisma } from "@creative-ai/db";
 import Link from "next/link";
 
+import { GallerySearch } from "./gallery-search";
+
 const TYPE_LABELS: Record<string, string> = {
   image: "Image",
   video: "Video",
@@ -21,6 +23,16 @@ export default async function GalleryPage() {
     orderBy: { createdAt: "desc" },
   });
 
+  // Only image and video assets can be embedded, so audio is excluded from the
+  // "not yet indexed" count — otherwise it would never reach zero.
+  const unindexedCount = await prisma.asset.count({
+    where: {
+      userId: session.user.id,
+      type: { in: ["image", "video"] },
+      embedding: { is: null },
+    },
+  });
+
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 sm:py-14">
       <div className="flex items-center justify-between">
@@ -29,6 +41,8 @@ export default async function GalleryPage() {
           Back to Studio
         </Link>
       </div>
+
+      {assets.length > 0 && <GallerySearch unindexedCount={unindexedCount} />}
 
       {assets.length === 0 ? (
         <div className="card mt-8 flex flex-col items-center gap-3 px-6 py-16 text-center">
