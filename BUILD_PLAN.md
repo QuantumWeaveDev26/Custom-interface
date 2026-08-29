@@ -195,8 +195,12 @@ transaction; delete is userId-scoped and 404s rather than 403s.
 images and saved-character shelf now appear in Video mode, sent as omni
 reference (R4). The picker is one shared component rather than a copy.
 
-**Still open:** Director and Marketing cannot load a saved character, so an
-identity does not survive into agent-planned work.
+**Cast in the agents ✅** (2026-08-29, `892b8bb`) — Director and Marketing each
+take one cast character for the whole plan, sent as reference images on every
+generation. A saved identity now reaches every tool.
+
+**Still open:** the cast is not offered on Transcribe or Voice Clone, which
+have no visual output to carry it.
 
 ### C5 — Cinema Studio depth ✅ DONE (2026-08-29, `3220188`)
 `packages/prompt-library` now carries three axes — 32 camera moves (stackable,
@@ -314,8 +318,9 @@ signup-abuse guard before any public launch.
 - **P3** Accessibility — focus and contrast ✅ DONE (2026-08-29, `faf14fb`): one
   systemic `:focus-visible` rule where there had been none at all, `--text-faint`
   raised from 3.47:1 to above 4.5:1 on every surface, and a
-  `prefers-reduced-motion` block. **Still open:** `aria-live` on the generation
-  status regions, and a full keyboard walkthrough of Studio.
+  `prefers-reduced-motion` block. Director and Marketing gained `aria-live`
+  regions in `892b8bb`; Studio, Transcribe, and Voice Clone already had one.
+  **Still open:** a full keyboard walkthrough of Studio.
 
 ---
 
