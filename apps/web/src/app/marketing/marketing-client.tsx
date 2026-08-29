@@ -1,5 +1,6 @@
 "use client";
 
+import { AttachButton, type Attachment } from "../attach-button";
 import { EmptyState } from "../empty-state";
 import { useCallback, useEffect, useRef, useReducer, useState } from "react";
 import {
@@ -36,6 +37,10 @@ export function MarketingClient({
 }) {
   // One character per ad — the same reasoning as Director's cast.
   const [castId, setCastId] = useState<string | null>(null);
+  // References attached straight from the prompt box, for the common case of
+  // "use this photo" where the user has not saved a character and should not
+  // have to first.
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [state, dispatch] = useReducer(marketingReducer, INITIAL_MARKETING_STATE);
   const [adType, setAdType] = useState<"image" | "video">("image");
   const [generation, setGeneration] = useState<AdGenerationState>(IDLE_GENERATION);
@@ -84,7 +89,10 @@ export function MarketingClient({
 
   const generateAd = useCallback(
     (prompt: string) => {
-      const cast = characters.find((character) => character.id === castId);
+      const referenceIds = [
+        ...(characters.find((character) => character.id === castId)?.assetIds ?? []),
+        ...attachments.map((attachment) => attachment.assetId),
+      ];
       setGeneration({ phase: "submitting", errorMessage: null, assetUrl: null });
 
       void (async () => {
@@ -96,10 +104,10 @@ export function MarketingClient({
             body: JSON.stringify({
               type: adType,
               prompt,
-              ...(cast === undefined
+              ...(referenceIds.length === 0
                 ? {}
                 : {
-                    inputAssets: cast.assetIds.map((assetId) => ({
+                    inputAssets: referenceIds.map((assetId) => ({
                       assetId,
                       role: "reference",
                     })),
@@ -148,7 +156,7 @@ export function MarketingClient({
         };
       })();
     },
-    [adType, characters, castId],
+    [adType, characters, castId, attachments],
   );
 
   const busy =
@@ -183,6 +191,22 @@ export function MarketingClient({
           {state.phase === "planning" && <span className="spinner" aria-hidden="true" />}
           {state.phase === "planning" ? "Analyzing..." : "Generate Ad Direction"}
         </button>
+
+        <AttachButton
+          attachments={attachments}
+          disabled={state.phase === "planning"}
+          accept="images"
+          hint="The ad is generated with these references."
+          onAttached={(attachment) =>
+            setAttachments((previous) => [...previous, attachment])
+          }
+          onRemove={(assetId) =>
+            setAttachments((previous) =>
+              previous.filter((item) => item.assetId !== assetId),
+            )
+          }
+        />
+
       </form>
 
       {characters.length > 0 && (

@@ -20,6 +20,7 @@ import {
   LOOK_PRESETS,
   composeShotPrompt,
 } from "@creative-ai/prompt-library";
+import { AttachButton, type Attachment } from "../attach-button";
 import { ReferencePicker } from "./reference-picker";
 import {
   INITIAL_STUDIO_STATE,
@@ -92,6 +93,34 @@ export function StudioClient({
   const [characterName, setCharacterName] = useState("");
   const [savingCharacter, setSavingCharacter] = useState(false);
   const [characterError, setCharacterError] = useState<string | null>(null);
+  // Attachments made from the prompt box. Tracked separately only so the chips
+  // can show file names; the selection itself lives in the reducer alongside
+  // everything picked from the galleries, so submission stays one path.
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+
+  const handleAttached = useCallback((attachment: Attachment) => {
+    setAttachments((previous) => [...previous, attachment]);
+    dispatch(
+      attachment.kind === "video"
+        ? { type: "TOGGLE_SOURCE_VIDEO", assetId: attachment.assetId }
+        : { type: "TOGGLE_REFERENCE", assetId: attachment.assetId },
+    );
+  }, []);
+
+  const handleRemoveAttachment = useCallback(
+    (assetId: string) => {
+      const removed = attachments.find((item) => item.assetId === assetId);
+      if (removed === undefined) return;
+      setAttachments((previous) => previous.filter((item) => item.assetId !== assetId));
+      dispatch(
+        removed.kind === "video"
+          ? { type: "TOGGLE_SOURCE_VIDEO", assetId }
+          : { type: "TOGGLE_REFERENCE", assetId },
+      );
+    },
+    [attachments],
+  );
+
   const pickableImageIds = useMemo(
     () => [...uploadedIds, ...recentImageIds],
     [uploadedIds, recentImageIds],
@@ -406,7 +435,12 @@ export function StudioClient({
               aria-checked={state.mode === mode}
               disabled={isBusy}
               data-active={state.mode === mode}
-              onClick={() => dispatch({ type: "SET_MODE", mode })}
+              onClick={() => {
+                // SET_MODE clears every selection in the reducer, so the chips
+                // must go with them or they would name assets no longer in use.
+                setAttachments([]);
+                dispatch({ type: "SET_MODE", mode });
+              }}
               className="pill flex-1"
             >
               {MODE_LABELS[mode]}
@@ -955,6 +989,24 @@ export function StudioClient({
           }
           className="input-field resize-none"
         />
+
+        {state.mode !== "voice" && (
+          <AttachButton
+            attachments={attachments}
+            disabled={isBusy}
+            // A still has nothing to do with a video file, so 3D and Image only
+            // offer images. Video mode takes both.
+            accept={state.mode === "video" ? "images-and-video" : "images"}
+            hint={
+              state.mode === "video"
+                ? "Images keep a subject consistent; a clip is extended or edited. Address them in the prompt as “Image 1”, “Video 1”."
+                : "Address them in the prompt as “image 1”, “image 2”."
+            }
+            onAttached={handleAttached}
+            onRemove={handleRemoveAttachment}
+          />
+        )}
+
         {composedPrompt !== state.prompt && state.prompt.trim().length > 0 && (
           <div className="rounded-lg border p-2.5" style={{ borderColor: "var(--border)" }}>
             <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-[var(--text-faint)]">

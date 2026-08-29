@@ -1,5 +1,6 @@
 "use client";
 
+import { AttachButton, type Attachment } from "../attach-button";
 import { EmptyState } from "../empty-state";
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import {
@@ -37,6 +38,10 @@ export function DirectorClient({
    * character. Null means an uncast film, which is the default.
    */
   const [castId, setCastId] = useState<string | null>(null);
+  // References attached straight from the prompt box, for the common case of
+  // "use this photo" where the user has not saved a character and should not
+  // have to first.
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [state, dispatch] = useReducer(directorReducer, INITIAL_DIRECTOR_STATE);
   const [generation, setGeneration] = useState<Record<number, ShotGenerationState>>({});
   const eventSources = useRef<Record<number, EventSource>>({});
@@ -85,7 +90,12 @@ export function DirectorClient({
   );
 
   const generateShot = useCallback((index: number, shot: DirectorShot) => {
-    const cast = characters.find((character) => character.id === castId);
+    // Cast and attachments are additive: a saved identity plus a one-off
+    // reference is a reasonable thing to ask for.
+    const referenceIds = [
+      ...(characters.find((character) => character.id === castId)?.assetIds ?? []),
+      ...attachments.map((attachment) => attachment.assetId),
+    ];
     setGeneration((prev) => ({
       ...prev,
       [index]: { phase: "submitting", errorMessage: null, assetUrl: null },
@@ -100,10 +110,10 @@ export function DirectorClient({
           body: JSON.stringify({
             type: "video",
             prompt: shot.prompt,
-            ...(cast === undefined
+            ...(referenceIds.length === 0
               ? {}
               : {
-                  inputAssets: cast.assetIds.map((assetId) => ({
+                  inputAssets: referenceIds.map((assetId) => ({
                     assetId,
                     role: "reference",
                   })),
@@ -167,7 +177,7 @@ export function DirectorClient({
         source.close();
       };
     })();
-  }, [characters, castId]);
+  }, [characters, castId, attachments]);
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-10 sm:py-14">
@@ -199,6 +209,21 @@ export function DirectorClient({
           {state.phase === "planning" && <span className="spinner" aria-hidden="true" />}
           {state.phase === "planning" ? "Planning..." : "Plan Shots"}
         </button>
+
+        <AttachButton
+          attachments={attachments}
+          disabled={state.phase === "planning"}
+          accept="images"
+          hint="Every shot in this plan is generated with these references."
+          onAttached={(attachment) =>
+            setAttachments((previous) => [...previous, attachment])
+          }
+          onRemove={(assetId) =>
+            setAttachments((previous) =>
+              previous.filter((item) => item.assetId !== assetId),
+            )
+          }
+        />
       </form>
 
       {characters.length > 0 && (

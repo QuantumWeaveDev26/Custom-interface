@@ -6,7 +6,9 @@ import type { AssetRecord, DatabaseStore } from "@creative-ai/db";
 import {
   InvalidUploadError,
   MAX_UPLOAD_BYTES,
+  MAX_VIDEO_UPLOAD_BYTES,
   detectImageFormat,
+  detectUploadFormat,
   storeUploadedImage,
   type UploadDependencies,
 } from "./uploads.js";
@@ -156,4 +158,68 @@ test("the asset row is only created after the object is stored", async () => {
   await assert.rejects(storeUploadedImage("user-1", PNG, dependencies), /TOS is down/);
   // Otherwise the gallery would show an asset whose bytes do not exist.
   assert.deepEqual(created, []);
+});
+
+// --- Video uploads ----------------------------------------------------------
+
+function mp4Bytes(brand = "isom", length = 64): Uint8Array {
+  const bytes = new Uint8Array(length);
+  // A video file has no signature at offset 0 — the first four bytes are the
+  // box length. "ftyp" sits at 4, the brand at 8.
+  bytes.set([0x00, 0x00, 0x00, 0x20], 0);
+  bytes.set([...Buffer.from("ftyp")], 4);
+  bytes.set([...Buffer.from(brand)], 8);
+  return bytes;
+}
+
+test("an mp4 is recognised by its ftyp box, not by offset zero", () => {
+  const format = detectUploadFormat(mp4Bytes());
+  assert.equal(format?.kind, "video");
+  assert.equal(format?.extension, "mp4");
+  assert.equal(format?.contentType, "video/mp4");
+});
+
+test("a QuickTime brand is stored as mov", () => {
+  const format = detectUploadFormat(mp4Bytes("qt  "));
+  assert.equal(format?.extension, "mov");
+  assert.equal(format?.contentType, "video/quicktime");
+});
+
+test("a file too short to hold an ftyp box is rejected", () => {
+  assert.equal(detectUploadFormat(Uint8Array.from([0, 0, 0, 32, 102])), null);
+});
+
+test("a video is stored as a video asset, not an image", async () => {
+  const bench = harness();
+
+  const asset = await storeUploadedImage("user-1", mp4Bytes(), bench.dependencies);
+
+  assert.equal(asset.type, "video");
+  assert.match(bench.puts[0]?.key ?? "", /^user-1\/uploads\/[^/]+\.mp4$/);
+  assert.equal(bench.puts[0]?.contentType, "video/mp4");
+});
+
+test("the size limit is applied per kind, after the format is known", async () => {
+  // A 40 MB file is a valid clip and an invalid photo. Applying one limit to
+  // both would either reject real video or let oversized images through.
+  const bench = harness();
+  const bigVideo = mp4Bytes("isom", 40 * 1024 * 1024);
+
+  const asset = await storeUploadedImage("user-1", bigVideo, bench.dependencies);
+  assert.equal(asset.type, "video");
+
+  const bigImage = new Uint8Array(20 * 1024 * 1024);
+  bigImage.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a], 0);
+  await assert.rejects(
+    storeUploadedImage("user-1", bigImage, bench.dependencies),
+    /larger than 15MB/,
+  );
+});
+
+test("a video over the video ceiling is still rejected", async () => {
+  const bench = harness();
+  await assert.rejects(
+    storeUploadedImage("user-1", mp4Bytes("isom", MAX_VIDEO_UPLOAD_BYTES + 1), bench.dependencies),
+    /larger than 100MB/,
+  );
 });
