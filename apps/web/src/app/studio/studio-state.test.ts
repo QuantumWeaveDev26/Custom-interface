@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   INITIAL_STUDIO_STATE,
+  MAX_SESSION_HISTORY,
   studioReducer,
   type StudioState,
 } from "./studio-state.js";
@@ -469,4 +470,78 @@ test("mode switch resets 3D detail", () => {
   };
   const next = studioReducer(state, { type: "SET_MODE", mode: "image" });
   assert.equal(next.model3dQuality, "standard");
+});
+
+// --- Session history --------------------------------------------------------
+
+test("a completed generation joins the session history, newest first", () => {
+  let state: StudioState = { ...INITIAL_STUDIO_STATE, phase: "processing" };
+  state = studioReducer(state, {
+    type: "STATUS_EVENT",
+    status: "complete",
+    assets: [{ id: "first", type: "image", url: "/api/assets/first" }],
+  });
+  state = studioReducer(state, {
+    type: "STATUS_EVENT",
+    status: "complete",
+    assets: [{ id: "second", type: "image", url: "/api/assets/second" }],
+  });
+
+  assert.deepEqual(
+    state.history.map((asset) => asset.id),
+    ["second", "first"],
+  );
+});
+
+test("history survives a mode switch", () => {
+  // Switching tabs is not "start over" — the earlier results are exactly what
+  // the user is comparing a new attempt against.
+  const state: StudioState = {
+    ...INITIAL_STUDIO_STATE,
+    history: [{ id: "a", type: "image", url: "/api/assets/a" }],
+  };
+  const next = studioReducer(state, { type: "SET_MODE", mode: "video" });
+
+  assert.equal(next.history.length, 1);
+  assert.deepEqual(next.assets, []);
+});
+
+test("submitting clears the current result but not the history", () => {
+  const state: StudioState = {
+    ...INITIAL_STUDIO_STATE,
+    assets: [{ id: "a", type: "image", url: "/api/assets/a" }],
+    history: [{ id: "a", type: "image", url: "/api/assets/a" }],
+  };
+  const next = studioReducer(state, { type: "SUBMIT_START" });
+
+  assert.deepEqual(next.assets, []);
+  assert.equal(next.history.length, 1);
+});
+
+test("history is capped so a long session cannot grow without bound", () => {
+  let state: StudioState = INITIAL_STUDIO_STATE;
+  for (let index = 0; index < MAX_SESSION_HISTORY + 5; index += 1) {
+    state = studioReducer(state, {
+      type: "STATUS_EVENT",
+      status: "complete",
+      assets: [{ id: `a${index}`, type: "image", url: `/api/assets/a${index}` }],
+    });
+  }
+
+  assert.equal(state.history.length, MAX_SESSION_HISTORY);
+  // The cap drops the oldest, not the newest.
+  assert.equal(state.history[0]?.id, `a${MAX_SESSION_HISTORY + 4}`);
+});
+
+test("a batch adds every image to the history, not just the first", () => {
+  const state = studioReducer(INITIAL_STUDIO_STATE, {
+    type: "STATUS_EVENT",
+    status: "complete",
+    assets: [
+      { id: "b1", type: "image", url: "/api/assets/b1" },
+      { id: "b2", type: "image", url: "/api/assets/b2" },
+    ],
+  });
+
+  assert.equal(state.history.length, 2);
 });

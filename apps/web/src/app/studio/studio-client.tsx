@@ -1083,6 +1083,53 @@ export function StudioClient({
             </button>
           </div>
         )}
+        {/* Session scratch: the result panel above is cleared on the next
+            submit, so without this the previous attempt vanishes the moment a
+            variation is tried. The Gallery remains the durable record. */}
+        {state.history.length > 0 && (
+          <div className="mt-4">
+            <div className="mb-1.5 flex items-center justify-between">
+              <p className="text-[11px] font-medium uppercase tracking-wide text-[var(--text-faint)]">
+                This session
+              </p>
+              <a
+                href="/gallery"
+                className="text-[11px] text-[var(--text-muted)] hover:text-[var(--text)]"
+              >
+                All results →
+              </a>
+            </div>
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {state.history.map((asset) => (
+                <a
+                  key={asset.id}
+                  href={asset.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  title="Open full size"
+                  className="shrink-0 overflow-hidden rounded-lg"
+                  style={{ border: "1px solid var(--border)" }}
+                >
+                  {asset.type === "image" ? (
+                    <img src={asset.url} alt="" className="h-16 w-16 object-cover" />
+                  ) : asset.type === "video" ? (
+                    <video
+                      src={asset.url}
+                      preload="metadata"
+                      muted
+                      className="h-16 w-24 object-cover"
+                    />
+                  ) : (
+                    <span className="flex h-16 w-16 items-center justify-center bg-[var(--bg-elevated)] text-[10px] text-[var(--text-muted)]">
+                      {asset.type === "audio" ? "Voice" : "3D"}
+                    </span>
+                  )}
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
+
         {state.phase === "complete" &&
           state.assets.map((asset) => {
             if (asset.type === "image") {

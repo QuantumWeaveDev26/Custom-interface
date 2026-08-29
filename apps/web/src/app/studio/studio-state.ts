@@ -11,6 +11,9 @@ import type {
   VideoResolution,
 } from "@creative-ai/shared-types";
 
+/** How many past results the session strip keeps. */
+export const MAX_SESSION_HISTORY = 12;
+
 export type StudioMode = "image" | "video" | "voice" | "model3d";
 export type VoiceStyle = "standard" | "expressive";
 export type { ImageSize, VideoRatio, VideoResolution };
@@ -68,6 +71,15 @@ export interface StudioState {
   jobId: string | null;
   errorMessage: string | null;
   assets: readonly StudioAsset[];
+  /**
+   * Everything generated this session, newest first.
+   *
+   * Kept because the working loop is generate, tweak, compare — and the result
+   * panel is cleared on the next submit, so without this the previous attempt
+   * is gone the moment you try a variation. Session-scoped on purpose: the
+   * Gallery is the durable record, this is scratch.
+   */
+  history: readonly StudioAsset[];
 }
 
 // Defaults mirror the previously hardcoded profiles, so a user who touches
@@ -93,6 +105,7 @@ export const INITIAL_STUDIO_STATE: StudioState = {
   jobId: null,
   errorMessage: null,
   assets: [],
+  history: [],
 };
 
 export type StudioAction =
@@ -156,7 +169,14 @@ export function studioReducer(
 ): StudioState {
   switch (action.type) {
     case "SET_MODE":
-      return { ...INITIAL_STUDIO_STATE, mode: action.mode, prompt: state.prompt };
+      return {
+        ...INITIAL_STUDIO_STATE,
+        mode: action.mode,
+        prompt: state.prompt,
+        // Switching tabs is not "start over" — the session's earlier results
+        // are still what the user is comparing against.
+        history: state.history,
+      };
     case "SET_PROMPT":
       return { ...state, prompt: action.prompt };
     case "SET_VOICE_STYLE":
@@ -232,7 +252,15 @@ export function studioReducer(
         return { ...state, phase: "processing" };
       }
       if (action.status === "complete") {
-        return { ...state, phase: "complete", assets: action.assets ?? [] };
+        const assets = action.assets ?? [];
+        return {
+          ...state,
+          phase: "complete",
+          assets,
+          // Newest first, and capped: an unbounded strip of 4K images would
+          // hold every result of a long session in memory at once.
+          history: [...assets, ...state.history].slice(0, MAX_SESSION_HISTORY),
+        };
       }
       return {
         ...state,
