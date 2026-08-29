@@ -5,6 +5,7 @@ import {
   IMAGE_SIZES,
   INPUT_ASSET_ROLES,
   MAX_INPUT_ASSETS_PER_JOB,
+  MAX_SOURCE_VIDEOS_PER_JOB,
   VIDEO_RATIOS,
   VIDEO_RESOLUTIONS,
   ratioRequiresInputImage,
@@ -209,12 +210,21 @@ function parseInputAssets(raw: unknown): readonly JobInputAssetRef[] {
     return { assetId: entry.assetId, role };
   });
 
-  // first_frame / last_frame / source_video each identify one specific slot;
-  // duplicates are ambiguous rather than additive.
-  for (const role of ["first_frame", "last_frame", "source_video"] as const) {
+  // first_frame / last_frame each identify one specific slot; duplicates are
+  // ambiguous rather than additive.
+  for (const role of ["first_frame", "last_frame"] as const) {
     if (parsed.filter((asset) => asset.role === role).length > 1) {
       throw new InvalidJobRequest(`At most one ${role} input asset is allowed`);
     }
+  }
+
+  // source_video is the exception: extend takes 1-3 clips and stitches the
+  // transitions between them, so several are additive rather than ambiguous.
+  const sourceVideos = parsed.filter((asset) => asset.role === "source_video");
+  if (sourceVideos.length > MAX_SOURCE_VIDEOS_PER_JOB) {
+    throw new InvalidJobRequest(
+      `At most ${MAX_SOURCE_VIDEOS_PER_JOB} source_video input assets are allowed`,
+    );
   }
 
   return parsed;

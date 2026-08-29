@@ -36,6 +36,12 @@ export interface StudioState {
    * keyframe transition: generate the motion between two stills. */
   lastFrameAssetId: string | null;
   /**
+   * Clips to extend or edit. Order is meaningful: prompts address them as
+   * "[Video 1]", "[Video 2]". One clip extends it; two or three generate the
+   * transitions between them.
+   */
+  sourceVideoAssetIds: readonly string[];
+  /**
    * Reference images for multi-reference image-to-image. Order is meaningful:
    * prompts address them positionally ("image 1", "image 2").
    */
@@ -58,6 +64,7 @@ export const INITIAL_STUDIO_STATE: StudioState = {
   durationSeconds: 5,
   firstFrameAssetId: null,
   lastFrameAssetId: null,
+  sourceVideoAssetIds: [],
   referenceAssetIds: [],
   phase: "idle",
   jobId: null,
@@ -75,6 +82,7 @@ export type StudioAction =
   | { type: "SET_DURATION"; durationSeconds: number }
   | { type: "SET_FIRST_FRAME"; assetId: string | null }
   | { type: "SET_LAST_FRAME"; assetId: string | null }
+  | { type: "TOGGLE_SOURCE_VIDEO"; assetId: string }
   | { type: "TOGGLE_REFERENCE"; assetId: string }
   | { type: "SET_REFERENCES"; assetIds: readonly string[] }
   | { type: "SUBMIT_START" }
@@ -124,6 +132,17 @@ export function studioReducer(
       return withValidRatio({ ...state, firstFrameAssetId: action.assetId });
     case "SET_LAST_FRAME":
       return withValidRatio({ ...state, lastFrameAssetId: action.assetId });
+    case "TOGGLE_SOURCE_VIDEO": {
+      const present = state.sourceVideoAssetIds.includes(action.assetId);
+      return {
+        ...state,
+        // Appended, so selection order is send order — what "[Video 1]" and
+        // "[Video 2]" in the prompt refer to.
+        sourceVideoAssetIds: present
+          ? state.sourceVideoAssetIds.filter((id) => id !== action.assetId)
+          : [...state.sourceVideoAssetIds, action.assetId],
+      };
+    }
     case "SET_REFERENCES":
       return { ...state, referenceAssetIds: action.assetIds };
     case "TOGGLE_REFERENCE": {

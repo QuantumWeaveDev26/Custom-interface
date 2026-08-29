@@ -320,3 +320,33 @@ test("a non-adaptive ratio is left alone when keyframes are cleared", () => {
   const next = studioReducer(state, { type: "SET_FIRST_FRAME", assetId: null });
   assert.equal(next.ratio, "9:16");
 });
+
+// --- Source clips (C6) ------------------------------------------------------
+
+test("source clips accumulate in selection order", () => {
+  let state = INITIAL_STUDIO_STATE;
+  for (const assetId of ["a", "b", "c"]) {
+    state = studioReducer(state, { type: "TOGGLE_SOURCE_VIDEO", assetId });
+  }
+  // Order is what the prompt addresses as "[Video 1]", "[Video 2]".
+  assert.deepEqual(state.sourceVideoAssetIds, ["a", "b", "c"]);
+});
+
+test("toggling a clip off preserves the order of the rest", () => {
+  let state = INITIAL_STUDIO_STATE;
+  for (const assetId of ["a", "b", "c"]) {
+    state = studioReducer(state, { type: "TOGGLE_SOURCE_VIDEO", assetId });
+  }
+  state = studioReducer(state, { type: "TOGGLE_SOURCE_VIDEO", assetId: "b" });
+  assert.deepEqual(state.sourceVideoAssetIds, ["a", "c"]);
+});
+
+test("mode switch clears selected clips", () => {
+  const state: StudioState = {
+    ...INITIAL_STUDIO_STATE,
+    mode: "video",
+    sourceVideoAssetIds: ["a"],
+  };
+  const next = studioReducer(state, { type: "SET_MODE", mode: "image" });
+  assert.deepEqual(next.sourceVideoAssetIds, []);
+});

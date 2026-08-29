@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import {
   IMAGE_SIZES,
+  MAX_SOURCE_VIDEOS_PER_JOB,
   VIDEO_RATIOS,
   creditCostFor,
   ratioRequiresInputImage,
@@ -29,6 +30,8 @@ export interface StudioClientProps {
   pricing: CreditPricing;
   /** Recent images the user owns, offered as image-to-video first frames. */
   recentImageIds: readonly string[];
+  /** Recent clips the user owns, offered as source videos for extend/edit. */
+  recentVideoIds: readonly string[];
   /** Saved named characters — reusable reference sets. */
   characters: readonly { id: string; name: string; assetIds: string[] }[];
 }
@@ -56,6 +59,7 @@ export function StudioClient({
   maxDurationSeconds,
   pricing,
   recentImageIds,
+  recentVideoIds,
   characters,
 }: StudioClientProps) {
   const [state, dispatch] = useReducer(studioReducer, INITIAL_STUDIO_STATE);
@@ -192,12 +196,17 @@ export function StudioClient({
   ]);
 
   const videoInputAssets = useMemo(
-    () =>
-      [
+    () => [
+      ...[
         { assetId: state.firstFrameAssetId, role: "first_frame" as const },
         { assetId: state.lastFrameAssetId, role: "last_frame" as const },
       ].flatMap(({ assetId, role }) => (assetId === null ? [] : [{ assetId, role }])),
-    [state.firstFrameAssetId, state.lastFrameAssetId],
+      ...state.sourceVideoAssetIds.map((assetId) => ({
+        assetId,
+        role: "source_video" as const,
+      })),
+    ],
+    [state.firstFrameAssetId, state.lastFrameAssetId, state.sourceVideoAssetIds],
   );
 
   // "adaptive" copies the ratio of an input image, so it is only offered once
@@ -650,6 +659,66 @@ export function StudioClient({
                 : state.firstFrameAssetId !== null
                   ? "This image becomes the first frame. Your prompt describes the motion."
                   : "The clip ends on this image. Your prompt describes how it gets there."}
+            </p>
+          )}
+        </div>
+      )}
+
+      {state.mode === "video" && recentVideoIds.length > 0 && (
+        <div className="mt-3">
+          <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-[var(--text-faint)]">
+            Extend or edit a clip{" "}
+            <span className="normal-case tracking-normal">
+              (optional — pick up to {MAX_SOURCE_VIDEOS_PER_JOB})
+            </span>
+          </p>
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {recentVideoIds.map((assetId) => {
+              const order = state.sourceVideoAssetIds.indexOf(assetId);
+              const selected = order !== -1;
+              const atCap =
+                !selected &&
+                state.sourceVideoAssetIds.length >= MAX_SOURCE_VIDEOS_PER_JOB;
+              return (
+                <button
+                  key={assetId}
+                  type="button"
+                  disabled={isBusy || atCap}
+                  aria-pressed={selected}
+                  aria-label={
+                    selected ? `Clip ${order + 1}, click to remove` : "Add as a clip"
+                  }
+                  onClick={() => dispatch({ type: "TOGGLE_SOURCE_VIDEO", assetId })}
+                  className="relative shrink-0 overflow-hidden rounded-lg transition-all disabled:opacity-40"
+                  style={{
+                    border: selected
+                      ? "2px solid var(--accent-via)"
+                      : "2px solid var(--border)",
+                  }}
+                >
+                  <video
+                    src={`/api/assets/${assetId}`}
+                    preload="metadata"
+                    muted
+                    className="h-16 w-24 object-cover"
+                  />
+                  {selected && (
+                    <span
+                      className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-bold text-white"
+                      style={{ background: "var(--accent-via)" }}
+                    >
+                      {order + 1}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          {state.sourceVideoAssetIds.length > 0 && (
+            <p className="mt-1.5 text-[11px] text-[var(--text-muted)]">
+              {state.sourceVideoAssetIds.length === 1
+                ? "Extending one clip usually returns only the new footage. To keep the original, say so in the prompt — e.g. “…and then end with Video 1”."
+                : "Refer to them in your prompt as “Video 1”, “Video 2”. The result includes the originals plus the transitions between them."}
             </p>
           )}
         </div>

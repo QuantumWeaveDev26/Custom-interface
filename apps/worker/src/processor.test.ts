@@ -1051,7 +1051,7 @@ test("first and last frames are both sent, each with its own role", async () => 
   assert.equal(content[2]?.role, "last_frame");
 });
 
-test("a reference asset is sent without a role", async () => {
+test("a reference image is roled reference_image, not left unroled", async () => {
   const harness = createVideoHarness(videoJob());
   harness.dependencies.loadInputAssets = async () => [
     inputAsset("ref-1", "reference"),
@@ -1059,10 +1059,26 @@ test("a reference asset is sent without a role", async () => {
 
   await createGenerationProcessor(harness.dependencies)("video-job");
 
+  // R4: an image with no role is read by the provider as a first frame, so
+  // omitting the role does not mean "no role" — it silently means "keyframe".
   const imageItem = harness.createRequests[0]?.content[1];
   assert.equal(imageItem?.type, "image_url");
-  // Only the keyframe roles are named in the confirmed contract.
-  assert.equal("role" in (imageItem ?? {}), false);
+  assert.equal(imageItem?.role, "reference_image");
+});
+
+test("keyframe roles pass through unchanged", async () => {
+  const harness = createVideoHarness(videoJob());
+  harness.dependencies.loadInputAssets = async () => [
+    inputAsset("start", "first_frame"),
+    inputAsset("end", "last_frame"),
+  ];
+
+  await createGenerationProcessor(harness.dependencies)("video-job");
+
+  assert.deepEqual(
+    harness.createRequests[0]?.content.slice(1).map((item) => item.role),
+    ["first_frame", "last_frame"],
+  );
 });
 
 test("private tos:// URLs are never sent to the provider unsigned", async () => {
@@ -1077,7 +1093,7 @@ test("private tos:// URLs are never sent to the provider unsigned", async () => 
   assert.doesNotMatch(serialized, /"tos:\/\//);
 });
 
-test("non-image input assets are skipped rather than sent in an unconfirmed shape", async () => {
+test("a source video is sent as a roled video_url item", async () => {
   const harness = createVideoHarness(videoJob());
   harness.dependencies.loadInputAssets = async () => [
     inputAsset("clip-1", "source_video", "video"),
@@ -1085,8 +1101,40 @@ test("non-image input assets are skipped rather than sent in an unconfirmed shap
 
   await createGenerationProcessor(harness.dependencies)("video-job");
 
-  // Video edit/extend is a later block; sending a guessed shape mid-generation
-  // would fail after the user was already charged.
+  const item = harness.createRequests[0]?.content[1];
+  assert.equal(item?.type, "video_url");
+  assert.equal(item?.role, "reference_video");
+  assert.equal(item?.image_url, undefined);
+});
+
+test("extend order is preserved, so [Video 1] in the prompt means the first clip", async () => {
+  const harness = createVideoHarness(videoJob());
+  harness.dependencies.loadInputAssets = async () => [
+    inputAsset("clip-1", "source_video", "video"),
+    inputAsset("clip-2", "source_video", "video"),
+  ];
+
+  await createGenerationProcessor(harness.dependencies)("video-job");
+
+  assert.deepEqual(
+    harness.createRequests[0]?.content.slice(1).map((item) => item.video_url?.url),
+    [
+      "https://signed.example/tos://bucket/clip-1.png",
+      "https://signed.example/tos://bucket/clip-2.png",
+    ],
+  );
+});
+
+test("audio input assets are skipped rather than sent in an unconfirmed shape", async () => {
+  const harness = createVideoHarness(videoJob());
+  harness.dependencies.loadInputAssets = async () => [
+    inputAsset("voice-1", "reference", "audio"),
+  ];
+
+  await createGenerationProcessor(harness.dependencies)("video-job");
+
+  // reference_audio is documented but unexercised; sending a guessed shape
+  // mid-generation would fail after the user was already charged.
   assert.deepEqual(harness.createRequests[0]?.content, [
     { type: "text", text: "orbital sunrise" },
   ]);

@@ -33,6 +33,14 @@ export default async function StudioPage() {
     select: { id: true },
   });
 
+  // Recent clips the user owns, offered as source videos for extend/edit.
+  const recentVideos = await prisma.asset.findMany({
+    where: { userId: session.user.id, type: "video" },
+    orderBy: { createdAt: "desc" },
+    take: 12,
+    select: { id: true },
+  });
+
   const characters = await listCharacters(session.user.id);
 
   return (
@@ -40,6 +48,7 @@ export default async function StudioPage() {
       characters={characters}
       creditBalance={user?.creditBalance ?? 0}
       recentImageIds={recentImages.map((asset) => asset.id)}
+      recentVideoIds={recentVideos.map((asset) => asset.id)}
       imageModelLabel={IMAGE_MODEL}
       videoModelLabel={VIDEO_MODEL}
       voiceModelLabel={VOICE_MODEL}

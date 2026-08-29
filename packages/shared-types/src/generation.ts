@@ -170,6 +170,11 @@ export interface JobInputAssetRef {
 // Seedream actually accepts.
 export const MAX_INPUT_ASSETS_PER_JOB = 8;
 
+// Extend video stitches 1-3 clips into one continuous shot; the Seedance 2.0
+// series documents 3 as the per-request ceiling (R4). Seedance 2.5 allows 10 --
+// raise this alongside a model upgrade, not before.
+export const MAX_SOURCE_VIDEOS_PER_JOB = 3;
+
 // --- Credit pricing ---------------------------------------------------------
 
 // Anchored on ARCHITECTURE.md §8: 1 credit ~= $0.04 of real BytePlus spend, and

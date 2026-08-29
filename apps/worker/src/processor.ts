@@ -9,6 +9,7 @@ import {
   IMAGE_OUTPUT_PROFILE,
   JobStatus,
   VOICE_PROFILE,
+  type InputAssetRole,
   type JobStatusEvent,
 } from "@creative-ai/shared-types";
 
@@ -141,7 +142,7 @@ async function processImage(
   const references = await dependencies.loadInputAssets(job.id, job.userId);
   const referenceUrls: string[] = [];
   for (const asset of references) {
-    if (asset.type !== "image") continue;
+    if (asset.type !== "image" && asset.type !== "video") continue;
     referenceUrls.push(await dependencies.signAssetUrl(asset.storageUrl));
   }
 
@@ -245,13 +246,25 @@ function assertSucceededVideo(
 /**
  * Builds the `content[]` array for a video task.
  *
- * Confirmed contract (MODELARK_API_REFERENCE.md, R2): image-to-video is the same
- * endpoint as text-to-video with extra `image_url` items, optionally carrying a
- * `role` of "first_frame" or "last_frame".
+ * Confirmed contract (MODELARK_API_REFERENCE.md, R2 and R4): image-to-video,
+ * omni reference, edit, and extend are all the same endpoint as text-to-video.
+ * Only the `content[]` items and their `role` differ.
+ *
+ * The wire role names are not the role names this project stores, and the
+ * difference is not cosmetic: an image sent with no role at all is read by the
+ * provider as a first frame. Sending a reference image unroled therefore does
+ * not mean "no role", it means "keyframe" — silently the wrong generation.
  *
  * Each input asset is signed into a short-lived HTTPS URL because BytePlus
- * fetches the image itself and cannot read our private bucket.
+ * fetches the media itself and cannot read our private bucket.
  */
+const WIRE_ROLE: Readonly<Record<InputAssetRole, string>> = Object.freeze({
+  first_frame: "first_frame",
+  last_frame: "last_frame",
+  reference: "reference_image",
+  source_video: "reference_video",
+});
+
 async function buildVideoContent(
   dependencies: GenerationProcessorDependencies,
   job: JobRecord,
@@ -261,24 +274,18 @@ async function buildVideoContent(
   ];
 
   const inputAssets = await dependencies.loadInputAssets(job.id, job.userId);
-  if (inputAssets.length === 0) return content;
 
   for (const asset of inputAssets) {
-    // Only image inputs are wired so far. Video references and source clips
-    // (edit/extend) are a later block; skipping them is safer than sending a
-    // shape the provider would reject mid-generation.
-    if (asset.type !== "image") continue;
+    // Audio inputs are not wired yet. Skipping is safer than guessing a shape
+    // the provider would reject mid-generation.
+    if (asset.type !== "image" && asset.type !== "video") continue;
 
     const url = await dependencies.signAssetUrl(asset.storageUrl);
-    content.push({
-      type: "image_url",
-      image_url: { url },
-      // "reference" carries no role — the provider treats a bare image as a
-      // first frame, and only the keyframe roles are named in the contract.
-      ...(asset.role === "first_frame" || asset.role === "last_frame"
-        ? { role: asset.role }
-        : {}),
-    });
+    content.push(
+      asset.type === "video"
+        ? { type: "video_url", video_url: { url }, role: WIRE_ROLE.source_video }
+        : { type: "image_url", image_url: { url }, role: WIRE_ROLE[asset.role] },
+    );
   }
 
   return content;

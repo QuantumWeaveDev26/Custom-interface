@@ -217,7 +217,7 @@ test("rejects malformed input assets", () => {
 });
 
 test("rejects duplicate single-slot roles but allows repeated references", () => {
-  for (const role of ["first_frame", "last_frame", "source_video"]) {
+  for (const role of ["first_frame", "last_frame"]) {
     assert.throws(
       () =>
         parseSubmitJobRequest({
@@ -243,6 +243,32 @@ test("rejects duplicate single-slot roles but allows repeated references", () =>
     ],
   });
   assert.equal(parsed.inputAssets.length, 3);
+});
+
+test("allows up to three source videos, because extend stitches clips", () => {
+  const parsed = parseSubmitJobRequest({
+    type: "video",
+    prompt: "the window in [Video 1] opens into [Video 2]",
+    inputAssets: [
+      { assetId: "a", role: "source_video" },
+      { assetId: "b", role: "source_video" },
+      { assetId: "c", role: "source_video" },
+    ],
+  });
+  assert.equal(parsed.inputAssets.length, 3);
+
+  assert.throws(
+    () =>
+      parseSubmitJobRequest({
+        type: "video",
+        prompt: "x",
+        inputAssets: ["a", "b", "c", "d"].map((assetId) => ({
+          assetId,
+          role: "source_video",
+        })),
+      }),
+    InvalidJobRequest,
+  );
 });
 
 test("rejects more than the per-job input asset cap", () => {
