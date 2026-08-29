@@ -78,6 +78,34 @@ batched browser-test pass rather than being verified one at a time.
 
 ---
 
+## 2b. Next session — start here
+
+**Twelve features are built, tested, and never opened in a browser.** That is
+now the project's largest risk, larger than any missing feature. Everything that
+was buildable without a decision from the user has been built.
+
+### Do first: one bulk verification pass
+
+Services start themselves; Postgres does not (see section 4). Then walk this
+list in order and note what breaks:
+
+| Where | What to check |
+|---|---|
+| Studio - Image | Saved characters load; cinema Lens/Look pills; "How many" batch slider; attach an image from the prompt box |
+| Studio - Video | "Keep a character" picker; first/last keyframes; extend/edit a clip; attach a video file |
+| Studio - 3D | Detail presets; generate a mesh; attach a photo for image-to-3D; download the .glb |
+| Gallery | Type filter chips; a batch renders as one "Set of N"; Index up to 20, then search; More like this |
+| Director | Grade line above the shots; each card shows camera + lens; cast a character; attach a reference |
+| Marketing | Direction line under the prompt; cast; attach |
+| Any page | Tab through it - a focus ring must be visible on every control |
+
+Search returns nothing until "Index up to 20" is pressed. That is expected, not
+a bug.
+
+### Then: the work that needs a decision, not code
+
+Nothing else can proceed without one of these being settled - see section 3.
+
 ## 3. Active blockers
 
 ### 3.1 Voice Cloning — blocked on BytePlus support (external)
