@@ -26,7 +26,10 @@ export type VideoRatio =
   | "3:4"
   | "21:9"
   | "adaptive";
-export type ImageSize = "1K" | "2K" | "4K";
+// Confirmed live 2026-08-29: the provider rejects "1K" outright —
+// "size must be one of 'WIDTHxHEIGHT', '2k', '3k', or '4k'". 3K exists and was
+// never offered; 1K was offered and never worked.
+export type ImageSize = "2K" | "3K" | "4K";
 export type VoiceStyle = "standard" | "expressive";
 
 export const VIDEO_RESOLUTIONS: readonly VideoResolution[] = Object.freeze([
@@ -55,8 +58,8 @@ export function ratioRequiresInputImage(ratio: VideoRatio): boolean {
 }
 
 export const IMAGE_SIZES: readonly ImageSize[] = Object.freeze([
-  "1K",
   "2K",
+  "3K",
   "4K",
 ] as const);
 

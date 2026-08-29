@@ -153,8 +153,8 @@ test("rejects invalid video params", () => {
 
 test("accepts and validates image size", () => {
   assert.deepEqual(
-    parseSubmitJobRequest({ type: "image", prompt: "x", params: { size: "1K" } }).params,
-    { type: "image", size: "1K", count: 1 },
+    parseSubmitJobRequest({ type: "image", prompt: "x", params: { size: "2K" } }).params,
+    { type: "image", size: "2K", count: 1 },
   );
   assert.throws(
     () => parseSubmitJobRequest({ type: "image", prompt: "x", params: { size: "8K" } }),

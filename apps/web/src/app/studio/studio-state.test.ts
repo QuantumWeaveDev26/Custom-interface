@@ -121,8 +121,8 @@ test("generation params default to the previously hardcoded profiles", () => {
 });
 
 test("each generation param setter updates only its own field", () => {
-  let next = studioReducer(INITIAL_STUDIO_STATE, { type: "SET_IMAGE_SIZE", imageSize: "1K" });
-  assert.equal(next.imageSize, "1K");
+  let next = studioReducer(INITIAL_STUDIO_STATE, { type: "SET_IMAGE_SIZE", imageSize: "2K" });
+  assert.equal(next.imageSize, "2K");
   assert.equal(next.resolution, "720p");
 
   next = studioReducer(INITIAL_STUDIO_STATE, { type: "SET_RESOLUTION", resolution: "1080p" });

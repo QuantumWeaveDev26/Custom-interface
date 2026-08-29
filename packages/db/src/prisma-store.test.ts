@@ -195,13 +195,13 @@ test("an image row written before batch existed reads back with a count of 1", a
   const store = legacyJobStore({
     ...JOB_ROW,
     type: "image",
-    inputParams: { prompt: "a fox", params: { type: "image", size: "1K" } },
+    inputParams: { prompt: "a fox", params: { type: "image", size: "2K" } },
   });
   const job = await store.job.findUnique({ where: { id: "job-1" } });
 
   // Without the backfill this is undefined, and the per-image refund maths at
   // completion divides by it.
-  assert.deepEqual(job?.inputParams.params, { type: "image", size: "1K", count: 1 });
+  assert.deepEqual(job?.inputParams.params, { type: "image", size: "2K", count: 1 });
 });
 
 test("a legacy voice row preserves its top-level voiceStyle", async () => {

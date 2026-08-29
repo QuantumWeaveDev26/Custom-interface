@@ -70,7 +70,7 @@ test("cost is never zero even at the smallest settings", () => {
     voiceCredits: 0,
     videoCreditsPerSecond720p: 0,
   };
-  assert.equal(creditCostFor({ type: "image", size: "1K", count: 1 }, nearlyFree), 1);
+  assert.equal(creditCostFor({ type: "image", size: "2K", count: 1 }, nearlyFree), 1);
   assert.equal(creditCostFor({ type: "voice", style: "standard" }, nearlyFree), 1);
   assert.equal(
     creditCostFor(
@@ -82,7 +82,7 @@ test("cost is never zero even at the smallest settings", () => {
 });
 
 test("image and voice are flat-priced regardless of settings", () => {
-  assert.equal(creditCostFor({ type: "image", size: "1K", count: 1 }, PRICING), 1);
+  assert.equal(creditCostFor({ type: "image", size: "2K", count: 1 }, PRICING), 1);
   assert.equal(creditCostFor({ type: "image", size: "4K", count: 1 }, PRICING), 1);
   assert.equal(creditCostFor({ type: "voice", style: "standard" }, PRICING), 1);
   assert.equal(creditCostFor({ type: "voice", style: "expressive" }, PRICING), 1);
