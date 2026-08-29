@@ -283,8 +283,10 @@ Job completion went plural to hold them, and the shortfall between images
 requested and images returned is credited back inside the completion
 transaction — `max_images` is a ceiling, not a quantity.
 
-**Still open:** batch is image-only. Video has no equivalent, and the Gallery
-does not group a batch as one set.
+**Gallery grouping ✅ DONE** (2026-08-29, `917c365`) — assets from one job render
+as a labelled set, and the gallery filters by type from the URL.
+
+**Still open:** batch is image-only; video has no equivalent.
 
 ---
 
