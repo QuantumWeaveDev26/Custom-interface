@@ -5,11 +5,21 @@ import {
   type MarketingDirection,
   type ProductInfo,
 } from "@creative-ai/agents";
+import {
+  getCameraPreset,
+  getLensPreset,
+  getLookPreset,
+} from "@creative-ai/prompt-library";
+
 import { DIRECTOR_MODEL } from "./config";
 
 export interface MarketingPlan {
   product: ProductInfo;
-  direction: MarketingDirection;
+  direction: MarketingDirection & {
+    cameraLabel: string;
+    lensLabel: string;
+    lookLabel: string;
+  };
 }
 
 export async function planMarketingAd(url: string): Promise<MarketingPlan> {
@@ -23,5 +33,13 @@ export async function planMarketingAd(url: string): Promise<MarketingPlan> {
 
   const direction = await proposeCreativeDirection(client, product, { model: DIRECTOR_MODEL });
 
-  return { product, direction };
+  return {
+    product,
+    direction: {
+      ...direction,
+      cameraLabel: getCameraPreset(direction.cameraPreset).label,
+      lensLabel: getLensPreset(direction.lensPreset).label,
+      lookLabel: getLookPreset(direction.lookPreset).label,
+    },
+  };
 }

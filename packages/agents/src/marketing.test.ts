@@ -112,6 +112,9 @@ test("parses a valid creative direction from the model response", async () => {
       style: "cinematic",
       tagline: "Step into tomorrow",
       prompt: "A pair of sneakers glowing under dramatic studio light",
+      cameraPreset: "orbit",
+      lensPreset: "macro",
+      lookPreset: "low-key",
     }),
   );
   const direction = await proposeCreativeDirection(client, {
@@ -122,11 +125,51 @@ test("parses a valid creative direction from the model response", async () => {
   });
   assert.equal(direction.style, "cinematic");
   assert.equal(direction.tagline, "Step into tomorrow");
+
+  // The raw prompt stays exactly what the model wrote; the composed one is what
+  // gets generated, so the user can see both and they cannot silently diverge.
+  assert.equal(
+    direction.prompt,
+    "A pair of sneakers glowing under dramatic studio light",
+  );
+  assert.ok(
+    direction.composedPrompt.startsWith(
+      "A pair of sneakers glowing under dramatic studio light,",
+    ),
+  );
+  assert.match(direction.composedPrompt, /orbit shot/);
+  assert.match(direction.composedPrompt, /100mm macro/);
+  assert.match(direction.composedPrompt, /low-key lighting/);
+});
+
+test("rejects an invented camera, lens, or look id", async () => {
+  const base = {
+    style: "cinematic",
+    tagline: "t",
+    prompt: "p",
+    cameraPreset: "orbit",
+    lensPreset: "macro",
+    lookPreset: "low-key",
+  };
+
+  for (const field of ["cameraPreset", "lensPreset", "lookPreset"]) {
+    const client = fakeChatClient(JSON.stringify({ ...base, [field]: "not-real" }));
+    await assert.rejects(
+      proposeCreativeDirection(client, {
+        url: "u",
+        title: "t",
+        description: "d",
+        imageUrl: null,
+      }),
+      MarketingPlanError,
+      `${field} must be validated`,
+    );
+  }
 });
 
 test("rejects an unknown creative style", async () => {
   const client = fakeChatClient(
-    JSON.stringify({ style: "not-a-real-style", tagline: "x", prompt: "y" }),
+    JSON.stringify({ style: "not-a-real-style", tagline: "x", prompt: "y", cameraPreset: "orbit", lensPreset: "macro", lookPreset: "low-key" }),
   );
   await assert.rejects(
     proposeCreativeDirection(client, { url: "u", title: "t", description: "d", imageUrl: null }),

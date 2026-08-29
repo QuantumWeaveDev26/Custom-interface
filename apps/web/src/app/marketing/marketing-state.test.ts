@@ -20,6 +20,11 @@ const SAMPLE_DIRECTION: MarketingDirectionResult = {
   style: "cinematic",
   tagline: "Step into tomorrow",
   prompt: "A pair of sneakers glowing under dramatic studio light",
+  cameraLabel: "Orbit",
+  lensLabel: "Macro 100mm",
+  lookLabel: "Low Key",
+  composedPrompt:
+    "A pair of sneakers glowing under dramatic studio light, cinematic orbit shot",
 };
 
 test("starts idle with an empty url", () => {

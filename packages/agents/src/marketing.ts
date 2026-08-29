@@ -1,3 +1,16 @@
+import {
+  CAMERA_PRESETS,
+  LENS_PRESETS,
+  LOOK_PRESETS,
+  composeShotPrompt,
+  isCameraPresetId,
+  isLensPresetId,
+  isLookPresetId,
+  type CameraPresetId,
+  type LensPresetId,
+  type LookPresetId,
+} from "@creative-ai/prompt-library";
+
 import type { ChatClient } from "./director.js";
 
 export interface ProductInfo {
@@ -12,7 +25,16 @@ export type CreativeStyle = "ugc" | "cgi" | "cinematic";
 export interface MarketingDirection {
   style: CreativeStyle;
   tagline: string;
+  /** What the model wrote: the visual, in its own words. */
   prompt: string;
+  cameraPreset: CameraPresetId;
+  lensPreset: LensPresetId;
+  lookPreset: LookPresetId;
+  /**
+   * `prompt` with the camera, lens, and look fragments stacked on — what is
+   * actually submitted for generation.
+   */
+  composedPrompt: string;
 }
 
 export class MarketingScrapeError extends Error {
@@ -169,6 +191,10 @@ export async function scrapeProductPage(
 
 const CREATIVE_STYLES: readonly CreativeStyle[] = ["ugc", "cgi", "cinematic"];
 
+function describe(presets: readonly { id: string; description: string }[]): string {
+  return presets.map((preset) => `- ${preset.id}: ${preset.description}`).join("\n");
+}
+
 function buildSystemPrompt(): string {
   return [
     "You are a creative director for short-form product ads.",
@@ -185,8 +211,11 @@ function marketingDirectionJsonSchema(): Record<string, unknown> {
       style: { type: "string", enum: CREATIVE_STYLES },
       tagline: { type: "string" },
       prompt: { type: "string" },
+      cameraPreset: { type: "string", enum: CAMERA_PRESETS.map((preset) => preset.id) },
+      lensPreset: { type: "string", enum: LENS_PRESETS.map((preset) => preset.id) },
+      lookPreset: { type: "string", enum: LOOK_PRESETS.map((preset) => preset.id) },
     },
-    required: ["style", "tagline", "prompt"],
+    required: ["style", "tagline", "prompt", "cameraPreset", "lensPreset", "lookPreset"],
     additionalProperties: false,
   };
 }
@@ -236,7 +265,8 @@ function validateMarketingDirection(value: unknown): MarketingDirection {
   if (typeof value !== "object" || value === null) {
     throw new MarketingPlanError("Marketing agent response is not an object");
   }
-  const { style, tagline, prompt } = value as Record<string, unknown>;
+  const { style, tagline, prompt, cameraPreset, lensPreset, lookPreset } =
+    value as Record<string, unknown>;
 
   if (typeof style !== "string" || !CREATIVE_STYLES.includes(style as CreativeStyle)) {
     throw new MarketingPlanError(`Marketing agent returned an unknown style: ${String(style)}`);
@@ -248,5 +278,38 @@ function validateMarketingDirection(value: unknown): MarketingDirection {
     throw new MarketingPlanError("Marketing agent response is missing a prompt");
   }
 
-  return { style: style as CreativeStyle, tagline: tagline.trim(), prompt: prompt.trim() };
+  // The model is free to invent ids that read plausibly, so each is checked
+  // against the real registry rather than trusted into the prompt.
+  if (typeof cameraPreset !== "string" || !isCameraPresetId(cameraPreset)) {
+    throw new MarketingPlanError(
+      `Marketing agent returned an unknown camera move: ${String(cameraPreset)}`,
+    );
+  }
+  if (typeof lensPreset !== "string" || !isLensPresetId(lensPreset)) {
+    throw new MarketingPlanError(
+      `Marketing agent returned an unknown lens: ${String(lensPreset)}`,
+    );
+  }
+  if (typeof lookPreset !== "string" || !isLookPresetId(lookPreset)) {
+    throw new MarketingPlanError(
+      `Marketing agent returned an unknown look: ${String(lookPreset)}`,
+    );
+  }
+
+  const description = prompt.trim();
+  return {
+    style: style as CreativeStyle,
+    tagline: tagline.trim(),
+    prompt: description,
+    cameraPreset,
+    lensPreset,
+    lookPreset,
+    // Same grammar Studio and Director use, so all three cannot drift apart.
+    composedPrompt: composeShotPrompt({
+      description,
+      cameraPresetIds: [cameraPreset],
+      lensPresetId: lensPreset,
+      lookPresetId: lookPreset,
+    }),
+  };
 }

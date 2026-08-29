@@ -195,6 +195,10 @@ export function MarketingClient() {
             </p>
             <p className="gradient-text mt-1 text-lg font-semibold">{state.direction.tagline}</p>
             <p className="mt-2 text-sm text-[var(--text-muted)]">{state.direction.prompt}</p>
+            <p className="mt-2 text-[11px] text-[var(--text-faint)]">
+              {state.direction.cameraLabel} &middot; {state.direction.lensLabel} &middot;{" "}
+              {state.direction.lookLabel}
+            </p>
           </div>
 
           <div className="mt-4 flex items-center gap-3">
@@ -216,7 +220,7 @@ export function MarketingClient() {
             </div>
             <button
               type="button"
-              onClick={() => generateAd(state.direction!.prompt)}
+              onClick={() => generateAd(state.direction!.composedPrompt)}
               disabled={busy}
               className="btn-secondary gap-2 !px-3 !py-1.5 text-xs"
             >

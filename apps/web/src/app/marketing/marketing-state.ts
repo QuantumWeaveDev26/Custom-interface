@@ -11,6 +11,10 @@ export interface MarketingDirectionResult {
   style: MarketingCreativeStyle;
   tagline: string;
   prompt: string;
+  cameraLabel: string;
+  lensLabel: string;
+  lookLabel: string;
+  composedPrompt: string;
 }
 
 export type MarketingPhase = "idle" | "planning" | "planned" | "failed";
