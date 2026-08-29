@@ -230,7 +230,7 @@ previous agent (this project has been burned by an agent self-reporting
 
 ```bash
 pnpm typecheck   # all 8 packages
-pnpm test        # 316 tests, all must pass
+pnpm test        # 326 tests, all must pass
 pnpm build       # full monorepo build
 ```
 
