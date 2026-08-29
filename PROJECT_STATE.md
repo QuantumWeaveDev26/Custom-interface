@@ -61,10 +61,9 @@ and saw the correct result.
 | Upload own images (C3) | `/studio` | ✅ Verified live 2026-08-29 |
 | **Multi-reference / character consistency (C4)** | `/studio` (Image tab) | ✅ **Verified live 2026-08-29** — subject and second reference both carried into the result. First attempt failed because a stale worker process was serving pre-C4 code; see §4 Windows gotchas. |
 | Saved named characters | `/studio` (Image tab) | ⚠️ Built, tests pass, **not yet exercised in the browser** |
-| First/last keyframes + adaptive ratio | `/studio` (Video tab) | ⚠️ **UI verified live 2026-08-29** — slot toggle, `1st`/`last` badges, and adaptive appearing only once a keyframe is picked all behave. A generated clip has **not** been produced yet: the first attempt was refused by BytePlus for a real-person input image (see §4). |
+| **First/last keyframes + adaptive ratio** | `/studio` (Video tab) | ✅ **Verified live 2026-08-29** — tree as first frame, red car as last, adaptive ratio, 5s clip produced that moves between the two stills. An earlier attempt with astronaut photos was refused for a real-person input image (see §4). |
 
-Two items are currently built but unproven: saved named characters, and
-first/last keyframes.
+One item is currently built but unproven: saved named characters.
 
 ---
 
