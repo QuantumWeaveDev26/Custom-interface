@@ -61,8 +61,10 @@ and saw the correct result.
 | Upload own images (C3) | `/studio` | ✅ Verified live 2026-08-29 |
 | **Multi-reference / character consistency (C4)** | `/studio` (Image tab) | ✅ **Verified live 2026-08-29** — subject and second reference both carried into the result. First attempt failed because a stale worker process was serving pre-C4 code; see §4 Windows gotchas. |
 | Saved named characters | `/studio` (Image tab) | ⚠️ Built, tests pass, **not yet exercised in the browser** |
+| First/last keyframes + adaptive ratio | `/studio` (Video tab) | ⚠️ Built, tests pass, **not yet exercised in the browser** |
 
-One item is currently built but unproven: saved named characters.
+Two items are currently built but unproven: saved named characters, and
+first/last keyframes.
 
 ---
 
@@ -168,6 +170,11 @@ reference docs; this is the index.
   ```
 - The BytePlus docs site is a JS-rendered SPA. Plain HTTP fetching returns
   navigation chrome only. Use a real browser tool to read it.
+- **PostgreSQL has no registered Windows service on this machine.** Nothing
+  starts it at boot, so a session that begins with the worker logging
+  `Can't reach database server at localhost:5432` needs it started by hand —
+  see `README.md` § Development. Redis (Memurai) *is* a service and does start
+  on its own, so "Redis is up" is not evidence that Postgres is.
 - **Never run `pnpm build` while `next dev` is running.** Both write
   `apps/web/.next`. The production build stomps the dev server's artifacts, and
   the symptom is bizarre: the app serves with *no CSS at all* and unrelated
@@ -184,7 +191,7 @@ previous agent (this project has been burned by an agent self-reporting
 
 ```bash
 pnpm typecheck   # all 8 packages
-pnpm test        # 152 tests, all must pass
+pnpm test        # 253 tests, all must pass
 pnpm build       # full monorepo build
 ```
 
@@ -194,9 +201,9 @@ red on a deliberate break, so a red badge is a real signal. To modify the
 workflow, push to a `ci-verify/**` branch first — that pattern triggers CI
 without touching `main`.
 
-**Current baseline (2026-08-28):** 191 tests passing across 8 packages —
-prompt-library 5, db 31, voice-client 18, modelark-client 11, shared-types 46,
-agents 18, web 34, worker 28. Typecheck and build both clean.
+**Current baseline (2026-08-29):** 253 tests passing across 8 packages —
+prompt-library 5, db 31, voice-client 18, modelark-client 11, shared-types 49,
+agents 18, web 83, worker 38. Typecheck and build both clean.
 
 Running the app locally requires two processes (see `README.md`); the worker has
 no watch mode and **must be rebuilt after every change**:

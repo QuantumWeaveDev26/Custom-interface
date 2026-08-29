@@ -163,10 +163,11 @@ describes the motion. Worker signs each input into a short-lived HTTPS URL
 asserts no raw `tos://` URL reaches the provider. Resumed jobs neither reload
 nor re-sign inputs. Non-image inputs are skipped rather than guessed at.
 
-**Still open in this area:** first+last-frame keyframes are supported by the
-worker (`role: "last_frame"` is wired and tested) but have no UI yet — only a
-first frame is selectable. `ratio: "adaptive"` is still not exposed. Both are
-small follow-ons.
+**Keyframes + adaptive ratio ✅ DONE** (2026-08-29, `a19ec6b`) — Video mode has
+a first/last frame slot toggle, so the keyframe-transition path the worker
+already supported is now reachable. `ratio: "adaptive"` is exposed and guarded
+on both sides: rejected by the parser without an input asset, and only listed
+once a keyframe is selected.
 
 ### C3 — Upload pipeline ✅ DONE (2026-08-29, `dfb93e7`)
 Studio picker has an Upload tile. Format decided by magic bytes, never the

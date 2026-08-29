@@ -80,11 +80,21 @@ npx prisma migrate deploy
 
 ### Development
 
-Start local services (or use natively-installed PostgreSQL 16 and Redis 7 —
-see the setup guidance in this conversation if Docker isn't installed):
+Start local services:
 ```bash
 docker compose -f infra/docker-compose.yml up -d  # Starts PostgreSQL and Redis
 ```
+
+**Without Docker** (how the current Windows dev machine is set up): PostgreSQL
+and Redis are installed natively. Redis is provided by Memurai, which runs as a
+Windows service and starts on boot. PostgreSQL 18 has **no registered Windows
+service**, so nothing starts it automatically — start it by hand:
+```bash
+"/c/Program Files/PostgreSQL/18/bin/pg_ctl.exe" -D "C:/Program Files/PostgreSQL/18/data" -l "C:/Program Files/PostgreSQL/18/data/startup.log" start
+```
+The symptom of forgetting is the worker log filling with
+`Can't reach database server at localhost:5432` while the web app still starts
+normally.
 
 Run dev servers (two terminals).
 
