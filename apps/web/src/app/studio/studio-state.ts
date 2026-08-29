@@ -1,4 +1,9 @@
 import type {
+  CameraPresetId,
+  LensPresetId,
+  LookPresetId,
+} from "@creative-ai/prompt-library";
+import type {
   ImageSize,
   VideoRatio,
   VideoResolution,
@@ -36,6 +41,13 @@ export interface StudioState {
    * keyframe transition: generate the motion between two stills. */
   lastFrameAssetId: string | null;
   /**
+   * Camera moves to stack onto the prompt, in the order chosen — "dolly in,
+   * then tilt up" is a sequence, not an unordered set.
+   */
+  cameraPresetIds: readonly CameraPresetId[];
+  lensPresetId: LensPresetId | null;
+  lookPresetId: LookPresetId | null;
+  /**
    * Clips to extend or edit. Order is meaningful: prompts address them as
    * "[Video 1]", "[Video 2]". One clip extends it; two or three generate the
    * transitions between them.
@@ -64,6 +76,9 @@ export const INITIAL_STUDIO_STATE: StudioState = {
   durationSeconds: 5,
   firstFrameAssetId: null,
   lastFrameAssetId: null,
+  cameraPresetIds: [],
+  lensPresetId: null,
+  lookPresetId: null,
   sourceVideoAssetIds: [],
   referenceAssetIds: [],
   phase: "idle",
@@ -82,6 +97,9 @@ export type StudioAction =
   | { type: "SET_DURATION"; durationSeconds: number }
   | { type: "SET_FIRST_FRAME"; assetId: string | null }
   | { type: "SET_LAST_FRAME"; assetId: string | null }
+  | { type: "TOGGLE_CAMERA_PRESET"; presetId: CameraPresetId }
+  | { type: "SET_LENS_PRESET"; presetId: LensPresetId | null }
+  | { type: "SET_LOOK_PRESET"; presetId: LookPresetId | null }
   | { type: "TOGGLE_SOURCE_VIDEO"; assetId: string }
   | { type: "TOGGLE_REFERENCE"; assetId: string }
   | { type: "SET_REFERENCES"; assetIds: readonly string[] }
@@ -132,6 +150,21 @@ export function studioReducer(
       return withValidRatio({ ...state, firstFrameAssetId: action.assetId });
     case "SET_LAST_FRAME":
       return withValidRatio({ ...state, lastFrameAssetId: action.assetId });
+    case "TOGGLE_CAMERA_PRESET": {
+      const present = state.cameraPresetIds.includes(action.presetId);
+      return {
+        ...state,
+        // Appended, so the order the user clicks is the order the moves are
+        // described in the prompt.
+        cameraPresetIds: present
+          ? state.cameraPresetIds.filter((id) => id !== action.presetId)
+          : [...state.cameraPresetIds, action.presetId],
+      };
+    }
+    case "SET_LENS_PRESET":
+      return { ...state, lensPresetId: action.presetId };
+    case "SET_LOOK_PRESET":
+      return { ...state, lookPresetId: action.presetId };
     case "TOGGLE_SOURCE_VIDEO": {
       const present = state.sourceVideoAssetIds.includes(action.assetId);
       return {

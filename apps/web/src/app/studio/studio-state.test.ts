@@ -350,3 +350,59 @@ test("mode switch clears selected clips", () => {
   const next = studioReducer(state, { type: "SET_MODE", mode: "image" });
   assert.deepEqual(next.sourceVideoAssetIds, []);
 });
+
+// --- Cinema presets (C5) ----------------------------------------------------
+
+test("camera moves accumulate in click order", () => {
+  let state = studioReducer(INITIAL_STUDIO_STATE, {
+    type: "TOGGLE_CAMERA_PRESET",
+    presetId: "dolly-in",
+  });
+  state = studioReducer(state, { type: "TOGGLE_CAMERA_PRESET", presetId: "tilt-up" });
+
+  // "dolly in, then tilt up" is a sequence; the order is the shot.
+  assert.deepEqual(state.cameraPresetIds, ["dolly-in", "tilt-up"]);
+});
+
+test("toggling a camera move off leaves the rest in order", () => {
+  let state = INITIAL_STUDIO_STATE;
+  for (const presetId of ["dolly-in", "tilt-up", "orbit"] as const) {
+    state = studioReducer(state, { type: "TOGGLE_CAMERA_PRESET", presetId });
+  }
+  state = studioReducer(state, { type: "TOGGLE_CAMERA_PRESET", presetId: "tilt-up" });
+
+  assert.deepEqual(state.cameraPresetIds, ["dolly-in", "orbit"]);
+});
+
+test("lens and look are single-choice and clearable", () => {
+  let state = studioReducer(INITIAL_STUDIO_STATE, {
+    type: "SET_LENS_PRESET",
+    presetId: "portrait",
+  });
+  assert.equal(state.lensPresetId, "portrait");
+
+  state = studioReducer(state, { type: "SET_LENS_PRESET", presetId: "macro" });
+  assert.equal(state.lensPresetId, "macro");
+
+  state = studioReducer(state, { type: "SET_LENS_PRESET", presetId: null });
+  assert.equal(state.lensPresetId, null);
+
+  state = studioReducer(state, { type: "SET_LOOK_PRESET", presetId: "film-noir" });
+  assert.equal(state.lookPresetId, "film-noir");
+  assert.equal(state.lensPresetId, null);
+});
+
+test("mode switch clears every preset axis", () => {
+  const state: StudioState = {
+    ...INITIAL_STUDIO_STATE,
+    mode: "video",
+    cameraPresetIds: ["orbit"],
+    lensPresetId: "anamorphic",
+    lookPresetId: "neon-night",
+  };
+  const next = studioReducer(state, { type: "SET_MODE", mode: "voice" });
+
+  assert.deepEqual(next.cameraPresetIds, []);
+  assert.equal(next.lensPresetId, null);
+  assert.equal(next.lookPresetId, null);
+});

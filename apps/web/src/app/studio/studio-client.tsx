@@ -12,6 +12,12 @@ import {
   type VideoResolution,
 } from "@creative-ai/shared-types";
 import {
+  CAMERA_PRESETS,
+  LENS_PRESETS,
+  LOOK_PRESETS,
+  composeShotPrompt,
+} from "@creative-ai/prompt-library";
+import {
   INITIAL_STUDIO_STATE,
   studioReducer,
   type StudioAsset,
@@ -219,6 +225,29 @@ export function StudioClient({
     [videoInputAssets],
   );
 
+  // Camera moves only describe motion, so they are offered for video alone;
+  // lens and look apply to a still just as well.
+  const composedPrompt = useMemo(
+    () =>
+      composeShotPrompt({
+        description: state.prompt,
+        ...(state.mode === "video" ? { cameraPresetIds: state.cameraPresetIds } : {}),
+        ...(state.lensPresetId === null ? {} : { lensPresetId: state.lensPresetId }),
+        ...(state.lookPresetId === null ? {} : { lookPresetId: state.lookPresetId }),
+      }),
+    [
+      state.prompt,
+      state.mode,
+      state.cameraPresetIds,
+      state.lensPresetId,
+      state.lookPresetId,
+    ],
+  );
+  // The server caps prompts at 2000 characters. Presets push the composed
+  // prompt past what the textarea alone allows, so the limit is checked on the
+  // string that is actually submitted.
+  const promptTooLong = composedPrompt.length > 2000;
+
   // Same function the server charges with — a preview, still authoritative
   // server-side.
   const estimatedCost = useMemo(
@@ -252,7 +281,7 @@ export function StudioClient({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             type: state.mode,
-            prompt: state.prompt,
+            prompt: composedPrompt,
             // `type` is the request discriminator, not a params field.
             params: (({ type: _ignored, ...rest }) => rest)(params),
             ...(state.mode === "video" && videoInputAssets.length > 0
@@ -308,7 +337,7 @@ export function StudioClient({
         source.close();
       };
     },
-    [isBusy, state.mode, state.prompt, params, videoInputAssets, state.referenceAssetIds],
+    [isBusy, state.mode, state.prompt, composedPrompt, params, videoInputAssets, state.referenceAssetIds],
   );
 
   const modelLabel =
@@ -812,6 +841,121 @@ export function StudioClient({
         </div>
       )}
 
+      {state.mode !== "voice" && (
+        <div className="mt-3 space-y-3">
+          {state.mode === "video" && (
+            <div>
+              <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-[var(--text-faint)]">
+                Camera move{" "}
+                <span className="normal-case tracking-normal">
+                  (optional — stack them, order matters)
+                </span>
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {CAMERA_PRESETS.map((preset) => {
+                  const order = state.cameraPresetIds.indexOf(preset.id);
+                  const selected = order !== -1;
+                  return (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      disabled={isBusy}
+                      aria-pressed={selected}
+                      title={preset.description}
+                      onClick={() =>
+                        dispatch({ type: "TOGGLE_CAMERA_PRESET", presetId: preset.id })
+                      }
+                      className="pill !px-2.5 !py-1 text-[11px]"
+                      data-active={selected}
+                      style={
+                        selected
+                          ? undefined
+                          : { background: "var(--surface)", border: "1px solid var(--border)" }
+                      }
+                    >
+                      {selected && `${order + 1}. `}
+                      {preset.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          <div>
+            <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-[var(--text-faint)]">
+              Lens <span className="normal-case tracking-normal">(optional)</span>
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {LENS_PRESETS.map((preset) => {
+                const selected = state.lensPresetId === preset.id;
+                return (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    disabled={isBusy}
+                    aria-pressed={selected}
+                    title={preset.description}
+                    // Clicking the active lens clears it, so "no lens direction"
+                    // stays reachable without a separate None control.
+                    onClick={() =>
+                      dispatch({
+                        type: "SET_LENS_PRESET",
+                        presetId: selected ? null : preset.id,
+                      })
+                    }
+                    className="pill !px-2.5 !py-1 text-[11px]"
+                    data-active={selected}
+                    style={
+                      selected
+                        ? undefined
+                        : { background: "var(--surface)", border: "1px solid var(--border)" }
+                    }
+                  >
+                    {preset.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div>
+            <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-[var(--text-faint)]">
+              Look <span className="normal-case tracking-normal">(optional)</span>
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {LOOK_PRESETS.map((preset) => {
+                const selected = state.lookPresetId === preset.id;
+                return (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    disabled={isBusy}
+                    aria-pressed={selected}
+                    title={preset.description}
+                    onClick={() =>
+                      dispatch({
+                        type: "SET_LOOK_PRESET",
+                        presetId: selected ? null : preset.id,
+                      })
+                    }
+                    className="pill !px-2.5 !py-1 text-[11px]"
+                    data-active={selected}
+                    style={
+                      selected
+                        ? undefined
+                        : { background: "var(--surface)", border: "1px solid var(--border)" }
+                    }
+                  >
+                    {preset.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="mt-5 space-y-3">
         <label htmlFor="prompt" className="block text-xs font-medium text-[var(--text-muted)]">
           {state.mode === "voice" ? "Text to speak" : "Prompt"}
@@ -833,9 +977,27 @@ export function StudioClient({
           }
           className="input-field resize-none"
         />
+        {composedPrompt !== state.prompt && state.prompt.trim().length > 0 && (
+          <div className="rounded-lg border p-2.5" style={{ borderColor: "var(--border)" }}>
+            <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-[var(--text-faint)]">
+              Sent to the model
+            </p>
+            <p className="text-[11px] leading-relaxed text-[var(--text-muted)]">
+              {composedPrompt}
+            </p>
+          </div>
+        )}
+        {promptTooLong && (
+          <p className="text-xs text-[var(--danger)]">
+            Prompt is {composedPrompt.length} characters with presets applied — the
+            limit is 2000. Shorten it or drop a preset.
+          </p>
+        )}
         <button
           type="submit"
-          disabled={isBusy || state.prompt.trim().length === 0 || !affordable}
+          disabled={
+            isBusy || state.prompt.trim().length === 0 || !affordable || promptTooLong
+          }
           className="btn-primary w-full gap-2"
         >
           {isBusy && <span className="spinner" aria-hidden="true" />}
