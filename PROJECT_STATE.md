@@ -144,17 +144,17 @@ Two things to know before building on it:
   **UNCONFIRMED** and deliberately biased high. Verify against real BytePlus
   per-resolution pricing before any launch.
 
-### 3.5 3D generation — blocked on undocumented API (needs user)
+### 3.5 3D generation — UNBLOCKED 2026-08-29, one unknown left
 
-`Hyper3d-Rodin-Gen2` and `Hitem3d-2.0` are listed in the Model list with real
-capabilities and generous free quota, but **ModelArk publishes no 3D tutorial
-or API reference**. Every other capability row in that table links a tutorial
-and an API page; the 3D row links only console model cards, and the full docs
-navigation (80+ entries) contains no 3D page.
+Resolved by reading the console model card directly (BytePlus still publishes no
+3D documentation page). 3D reuses the **video task endpoint** with model
+`hyper3d-gen2-260112`, already activated on this account, and its options are
+CLI-style flags inside the prompt text rather than JSON fields. Full contract in
+`MODELARK_API_REFERENCE.md` § R5.
 
-**Next action:** user opens the console model card for `hyper3d-gen2` and copies
-its API sample. Do not write 3D code before that — the exact endpoint,
-request body, and whether it is synchronous or create-then-poll are all unknown.
+**One unknown before building:** the poll response field carrying the 3D file.
+Output is glb/obj/stl/fbx/usdz, so it will not be `content.video_url`. Confirm
+with a single live call rather than guessing.
 
 ### 3.3 Phase 4 (Billing / Admin / Community) — blocked on business decisions
 

@@ -500,7 +500,7 @@ call: keep a character consistent across a whole set.
 
 ---
 
-## 3D generation (R5) — BLOCKED, no public API documentation, 2026-08-29
+## 3D generation (R5) — CONFIRMED via console model card, 2026-08-29
 
 Two 3D models exist and are listed in the Model list (1330310) with generous
 free quota:
@@ -516,12 +516,65 @@ tree.** Every other capability row in the Model list carries
 (80+ entries, enumerated) has no 3D page. The only links are console model-card
 URLs, which need a signed-in session.
 
-**Do not guess the endpoint.** This project has already lost time to invented
-model IDs and unconfirmed shapes.
+There is still no documentation page. The contract below came from the console
+model card's **Quick API access → Sample code** panel, read directly.
 
-**Next action (user):** open the console model card for `hyper3d-gen2` and copy
-its API sample — the exact endpoint path, request body, and whether it is
-synchronous or a create-then-poll task like video.
+### It reuses the video task endpoint
+
+```
+POST https://ark.ap-southeast.bytepluses.com/api/v3/contents/generations/tasks
+```
+
+Same create-then-poll endpoint as video generation. Confirmed model ID:
+**`hyper3d-gen2-260112`** (the Model list's `Hyper3d-Rodin-Gen2` is the display
+name, not the ID). The account already has it **activated**.
+
+```json
+{
+  "model": "hyper3d-gen2-260112",
+  "content": [
+    {
+      "type": "text",
+      "text": "Complete full-body quadrupedal mech robot, orange and black armored, rounded head with glowing blue sensors, 4 articulated mechanical legs, hard-surface sci-fi design, high-detail joints, photorealistic 8K, fully assembled, no missing parts. --mesh_mode Raw --hd_texture true --material PBR --addons HighPack --quality_override 1000000 --use_original_alpha false --bbox_condition [100,100,100] --TAPose false"
+    }
+  ]
+}
+```
+
+### Options are CLI-style flags inside the prompt text
+
+This is the surprising part and the easiest thing to get wrong: 3D settings are
+**not** JSON fields. They are appended to `content[].text` as command-line
+flags, after the description.
+
+| Flag | Sample value | Meaning (inferred from the Model list capabilities) |
+|---|---|---|
+| `--mesh_mode` | `Raw` | Mesh topology |
+| `--hd_texture` | `true` | High-definition texture |
+| `--material` | `PBR` | White / textured / PBR material model |
+| `--addons` | `HighPack` | Add-on pack |
+| `--quality_override` | `1000000` | Polygon budget; Model list documents tri mesh 500–1,000,000 |
+| `--use_original_alpha` | `false` | Alpha handling for image input |
+| `--bbox_condition` | `[100,100,100]` | Bounding-box constraint |
+| `--TAPose` | `false` | T/A-pose rigging hint |
+
+**Only the flag names and one sample value each are confirmed** — the full
+accepted range for every flag is not documented anywhere. Treat any other value
+as unconfirmed until a live call proves it.
+
+### Still unconfirmed
+
+- **The poll response shape.** It is the same endpoint family as video, so
+  `GET /contents/generations/tasks/{id}` almost certainly applies, but the
+  `content` payload for a 3D task will not be `video_url` — the Model list says
+  output is glb / obj / stl / fbx / usdz. The field name carrying that file is
+  unknown. **Confirm with one live call before writing the download path.**
+- Image-to-3D input shape (presumably an `image_url` content item alongside the
+  text, matching video).
+
+### Pricing
+
+Image-to-3D: **13.3 USD per million tokens**. Free quota on this model is 150K.
 
 ---
 

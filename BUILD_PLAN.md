@@ -92,7 +92,7 @@ lost days to building against unconfirmed BytePlus contracts.
 | ~~**R3**~~ | ✅ **DONE** — `image` is `string \| string[]`; array = multi-reference. Recorded in `MODELARK_API_REFERENCE.md`. `seedream-5-0-lite` supports it. | C4 |
 | ~~**R4**~~ | ✅ **DONE** — edit, extend, and omni reference request shapes recorded in `MODELARK_API_REFERENCE.md`. Wire roles are `reference_image` / `reference_video` / `reference_audio`, **not** our stored role names; a bare image with no role is read as a first frame. | C6 |
 | ~~**R8**~~ | ✅ **DONE** — the real-face input restriction and its two documented workarounds (trusted same-account outputs; preset digital characters via `asset://`). See `MODELARK_API_REFERENCE.md` § R8. | B2, C4 |
-| **R5** | ⛔ **BLOCKED** — the two 3D models exist with generous free quota, but ModelArk publishes **no 3D tutorial or API reference at all**; the whole docs nav was enumerated to confirm it. Needs the console model card's API sample. See `MODELARK_API_REFERENCE.md` § R5. | C8 |
+| ~~**R5**~~ | ✅ **DONE** — pulled from the console model card, not the docs. 3D reuses the **video task endpoint** with model `hyper3d-gen2-260112`, and its options are CLI-style flags inside the prompt text, not JSON fields. Poll response shape still unconfirmed. See `MODELARK_API_REFERENCE.md` § R5. | C8 |
 | ~~**R9**~~ | ✅ **DONE** — batch image generation shape confirmed and recorded. | C9 |
 | ~~**R6**~~ | ✅ **DONE** — `POST /embeddings/multimodal` recorded in `MODELARK_API_REFERENCE.md`. Critical detail: the whole `input` array becomes **one** vector, so a query and an asset must be embedded separately. | C7 |
 | **R7** | Managed Agents / App Lab — replace or complement `packages/agents`? | future agent work |
@@ -232,28 +232,26 @@ Phase 4's, not something to guess at. Search is per-user until that is decided.
   Loads filter to the current model so nothing breaks, but there is no
   reindexing path — old rows simply stop matching.
 
-### C8 — 3D generation 🟢 differentiator — ⛔ BLOCKED on R5
-Text-to-3D and image-to-3D with PBR materials and glb/obj/fbx/usdz export.
-**Higgsfield does not offer this**, and the free quota is generous (150K on
-Hyper3d-Rodin-Gen2, 500K on Hitem3d-2.0).
+### C8 — 3D generation 🟢 differentiator — UNBLOCKED, not yet built
+Text-to-3D and image-to-3D with PBR materials and glb/obj/stl/fbx/usdz export.
+**Higgsfield does not offer this**, and free quota is 150K on
+`hyper3d-gen2-260112`, 500K on Hitem3d-2.0.
 
-**Blocked because BytePlus publishes no 3D API documentation.** The models are
-listed with capabilities and output formats, but unlike every other capability
-row they carry no tutorial or API links, and there is no 3D page anywhere in the
-ModelArk docs tree.
+R5 is now confirmed (`MODELARK_API_REFERENCE.md`). Two things shape the build:
 
-**Owner: user.** Open the console model card for `hyper3d-gen2` and copy its API
-sample — endpoint path, request body, and whether it is synchronous or a
-create-then-poll task. Do not guess it.
+- **It reuses the video task endpoint**, so the worker's existing create-poll
+  path is most of the transport. What differs is the output: a 3D file, not a
+  video, and the poll response field carrying it is **not yet confirmed**.
+  Confirm that with one live call before writing the download path.
+- **Options are CLI flags appended to the prompt text**, not JSON fields —
+  `--material PBR --quality_override 1000000` and so on. That means the
+  prompt-library composition pattern from C5 fits better here than a params
+  object does.
 
-### C9 — Batch generation / variants ✅ DONE (2026-08-29, `22388cb`)
-Up to 15 images per request via `sequential_image_generation: "auto"` (R9).
-Job completion went plural to hold them, and the shortfall between images
-requested and images returned is credited back inside the completion
-transaction — `max_images` is a ceiling, not a quantity.
-
-**Still open:** batch is image-only. Video has no equivalent, and the Gallery
-does not group a batch as one set.
+Also needed: `Asset.type` currently spans image/video/audio only, and a `.glb`
+is none of those. Storage, the gallery, and the asset API all assume a media
+element can render it — a 3D asset needs a download affordance instead, or a
+viewer.
 
 ---
 
