@@ -26,7 +26,17 @@ interface JobStatusMessage {
   assets?: { id: string; type: "image" | "video"; url: string }[];
 }
 
-export function DirectorClient() {
+export function DirectorClient({
+  characters,
+}: {
+  characters: readonly { id: string; name: string; assetIds: string[] }[];
+}) {
+  /**
+   * One cast character for the whole plan, for the same reason the look is
+   * chosen per plan: a character who changes face between shots is not a
+   * character. Null means an uncast film, which is the default.
+   */
+  const [castId, setCastId] = useState<string | null>(null);
   const [state, dispatch] = useReducer(directorReducer, INITIAL_DIRECTOR_STATE);
   const [generation, setGeneration] = useState<Record<number, ShotGenerationState>>({});
   const eventSources = useRef<Record<number, EventSource>>({});
@@ -75,6 +85,7 @@ export function DirectorClient() {
   );
 
   const generateShot = useCallback((index: number, shot: DirectorShot) => {
+    const cast = characters.find((character) => character.id === castId);
     setGeneration((prev) => ({
       ...prev,
       [index]: { phase: "submitting", errorMessage: null, assetUrl: null },
@@ -86,7 +97,18 @@ export function DirectorClient() {
         response = await fetch("/api/jobs", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ type: "video", prompt: shot.prompt }),
+          body: JSON.stringify({
+            type: "video",
+            prompt: shot.prompt,
+            ...(cast === undefined
+              ? {}
+              : {
+                  inputAssets: cast.assetIds.map((assetId) => ({
+                    assetId,
+                    role: "reference",
+                  })),
+                }),
+          }),
         });
       } catch {
         setGeneration((prev) => ({
@@ -145,7 +167,7 @@ export function DirectorClient() {
         source.close();
       };
     })();
-  }, []);
+  }, [characters, castId]);
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-10 sm:py-14">
@@ -178,6 +200,51 @@ export function DirectorClient() {
           {state.phase === "planning" ? "Planning..." : "Plan Shots"}
         </button>
       </form>
+
+      {characters.length > 0 && (
+        <div className="mt-4">
+          <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-[var(--text-faint)]">
+            Cast <span className="normal-case tracking-normal">(optional)</span>
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {characters.map((character) => {
+              const active = castId === character.id;
+              return (
+                <button
+                  key={character.id}
+                  type="button"
+                  aria-pressed={active}
+                  // Clicking the cast character again clears it, so an uncast
+                  // film stays reachable without a separate "none" control.
+                  onClick={() => setCastId(active ? null : character.id)}
+                  className="pill !px-3 !py-1.5 text-xs"
+                  data-active={active}
+                  style={
+                    active
+                      ? undefined
+                      : { background: "var(--surface)", border: "1px solid var(--border)" }
+                  }
+                >
+                  {character.name}
+                </button>
+              );
+            })}
+          </div>
+          <p className="mt-1.5 text-[11px] text-[var(--text-muted)]">
+            {castId === null
+              ? "Pick someone to keep the same face across every shot."
+              : "Every shot in this plan is generated with that character."}
+          </p>
+        </div>
+      )}
+
+      {/* Planning and failure are announced: a screen-reader user pressing
+          "Plan Shots" otherwise gets silence until they hunt for the result. */}
+      <div aria-live="polite" className="sr-only">
+        {state.phase === "planning" && "Planning shots"}
+        {state.phase === "planned" && `${state.shots.length} shots planned`}
+        {state.phase === "failed" && `Planning failed. ${state.errorMessage ?? ""}`}
+      </div>
 
       {state.phase === "idle" && (
         <EmptyState

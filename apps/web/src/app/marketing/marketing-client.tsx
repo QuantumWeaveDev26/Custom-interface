@@ -29,7 +29,13 @@ const STYLE_LABELS: Record<string, string> = {
   cinematic: "Cinematic (dramatic, film-style)",
 };
 
-export function MarketingClient() {
+export function MarketingClient({
+  characters,
+}: {
+  characters: readonly { id: string; name: string; assetIds: string[] }[];
+}) {
+  // One character per ad — the same reasoning as Director's cast.
+  const [castId, setCastId] = useState<string | null>(null);
   const [state, dispatch] = useReducer(marketingReducer, INITIAL_MARKETING_STATE);
   const [adType, setAdType] = useState<"image" | "video">("image");
   const [generation, setGeneration] = useState<AdGenerationState>(IDLE_GENERATION);
@@ -78,6 +84,7 @@ export function MarketingClient() {
 
   const generateAd = useCallback(
     (prompt: string) => {
+      const cast = characters.find((character) => character.id === castId);
       setGeneration({ phase: "submitting", errorMessage: null, assetUrl: null });
 
       void (async () => {
@@ -86,7 +93,18 @@ export function MarketingClient() {
           response = await fetch("/api/jobs", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ type: adType, prompt }),
+            body: JSON.stringify({
+              type: adType,
+              prompt,
+              ...(cast === undefined
+                ? {}
+                : {
+                    inputAssets: cast.assetIds.map((assetId) => ({
+                      assetId,
+                      role: "reference",
+                    })),
+                  }),
+            }),
           });
         } catch {
           setGeneration({ phase: "failed", errorMessage: "Could not reach the server.", assetUrl: null });
@@ -130,7 +148,7 @@ export function MarketingClient() {
         };
       })();
     },
-    [adType],
+    [adType, characters, castId],
   );
 
   const busy =
@@ -166,6 +184,47 @@ export function MarketingClient() {
           {state.phase === "planning" ? "Analyzing..." : "Generate Ad Direction"}
         </button>
       </form>
+
+      {characters.length > 0 && (
+        <div className="mt-4">
+          <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-[var(--text-faint)]">
+            Cast <span className="normal-case tracking-normal">(optional)</span>
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {characters.map((character) => {
+              const active = castId === character.id;
+              return (
+                <button
+                  key={character.id}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => setCastId(active ? null : character.id)}
+                  className="pill !px-3 !py-1.5 text-xs"
+                  data-active={active}
+                  style={
+                    active
+                      ? undefined
+                      : { background: "var(--surface)", border: "1px solid var(--border)" }
+                  }
+                >
+                  {character.name}
+                </button>
+              );
+            })}
+          </div>
+          <p className="mt-1.5 text-[11px] text-[var(--text-muted)]">
+            {castId === null
+              ? "Pick someone to appear in the ad."
+              : "The ad is generated with that character."}
+          </p>
+        </div>
+      )}
+
+      <div aria-live="polite" className="sr-only">
+        {state.phase === "planning" && "Reading the product page"}
+        {state.phase === "planned" && "Creative direction ready"}
+        {state.phase === "failed" && `Planning failed. ${state.errorMessage ?? ""}`}
+      </div>
 
       {state.phase === "idle" && (
         <EmptyState

@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
+import { listCharacters } from "@/server/characters";
 import { DirectorClient } from "./director-client";
 
 export default async function DirectorPage() {
@@ -9,5 +10,5 @@ export default async function DirectorPage() {
     redirect("/sign-in");
   }
 
-  return <DirectorClient />;
+  return <DirectorClient characters={await listCharacters(session.user.id)} />;
 }

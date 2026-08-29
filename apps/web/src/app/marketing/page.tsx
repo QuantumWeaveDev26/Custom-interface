@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
+import { listCharacters } from "@/server/characters";
 import { MarketingClient } from "./marketing-client";
 
 export default async function MarketingPage() {
@@ -9,5 +10,5 @@ export default async function MarketingPage() {
     redirect("/sign-in");
   }
 
-  return <MarketingClient />;
+  return <MarketingClient characters={await listCharacters(session.user.id)} />;
 }
