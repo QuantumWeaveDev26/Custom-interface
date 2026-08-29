@@ -28,9 +28,9 @@ export interface GenerationProcessorDependencies {
   claimQueuedJob(jobId: string): Promise<true | null>;
   failAndRefund(jobId: string, message: string): Promise<boolean>;
   saveExternalTaskId(jobId: string, externalTaskId: string): Promise<void>;
-  completeJobWithAsset(
+  completeJobWithAssets(
     jobId: string,
-    asset: CreateAssetInput,
+    assets: readonly CreateAssetInput[],
   ): Promise<CompleteJobResult>;
   modelArk: Pick<
     ModelArkClient,

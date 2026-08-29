@@ -6,7 +6,7 @@ export {
   InsufficientCreditsError,
   InvalidJobStateError,
   claimQueuedJob,
-  completeJobWithAsset,
+  completeJobWithAssets,
   failAndRefund,
   findStaleQueuedJobs,
   loadJobInputAssets,

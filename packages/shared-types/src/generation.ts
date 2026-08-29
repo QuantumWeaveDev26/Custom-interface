@@ -62,7 +62,7 @@ export const IMAGE_SIZES: readonly ImageSize[] = Object.freeze([
 
 /** Discriminated by job type so every branch is exhaustively checkable. */
 export type GenerationParams =
-  | { type: "image"; size: ImageSize }
+  | { type: "image"; size: ImageSize; count: number }
   | {
       type: "video";
       resolution: VideoResolution;
@@ -127,7 +127,7 @@ export function videoCapabilitiesFor(model: string): VideoModelCapabilities {
 // These reproduce the previous hardcoded profiles exactly, so a request that
 // omits parameters behaves identically to before this file existed.
 export const DEFAULT_IMAGE_PARAMS: Extract<GenerationParams, { type: "image" }> =
-  Object.freeze({ type: "image", size: "4K" });
+  Object.freeze({ type: "image", size: "4K", count: 1 });
 
 export const DEFAULT_VIDEO_PARAMS: Extract<GenerationParams, { type: "video" }> =
   Object.freeze({
@@ -169,6 +169,11 @@ export interface JobInputAssetRef {
 // (the Soul ID equivalent). Cap kept deliberately low until R3 confirms what
 // Seedream actually accepts.
 export const MAX_INPUT_ASSETS_PER_JOB = 8;
+
+// Seedream batches up to 15 images per request, but the ceiling is shared with
+// the input references: references + generated <= 15 (R9). So three references
+// leave room for twelve, not fifteen.
+export const MAX_BATCH_IMAGES = 15;
 
 // Extend video stitches 1-3 clips into one continuous shot; the Seedance 2.0
 // series documents 3 as the per-request ceiling (R4). Seedance 2.5 allows 10 --
@@ -215,7 +220,10 @@ export function creditCostFor(
   pricing: CreditPricing,
 ): number {
   if (params.type === "image") {
-    return Math.max(1, Math.ceil(pricing.imageCredits));
+    // A batch is billed per image, because that is how the provider bills it.
+    // The model may return fewer than requested; the shortfall is credited back
+    // at completion rather than being priced in here.
+    return Math.max(1, Math.ceil(pricing.imageCredits * params.count));
   }
   if (params.type === "voice") {
     return Math.max(1, Math.ceil(pricing.voiceCredits));

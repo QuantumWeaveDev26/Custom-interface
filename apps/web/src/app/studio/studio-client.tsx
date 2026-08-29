@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import {
   IMAGE_SIZES,
+  MAX_BATCH_IMAGES,
   MAX_SOURCE_VIDEOS_PER_JOB,
   VIDEO_RATIOS,
   creditCostFor,
@@ -184,7 +185,8 @@ export function StudioClient({
   // Built once here and reused for both the cost preview and the request body,
   // so the price shown can never drift from the price submitted.
   const params: GenerationParams = useMemo(() => {
-    if (state.mode === "image") return { type: "image", size: state.imageSize };
+    if (state.mode === "image")
+      return { type: "image", size: state.imageSize, count: state.imageCount };
     if (state.mode === "voice") return { type: "voice", style: state.voiceStyle };
     return {
       type: "video",
@@ -195,6 +197,7 @@ export function StudioClient({
   }, [
     state.mode,
     state.imageSize,
+    state.imageCount,
     state.voiceStyle,
     state.resolution,
     state.ratio,
@@ -543,6 +546,41 @@ export function StudioClient({
           )}
           {characterError !== null && (
             <p className="mt-1.5 text-[11px] text-[var(--danger)]">{characterError}</p>
+          )}
+
+          <label
+            htmlFor="image-count"
+            className="mb-1.5 mt-3 flex items-center justify-between text-[11px] font-medium uppercase tracking-wide text-[var(--text-faint)]"
+          >
+            <span>How many</span>
+            <span className="text-[var(--text)]">
+              {state.imageCount} image{state.imageCount === 1 ? "" : "s"}
+            </span>
+          </label>
+          <input
+            id="image-count"
+            type="range"
+            min={1}
+            // References and generated images share one ceiling of 15, so the
+            // slider shrinks as references are added rather than offering a
+            // number the server would reject.
+            max={Math.max(1, MAX_BATCH_IMAGES - state.referenceAssetIds.length)}
+            step={1}
+            value={state.imageCount}
+            disabled={isBusy}
+            onChange={(event) =>
+              dispatch({
+                type: "SET_IMAGE_COUNT",
+                imageCount: Number(event.target.value),
+              })
+            }
+            className="w-full accent-[var(--accent-via)] disabled:opacity-50"
+          />
+          {state.imageCount > 1 && (
+            <p className="mb-1 text-[11px] text-[var(--text-muted)]">
+              A set generated together, so they hold a consistent style. The model
+              may return fewer — you are only charged for what arrives.
+            </p>
           )}
 
           <p className="mb-1.5 mt-3 text-[11px] font-medium uppercase tracking-wide text-[var(--text-faint)]">

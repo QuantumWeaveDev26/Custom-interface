@@ -84,46 +84,52 @@ async function failAndPublish(
 function completeEvent(
   jobId: string,
   type: "image" | "video" | "audio",
-  assetId: string,
+  assetIds: readonly string[],
 ): JobStatusEvent {
   return {
     jobId,
     status: JobStatus.Complete,
-    assets: [
-      {
-        id: assetId,
-        type,
-        url: `/api/assets/${assetId}`,
-      },
-    ],
+    assets: assetIds.map((assetId) => ({
+      id: assetId,
+      type,
+      url: `/api/assets/${assetId}`,
+    })),
   };
 }
 
 async function imageMedia(
   dependencies: GenerationProcessorDependencies,
   response: ImagesResponse,
-): Promise<DownloadedMedia> {
+): Promise<DownloadedMedia[]> {
   if (response.error !== undefined) {
     throw new ProviderResponseError(
       response.error.code,
       response.error.message,
     );
   }
-  if (response.data.length !== 1) {
-    throw new Error("Image generation did not return exactly one image");
+  if (response.data.length === 0) {
+    throw new Error("Image generation returned no images");
   }
 
-  const image = response.data[0];
-  if (image?.url !== undefined && image.url.length > 0) {
-    return dependencies.download(image.url);
+  // A batch request states a maximum, not a quantity, so the count returned is
+  // whatever the model produced. Every image is downloaded; the shortfall
+  // against what was paid for is credited back at completion.
+  const media: DownloadedMedia[] = [];
+  for (const image of response.data) {
+    if (image.url !== undefined && image.url.length > 0) {
+      media.push(await dependencies.download(image.url));
+      continue;
+    }
+    if (image.b64_json !== undefined && image.b64_json.length > 0) {
+      media.push({
+        body: Buffer.from(image.b64_json, "base64"),
+        contentType: "image/png",
+      });
+      continue;
+    }
+    throw new Error("Image response has no URL or base64 payload");
   }
-  if (image?.b64_json !== undefined && image.b64_json.length > 0) {
-    return {
-      body: Buffer.from(image.b64_json, "base64"),
-      contentType: "image/png",
-    };
-  }
-  throw new Error("Image response has no URL or base64 payload");
+  return media;
 }
 
 async function processImage(
@@ -161,20 +167,43 @@ async function processImage(
     prompt: job.inputParams.prompt,
     size: params.size,
     ...(referenceUrls.length > 0 ? { image: referenceUrls } : {}),
+    // Batch is opt-in per job (R9): "auto" turns it on, and max_images is only
+    // read when it is. A count of 1 must stay a plain single-image request.
+    ...(params.count > 1
+      ? {
+          sequential_image_generation: "auto" as const,
+          sequential_image_generation_options: { max_images: params.count },
+        }
+      : {}),
     ...IMAGE_OUTPUT_PROFILE,
   });
   const media = await imageMedia(dependencies, response);
-  const storageUrl = await dependencies.storage.upload({
-    userId: job.userId,
-    jobId: job.id,
-    type: "image",
-    ...media,
-  });
-  const completed = await dependencies.completeJobWithAsset(job.id, {
-    type: "image",
-    storageUrl,
-  });
-  return completeEvent(job.id, "image", completed.asset.id);
+
+  if (media.length !== params.count) {
+    // Not an error — the provider returns up to max_images. Logged because the
+    // credit refund that follows is otherwise invisible.
+    console.log(
+      `Job ${job.id}: asked for ${params.count} image(s), received ${media.length}`,
+    );
+  }
+
+  const assetInputs = [];
+  for (const item of media) {
+    const storageUrl = await dependencies.storage.upload({
+      userId: job.userId,
+      jobId: job.id,
+      type: "image",
+      ...item,
+    });
+    assetInputs.push({ type: "image" as const, storageUrl });
+  }
+
+  const completed = await dependencies.completeJobWithAssets(job.id, assetInputs);
+  return completeEvent(
+    job.id,
+    "image",
+    completed.assets.map((asset) => asset.id),
+  );
 }
 
 async function processVoice(
@@ -212,11 +241,10 @@ async function processVoice(
     body: result.audio,
     contentType: result.contentType,
   });
-  const completed = await dependencies.completeJobWithAsset(job.id, {
-    type: "audio",
-    storageUrl,
-  });
-  return completeEvent(job.id, "audio", completed.asset.id);
+  const completed = await dependencies.completeJobWithAssets(job.id, [
+    { type: "audio", storageUrl },
+  ]);
+  return completeEvent(job.id, "audio", [completed.assets[0]!.id]);
 }
 
 function assertSucceededVideo(
@@ -329,12 +357,12 @@ async function processVideo(
     type: "video",
     ...media,
   });
-  const completed = await dependencies.completeJobWithAsset(job.id, {
-    type: "video",
-    storageUrl,
-  });
-  return completeEvent(job.id, "video", completed.asset.id);
+  const completed = await dependencies.completeJobWithAssets(job.id, [
+    { type: "video", storageUrl },
+  ]);
+  return completeEvent(job.id, "video", [completed.assets[0]!.id]);
 }
+
 
 async function processGeneration(
   dependencies: GenerationProcessorDependencies,

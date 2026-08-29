@@ -2,7 +2,7 @@ import { createModelArkClient } from "@creative-ai/modelark-client";
 import { createVoiceClient } from "@creative-ai/voice-client";
 import {
   claimQueuedJob,
-  completeJobWithAsset,
+  completeJobWithAssets,
   failAndRefund,
   findStaleQueuedJobs,
   prismaStore,
@@ -165,8 +165,8 @@ export async function createWorkerRuntime(
     saveExternalTaskId: async (jobId, externalTaskId) => {
       return await saveExternalTaskId(prismaStore, jobId, externalTaskId);
     },
-    completeJobWithAsset: async (jobId, asset) => {
-      return await completeJobWithAsset(prismaStore, jobId, asset);
+    completeJobWithAssets: async (jobId, asset) => {
+      return await completeJobWithAssets(prismaStore, jobId, asset);
     },
     modelArk: {
       createImage: modelArk.createImage.bind(modelArk),

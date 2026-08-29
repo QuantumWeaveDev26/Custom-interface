@@ -40,7 +40,14 @@ function normalizeInputParams(
   const prompt = typeof value.prompt === "string" ? value.prompt : "";
 
   if (value.params !== undefined && value.params !== null) {
-    return { prompt, params: value.params as GenerationParams };
+    const params = value.params as GenerationParams;
+    // Rows written between A2 and C9 carry image params with no `count`. Left
+    // undefined it would poison the per-image credit maths at completion, so
+    // it is backfilled to the single image those jobs actually bought.
+    if (params.type === "image" && typeof params.count !== "number") {
+      return { prompt, params: { ...params, count: 1 } };
+    }
+    return { prompt, params };
   }
 
   if (jobType === "image") {

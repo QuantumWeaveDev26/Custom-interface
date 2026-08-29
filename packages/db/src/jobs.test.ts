@@ -16,7 +16,7 @@ import {
   InFlightLimitError,
   InsufficientCreditsError,
   claimQueuedJob,
-  completeJobWithAsset,
+  completeJobWithAssets,
   failAndRefund,
   findStaleQueuedJobs,
   loadJobInputAssets,
@@ -657,15 +657,17 @@ test("completion changes processing to complete and creates its user-owned asset
     jobs: [jobFixture({ id: "job-complete", status: "processing" })],
   });
 
-  const result = await completeJobWithAsset(harness.store, "job-complete", {
-    type: "video",
-    storageUrl: "tos://assets/user-1/job-complete/video.mp4",
-    thumbnailUrl: "tos://assets/user-1/job-complete/thumb.png",
-  });
+  const result = await completeJobWithAssets(harness.store, "job-complete", [
+    {
+      type: "video",
+      storageUrl: "tos://assets/user-1/job-complete/video.mp4",
+      thumbnailUrl: "tos://assets/user-1/job-complete/thumb.png",
+    },
+  ]);
 
   assert.equal(result.job.status, "complete");
-  assert.equal(result.asset.jobId, "job-complete");
-  assert.equal(result.asset.userId, "user-1");
+  assert.equal(result.assets[0]?.jobId, "job-complete");
+  assert.equal(result.assets[0]?.userId, "user-1");
   assert.equal(harness.state().assets.length, 1);
 });
 
@@ -676,10 +678,9 @@ test("completion rolls back its status change when asset creation fails", async 
   });
 
   await assert.rejects(
-    completeJobWithAsset(harness.store, "job-complete", {
-      type: "video",
-      storageUrl: "tos://assets/user-1/job-complete/video.mp4",
-    }),
+    completeJobWithAssets(harness.store, "job-complete", [
+      { type: "video", storageUrl: "tos://assets/user-1/job-complete/video.mp4" },
+    ]),
     /storage row failed/,
   );
   assert.equal(harness.state().jobs.get("job-complete")?.status, "processing");

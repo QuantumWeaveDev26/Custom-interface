@@ -28,7 +28,7 @@ function imageJob(status: JobRecord["status"] = "queued"): JobRecord {
     status,
     inputParams: {
       prompt: "portrait in dramatic light",
-      params: { type: "image", size: "4K" },
+      params: { type: "image", size: "4K", count: 1 },
     },
     externalTaskId: null,
     errorMessage: null,
@@ -166,20 +166,20 @@ function createVideoHarness(
       operations.push(`db:save-task:${externalTaskId}`);
       currentJob = { ...currentJob, externalTaskId };
     },
-    completeJobWithAsset: async (_jobId, assetInput) => {
+    completeJobWithAssets: async (_jobId, assetInputs) => {
       operations.push("db:complete");
       currentJob = { ...currentJob, status: "complete" };
       return {
         job: currentJob,
-        asset: {
-          id: "video-asset-1",
+        assets: assetInputs.map((assetInput, index) => ({
+          id: index === 0 ? "video-asset-1" : `video-asset-1-${index + 1}`,
           jobId: currentJob.id,
           userId: currentJob.userId,
           type: assetInput.type,
           storageUrl: assetInput.storageUrl,
           thumbnailUrl: assetInput.thumbnailUrl ?? null,
           createdAt: FIXED_TIME,
-        },
+        })),
       };
     },
     modelArk: {
@@ -281,22 +281,22 @@ function createImageFailureHarness(options: ImageFailureHarnessOptions): {
     saveExternalTaskId: async () => {
       throw new Error("image flow must not save a video task ID");
     },
-    completeJobWithAsset: async (_jobId, assetInput) => {
+    completeJobWithAssets: async (_jobId, assetInputs) => {
       if (options.completionError !== undefined) {
         throw options.completionError;
       }
       currentJob = { ...currentJob, status: "complete" };
       return {
         job: currentJob,
-        asset: {
-          id: "asset-1",
+        assets: assetInputs.map((assetInput, index) => ({
+          id: index === 0 ? "asset-1" : `asset-1-${index + 1}`,
           jobId: currentJob.id,
           userId: currentJob.userId,
           type: assetInput.type,
           storageUrl: assetInput.storageUrl,
           thumbnailUrl: assetInput.thumbnailUrl ?? null,
           createdAt: FIXED_TIME,
-        },
+        })),
       };
     },
     modelArk: {
@@ -395,20 +395,20 @@ test("claims an image job, creates once without polling, and publishes after dur
     saveExternalTaskId: async () => {
       throw new Error("image flow must not save a video task ID");
     },
-    completeJobWithAsset: async (_jobId, assetInput) => {
+    completeJobWithAssets: async (_jobId, assetInputs) => {
       operations.push("db:complete");
       currentJob = { ...currentJob, status: "complete" };
       const result: CompleteJobResult = {
         job: currentJob,
-        asset: {
-          id: "asset-1",
+        assets: assetInputs.map((assetInput, index) => ({
+          id: index === 0 ? "asset-1" : `asset-1-${index + 1}`,
           jobId: currentJob.id,
           userId: currentJob.userId,
           type: assetInput.type,
           storageUrl: assetInput.storageUrl,
           thumbnailUrl: assetInput.thumbnailUrl ?? null,
           createdAt: FIXED_TIME,
-        },
+        })),
       };
       return result;
     },
@@ -466,7 +466,6 @@ test("claims an image job, creates once without polling, and publishes after dur
       response_format: "url",
       output_format: "png",
       watermark: false,
-      sequential_image_generation: "disabled",
     },
   ]);
   assert.equal(pollCalls, 0);
@@ -519,7 +518,7 @@ test("an already-processing image fails and refunds without replaying createImag
     saveExternalTaskId: async () => {
       throw new Error("image flow must not save a video task ID");
     },
-    completeJobWithAsset: async () => {
+    completeJobWithAssets: async () => {
       throw new Error("stalled image must not complete");
     },
     modelArk: {
@@ -843,19 +842,19 @@ test("a standard voice job calls createSpeech, not createAudioGeneration", async
     saveExternalTaskId: async () => {
       throw new Error("voice flow must not save a video task ID");
     },
-    completeJobWithAsset: async (_jobId, assetInput) => {
+    completeJobWithAssets: async (_jobId, assetInputs) => {
       currentJob = { ...currentJob, status: "complete" };
       return {
         job: currentJob,
-        asset: {
-          id: "audio-asset-1",
+        assets: assetInputs.map((assetInput, index) => ({
+          id: index === 0 ? "audio-asset-1" : `audio-asset-1-${index + 1}`,
           jobId: currentJob.id,
           userId: currentJob.userId,
           type: assetInput.type,
           storageUrl: assetInput.storageUrl,
           thumbnailUrl: null,
           createdAt: FIXED_TIME,
-        },
+        })),
       };
     },
     modelArk: {
@@ -923,19 +922,19 @@ test("an expressive voice job calls createAudioGeneration, not createSpeech", as
     saveExternalTaskId: async () => {
       throw new Error("voice flow must not save a video task ID");
     },
-    completeJobWithAsset: async (_jobId, assetInput) => {
+    completeJobWithAssets: async (_jobId, assetInputs) => {
       currentJob = { ...currentJob, status: "complete" };
       return {
         job: currentJob,
-        asset: {
-          id: "audio-asset-2",
+        assets: assetInputs.map((assetInput, index) => ({
+          id: index === 0 ? "audio-asset-2" : `audio-asset-2-${index + 1}`,
           jobId: currentJob.id,
           userId: currentJob.userId,
           type: assetInput.type,
           storageUrl: assetInput.storageUrl,
           thumbnailUrl: null,
           createdAt: FIXED_TIME,
-        },
+        })),
       };
     },
     modelArk: {
@@ -1192,4 +1191,140 @@ test("private tos:// URLs are never sent as image references unsigned", async ()
   await createGenerationProcessor(harness.dependencies)("image-job");
 
   assert.doesNotMatch(JSON.stringify(harness.imageRequests()[0]), /"tos:\/\//);
+});
+
+function createImageHarness({
+  count = 1,
+  returned,
+}: { count?: number; returned?: number } = {}) {
+  let currentJob: JobRecord = {
+    ...imageJob(),
+    creditsCost: count,
+    inputParams: {
+      prompt: "portrait in dramatic light",
+      params: { type: "image", size: "4K", count },
+    },
+  };
+  const createRequests: GenerateImagesRequest[] = [];
+  const uploads: StorageUploadInput[] = [];
+  const events: JobStatusEvent[] = [];
+  const imageCount = returned ?? count;
+
+  const dependencies: GenerationProcessorDependencies = {
+    loadJob: async () => currentJob,
+    claimQueuedJob: async () => {
+      currentJob = { ...currentJob, status: "processing" };
+      return true;
+    },
+    failAndRefund: async () => {
+      throw new Error("batch happy path must not refund");
+    },
+    saveExternalTaskId: async () => {
+      throw new Error("image flow must not save a video task ID");
+    },
+    completeJobWithAssets: async (_jobId, assetInputs) => {
+      currentJob = { ...currentJob, status: "complete" };
+      return {
+        job: currentJob,
+        assets: assetInputs.map((assetInput, index) => ({
+          id: `asset-${index + 1}`,
+          jobId: currentJob.id,
+          userId: currentJob.userId,
+          type: assetInput.type,
+          storageUrl: assetInput.storageUrl,
+          thumbnailUrl: null,
+          createdAt: FIXED_TIME,
+        })),
+      };
+    },
+    modelArk: {
+      createImage: async (request) => {
+        createRequests.push(request);
+        return {
+          model: "seedream-5-0-lite-260128",
+          created: 1_777_000_000,
+          data: Array.from({ length: imageCount }, (_, index) => ({
+            url: `https://modelark.example/image-${index + 1}.png`,
+            size: "4K",
+          })),
+        };
+      },
+      createVideoTask: async () => {
+        throw new Error("image flow must not create a video task");
+      },
+      pollVideoTaskUntilDone: async () => {
+        throw new Error("image flow must not poll");
+      },
+    },
+    voice: {
+      createSpeech: async () => {
+        throw new Error("image flow must not call voice");
+      },
+      createAudioGeneration: async () => {
+        throw new Error("image flow must not call voice");
+      },
+    },
+    download: async () => ({
+      body: Uint8Array.from([1, 2, 3]),
+      contentType: "image/png",
+    }),
+    storage: {
+      upload: async (input) => {
+        uploads.push(input);
+        return `tos://assets/user-1/image-job/${uploads.length}.png`;
+      },
+    },
+    publish: async (event) => {
+      events.push(event);
+    },
+    loadInputAssets: async () => [],
+    signAssetUrl: async (storageUrl) => `https://signed.example/${storageUrl}`,
+  };
+
+  return { dependencies, createRequests, uploads, events };
+}
+
+// --- Batch image generation (C9) --------------------------------------------
+// Confirmed contract (MODELARK_API_REFERENCE.md R9): sequential_image_generation
+// "auto" turns batch on; max_images is a ceiling, not a quantity.
+
+test("a count of one sends no batch fields at all", async () => {
+  const harness = createImageHarness();
+
+  await createGenerationProcessor(harness.dependencies)("image-job");
+
+  const request = harness.createRequests[0] as unknown as Record<string, unknown>;
+  assert.equal("sequential_image_generation" in request, false);
+  assert.equal("sequential_image_generation_options" in request, false);
+});
+
+test("a batch request asks for exactly the requested count", async () => {
+  const harness = createImageHarness({ count: 4 });
+
+  await createGenerationProcessor(harness.dependencies)("image-job");
+
+  const request = harness.createRequests[0] as unknown as Record<string, unknown>;
+  assert.equal(request.sequential_image_generation, "auto");
+  assert.deepEqual(request.sequential_image_generation_options, { max_images: 4 });
+});
+
+test("every returned image becomes its own asset and reaches the client", async () => {
+  const harness = createImageHarness({ count: 3, returned: 3 });
+
+  await createGenerationProcessor(harness.dependencies)("image-job");
+
+  const completeEvent = harness.events.at(-1);
+  assert.equal(completeEvent?.assets?.length, 3);
+  assert.equal(harness.uploads.length, 3);
+});
+
+test("a short batch completes with what came back rather than failing", async () => {
+  // max_images is a ceiling; fewer images is a normal response, not an error.
+  const harness = createImageHarness({ count: 5, returned: 2 });
+
+  await createGenerationProcessor(harness.dependencies)("image-job");
+
+  const completeEvent = harness.events.at(-1);
+  assert.equal(completeEvent?.status, "complete");
+  assert.equal(completeEvent?.assets?.length, 2);
 });

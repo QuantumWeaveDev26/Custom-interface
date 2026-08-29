@@ -1,3 +1,4 @@
+import { MAX_BATCH_IMAGES } from "@creative-ai/shared-types";
 import type {
   CameraPresetId,
   LensPresetId,
@@ -40,6 +41,8 @@ export interface StudioState {
   /** Asset id the video should end on. Together with a first frame this is a
    * keyframe transition: generate the motion between two stills. */
   lastFrameAssetId: string | null;
+  /** How many images a single image job should return (batch). */
+  imageCount: number;
   /**
    * Camera moves to stack onto the prompt, in the order chosen — "dolly in,
    * then tilt up" is a sequence, not an unordered set.
@@ -71,6 +74,7 @@ export const INITIAL_STUDIO_STATE: StudioState = {
   prompt: "",
   voiceStyle: "standard",
   imageSize: "4K",
+  imageCount: 1,
   resolution: "720p",
   ratio: "21:9",
   durationSeconds: 5,
@@ -92,6 +96,7 @@ export type StudioAction =
   | { type: "SET_PROMPT"; prompt: string }
   | { type: "SET_VOICE_STYLE"; voiceStyle: VoiceStyle }
   | { type: "SET_IMAGE_SIZE"; imageSize: ImageSize }
+  | { type: "SET_IMAGE_COUNT"; imageCount: number }
   | { type: "SET_RESOLUTION"; resolution: VideoResolution }
   | { type: "SET_RATIO"; ratio: VideoRatio }
   | { type: "SET_DURATION"; durationSeconds: number }
@@ -127,6 +132,19 @@ function withValidRatio(state: StudioState): StudioState {
   return state;
 }
 
+/**
+ * References and generated images share one ceiling of 15 (R9). Adding a
+ * reference can therefore push an already-chosen count out of range; clamping
+ * here keeps the state submittable instead of letting the server reject it
+ * with no visible cause.
+ */
+function withAffordableCount(state: StudioState): StudioState {
+  const ceiling = Math.max(1, MAX_BATCH_IMAGES - state.referenceAssetIds.length);
+  return state.imageCount <= ceiling
+    ? state
+    : { ...state, imageCount: ceiling };
+}
+
 export function studioReducer(
   state: StudioState,
   action: StudioAction,
@@ -140,6 +158,8 @@ export function studioReducer(
       return { ...state, voiceStyle: action.voiceStyle };
     case "SET_IMAGE_SIZE":
       return { ...state, imageSize: action.imageSize };
+    case "SET_IMAGE_COUNT":
+      return { ...state, imageCount: action.imageCount };
     case "SET_RESOLUTION":
       return { ...state, resolution: action.resolution };
     case "SET_RATIO":
@@ -177,17 +197,17 @@ export function studioReducer(
       };
     }
     case "SET_REFERENCES":
-      return { ...state, referenceAssetIds: action.assetIds };
+      return withAffordableCount({ ...state, referenceAssetIds: action.assetIds });
     case "TOGGLE_REFERENCE": {
       const present = state.referenceAssetIds.includes(action.assetId);
-      return {
+      return withAffordableCount({
         ...state,
         // Appended rather than inserted, so selection order is the order the
         // provider receives — which is what "image 1"/"image 2" refer to.
         referenceAssetIds: present
           ? state.referenceAssetIds.filter((id) => id !== action.assetId)
           : [...state.referenceAssetIds, action.assetId],
-      };
+      });
     }
     case "SUBMIT_START":
       return { ...state, phase: "submitting", errorMessage: null, assets: [] };

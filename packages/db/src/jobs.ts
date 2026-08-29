@@ -43,7 +43,7 @@ export interface SubmitJobResult {
 
 export interface CompleteJobResult {
   job: JobRecord;
-  asset: AssetRecord;
+  assets: AssetRecord[];
 }
 
 function isSerializableConflict(error: unknown): boolean {
@@ -220,11 +220,15 @@ export async function saveExternalTaskId(
   }
 }
 
-export async function completeJobWithAsset(
+export async function completeJobWithAssets(
   store: DatabaseStore,
   jobId: string,
-  assetInput: CreateAssetInput,
+  assetInputs: readonly CreateAssetInput[],
 ): Promise<CompleteJobResult> {
+  if (assetInputs.length === 0) {
+    throw new Error(`Cannot complete job ${jobId} with no assets`);
+  }
+
   return store.transaction(async (tx) => {
     const completed = await tx.job.updateMany({
       where: { id: jobId, status: "processing" },
@@ -238,20 +242,63 @@ export async function completeJobWithAsset(
     if (job === null) {
       throw new InvalidJobStateError(jobId, "available for completion");
     }
-    const asset = await tx.asset.create({
-      data: {
-        jobId: job.id,
-        userId: job.userId,
-        type: assetInput.type,
-        storageUrl: assetInput.storageUrl,
-        ...(assetInput.thumbnailUrl === undefined
-          ? {}
-          : { thumbnailUrl: assetInput.thumbnailUrl }),
-      },
-    });
 
-    return { job, asset };
+    const assets: AssetRecord[] = [];
+    for (const assetInput of assetInputs) {
+      assets.push(
+        await tx.asset.create({
+          data: {
+            jobId: job.id,
+            userId: job.userId,
+            type: assetInput.type,
+            storageUrl: assetInput.storageUrl,
+            ...(assetInput.thumbnailUrl === undefined
+              ? {}
+              : { thumbnailUrl: assetInput.thumbnailUrl }),
+          },
+        }),
+      );
+    }
+
+    // A batch request states a maximum, not a quantity — the model may return
+    // fewer images than were asked for and paid for. Charging for images that
+    // were never produced is a real overcharge, so the shortfall is credited
+    // back inside the same transaction that completes the job.
+    const requested = requestedAssetCount(job);
+    if (requested > assets.length) {
+      const perAsset = job.creditsCost / requested;
+      const refund = Math.round(perAsset * (requested - assets.length));
+      if (refund > 0) {
+        await tx.creditLedgerEntry.create({
+          data: {
+            userId: job.userId,
+            delta: refund,
+            reason: `refund:partial:${job.id}`,
+          },
+        });
+        const credited = await tx.user.updateMany({
+          where: { id: job.userId },
+          data: { creditBalance: { increment: refund } },
+        });
+        if (credited.count !== 1) {
+          throw new Error(
+            `Cannot refund job ${jobId}: user ${job.userId} is missing`,
+          );
+        }
+      }
+    }
+
+    return { job, assets };
   });
+}
+
+/**
+ * How many assets the job was priced for. Only a batch image job can be priced
+ * for more than one, so everything else answers 1.
+ */
+function requestedAssetCount(job: JobRecord): number {
+  const params = job.inputParams.params;
+  return params.type === "image" ? params.count : 1;
 }
 
 /**

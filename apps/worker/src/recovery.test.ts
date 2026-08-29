@@ -17,7 +17,7 @@ function queuedJob(id: string, createdAt: Date): JobRecord {
     status: "queued",
     inputParams: {
       prompt: "test prompt",
-      params: { type: "image", size: "4K" },
+      params: { type: "image", size: "4K", count: 1 },
     },
     externalTaskId: null,
     errorMessage: null,

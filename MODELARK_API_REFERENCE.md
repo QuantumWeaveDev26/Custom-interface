@@ -461,3 +461,64 @@ Digital Character Library in the console.
 
 Prompts must address them by type + position ("the influencer in Image 1"),
 never by asset id.
+
+---
+
+## Batch image generation (R9) — CONFIRMED via official docs, 2026-08-29
+
+Source: ModelArk "Image generation tutorial" (1824121) and the Image generation
+API reference (1541523). **Documented, not yet exercised by a live call.**
+
+Same `POST /images/generations` endpoint, two extra fields:
+
+```json
+{
+  "model": "seedream-5-0-lite-260128",
+  "prompt": "a set of four cinematic sci-fi storyboard scenes ...",
+  "sequential_image_generation": "auto",
+  "sequential_image_generation_options": { "max_images": 4 },
+  "size": "2K"
+}
+```
+
+| Field | Values | Notes |
+|---|---|---|
+| `sequential_image_generation` | `"disabled"` (default) \| `"auto"` | `auto` turns on batch |
+| `sequential_image_generation_options.max_images` | 1–15, default 15 | Only read when the above is `auto` |
+
+**Hard constraint:** `input reference images + generated images ≤ 15`. So with
+3 references the ceiling is 12, not 15.
+
+`max_images` is a *maximum*, not a quantity — the model may return fewer. Cost
+must therefore be charged on what came back, not on what was asked for.
+
+Supported models: **Seedream 5.0 lite** (what we run), 4.5, 4.0. Seedream 5.0
+pro is not in the supported list.
+
+Works with references too, so "multi-reference image-to-batch-image" is one
+call: keep a character consistent across a whole set.
+
+---
+
+## 3D generation (R5) — BLOCKED, no public API documentation, 2026-08-29
+
+Two 3D models exist and are listed in the Model list (1330310) with generous
+free quota:
+
+| Model | Capabilities | Output | Free quota |
+|---|---|---|---|
+| `Hyper3d-Rodin-Gen2` | Text-to-3D, images-to-3D; white / textured / PBR | glb, obj, stl, fbx, usdz; tri mesh 500–1,000,000 | 150K |
+| `Hitem3d-2.0` | Images-to-3D; standard and high-precision, white or textured | glb, obj, stl, fbx, usdz; 100,000–2,000,000 polys | 500K |
+
+**But there is no 3D tutorial or API reference in the ModelArk documentation
+tree.** Every other capability row in the Model list carries
+"Tutorial: … | API: …" links; the 3D row carries none, and the whole docs nav
+(80+ entries, enumerated) has no 3D page. The only links are console model-card
+URLs, which need a signed-in session.
+
+**Do not guess the endpoint.** This project has already lost time to invented
+model IDs and unconfirmed shapes.
+
+**Next action (user):** open the console model card for `hyper3d-gen2` and copy
+its API sample — the exact endpoint path, request body, and whether it is
+synchronous or a create-then-poll task like video.

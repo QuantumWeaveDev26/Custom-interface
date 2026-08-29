@@ -4,6 +4,7 @@ import {
   DEFAULT_VOICE_PARAMS,
   IMAGE_SIZES,
   INPUT_ASSET_ROLES,
+  MAX_BATCH_IMAGES,
   MAX_INPUT_ASSETS_PER_JOB,
   MAX_SOURCE_VIDEOS_PER_JOB,
   VIDEO_RATIOS,
@@ -64,7 +65,6 @@ export const IMAGE_OUTPUT_PROFILE = Object.freeze({
   response_format: "url",
   output_format: "png",
   watermark: false,
-  sequential_image_generation: "disabled",
 } as const);
 
 export const VOICE_PROFILE = Object.freeze({
@@ -110,14 +110,27 @@ function parseImageParams(raw: unknown): GenerationParams {
   if (!isPlainObject(raw)) {
     throw new InvalidJobRequest("params must be an object");
   }
-  assertNoUnknownFields(raw, ["size"], "image params");
+  assertNoUnknownFields(raw, ["size", "count"], "image params");
 
   const size =
     raw.size === undefined ? DEFAULT_IMAGE_PARAMS.size : (raw.size as ImageSize);
   if (!IMAGE_SIZES.includes(size)) {
     throw new InvalidJobRequest(`size must be one of ${IMAGE_SIZES.join(", ")}`);
   }
-  return { type: "image", size };
+  const count =
+    raw.count === undefined ? DEFAULT_IMAGE_PARAMS.count : raw.count;
+  if (
+    typeof count !== "number" ||
+    !Number.isInteger(count) ||
+    count < 1 ||
+    count > MAX_BATCH_IMAGES
+  ) {
+    throw new InvalidJobRequest(
+      `count must be a whole number between 1 and ${MAX_BATCH_IMAGES}`,
+    );
+  }
+
+  return { type: "image", size, count };
 }
 
 function parseVideoParams(raw: unknown): GenerationParams {
@@ -281,6 +294,16 @@ export function parseSubmitJobRequest(value: unknown): SubmitJobRequest {
         "first_frame, last_frame, and source_video input assets are only valid for video jobs",
       );
     }
+  }
+
+  // The provider's batch ceiling is shared between inputs and outputs:
+  // references + generated <= 15 (R9). Rejecting here means the user is told
+  // before being charged, rather than after the request fails upstream.
+  if (params.type === "image" && inputAssets.length + params.count > MAX_BATCH_IMAGES) {
+    throw new InvalidJobRequest(
+      `Reference images plus generated images must not exceed ${MAX_BATCH_IMAGES}; ` +
+        `this request asks for ${inputAssets.length} + ${params.count}`,
+    );
   }
 
   // "adaptive" has nothing to adapt to without an input image, so a

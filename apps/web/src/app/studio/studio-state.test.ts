@@ -406,3 +406,44 @@ test("mode switch clears every preset axis", () => {
   assert.equal(next.lensPresetId, null);
   assert.equal(next.lookPresetId, null);
 });
+
+// --- Batch image generation (C9) --------------------------------------------
+
+test("image count defaults to one", () => {
+  assert.equal(INITIAL_STUDIO_STATE.imageCount, 1);
+});
+
+test("adding references clamps a count that no longer fits the ceiling", () => {
+  // References and generated images share a ceiling of 15.
+  let state: StudioState = { ...INITIAL_STUDIO_STATE, imageCount: 15 };
+  state = studioReducer(state, { type: "TOGGLE_REFERENCE", assetId: "a" });
+  assert.equal(state.imageCount, 14);
+
+  state = studioReducer(state, { type: "TOGGLE_REFERENCE", assetId: "b" });
+  assert.equal(state.imageCount, 13);
+});
+
+test("removing a reference does not push the count back up on its own", () => {
+  let state: StudioState = { ...INITIAL_STUDIO_STATE, imageCount: 15 };
+  state = studioReducer(state, { type: "TOGGLE_REFERENCE", assetId: "a" });
+  state = studioReducer(state, { type: "TOGGLE_REFERENCE", assetId: "a" });
+
+  // Raising it again silently would be the app choosing to spend more credits
+  // than the user last chose to.
+  assert.equal(state.imageCount, 14);
+});
+
+test("loading a character clamps the count too", () => {
+  const state: StudioState = { ...INITIAL_STUDIO_STATE, imageCount: 15 };
+  const next = studioReducer(state, {
+    type: "SET_REFERENCES",
+    assetIds: ["a", "b", "c"],
+  });
+  assert.equal(next.imageCount, 12);
+});
+
+test("mode switch resets the count", () => {
+  const state: StudioState = { ...INITIAL_STUDIO_STATE, imageCount: 8 };
+  const next = studioReducer(state, { type: "SET_MODE", mode: "video" });
+  assert.equal(next.imageCount, 1);
+});

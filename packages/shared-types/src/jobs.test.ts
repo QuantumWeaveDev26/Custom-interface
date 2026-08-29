@@ -23,7 +23,7 @@ import {
 
 test("omitting params yields the previous hardcoded profile values", () => {
   const image = parseSubmitJobRequest({ type: "image", prompt: "a fox" });
-  assert.deepEqual(image.params, { type: "image", size: "4K" });
+  assert.deepEqual(image.params, { type: "image", size: "4K", count: 1 });
 
   const video = parseSubmitJobRequest({ type: "video", prompt: "a fox" });
   assert.deepEqual(video.params, {
@@ -154,7 +154,7 @@ test("rejects invalid video params", () => {
 test("accepts and validates image size", () => {
   assert.deepEqual(
     parseSubmitJobRequest({ type: "image", prompt: "x", params: { size: "1K" } }).params,
-    { type: "image", size: "1K" },
+    { type: "image", size: "1K", count: 1 },
   );
   assert.throws(
     () => parseSubmitJobRequest({ type: "image", prompt: "x", params: { size: "8K" } }),
@@ -368,7 +368,7 @@ test("an unknown model validates against the conservative capability set", () =>
 
 test("image and voice params are not model-gated", () => {
   assert.doesNotThrow(() =>
-    assertParamsSupportedByModel({ type: "image", size: "4K" }, "anything"),
+    assertParamsSupportedByModel({ type: "image", size: "4K", count: 1 }, "anything"),
   );
   assert.doesNotThrow(() =>
     assertParamsSupportedByModel({ type: "voice", style: "expressive" }, "anything"),
@@ -382,7 +382,6 @@ test("exposes immutable non-selectable output profiles", () => {
     response_format: "url",
     output_format: "png",
     watermark: false,
-    sequential_image_generation: "disabled",
   });
   assert.deepEqual(VOICE_PROFILE, {
     speaker: "en_female_stokie_uranus_bigtts",
@@ -449,4 +448,55 @@ test("accepts both keyframes on one video job", () => {
     { assetId: "start", role: "first_frame" },
     { assetId: "end", role: "last_frame" },
   ]);
+});
+
+// --- Batch image generation (C9) --------------------------------------------
+
+test("image count defaults to one, so nothing changes for existing callers", () => {
+  const parsed = parseSubmitJobRequest({ type: "image", prompt: "a fox" });
+  assert.deepEqual(parsed.params, { type: "image", size: "4K", count: 1 });
+});
+
+test("image count must be a whole number within the batch ceiling", () => {
+  for (const count of [0, 16, 2.5, -1, "4"]) {
+    assert.throws(
+      () =>
+        parseSubmitJobRequest({
+          type: "image",
+          prompt: "a fox",
+          params: { count },
+        }),
+      InvalidJobRequest,
+      `count ${String(count)} must be rejected`,
+    );
+  }
+
+  const parsed = parseSubmitJobRequest({
+    type: "image",
+    prompt: "a fox",
+    params: { count: 15 },
+  });
+  assert.equal((parsed.params as { count: number }).count, 15);
+});
+
+test("references and generated images share the batch ceiling", () => {
+  // R9: references + generated <= 15. Three references leave room for twelve.
+  const parsed = parseSubmitJobRequest({
+    type: "image",
+    prompt: "a fox",
+    params: { count: 12 },
+    inputAssets: ["a", "b", "c"].map((assetId) => ({ assetId, role: "reference" })),
+  });
+  assert.equal(parsed.inputAssets.length, 3);
+
+  assert.throws(
+    () =>
+      parseSubmitJobRequest({
+        type: "image",
+        prompt: "a fox",
+        params: { count: 13 },
+        inputAssets: ["a", "b", "c"].map((assetId) => ({ assetId, role: "reference" })),
+      }),
+    InvalidJobRequest,
+  );
 });
