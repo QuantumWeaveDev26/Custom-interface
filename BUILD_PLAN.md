@@ -232,26 +232,33 @@ Phase 4's, not something to guess at. Search is per-user until that is decided.
   Loads filter to the current model so nothing breaks, but there is no
   reindexing path — old rows simply stop matching.
 
-### C8 — 3D generation 🟢 differentiator — UNBLOCKED, not yet built
-Text-to-3D and image-to-3D with PBR materials and glb/obj/stl/fbx/usdz export.
-**Higgsfield does not offer this**, and free quota is 150K on
-`hyper3d-gen2-260112`, 500K on Hitem3d-2.0.
+### C8 — 3D generation ✅ DONE (2026-08-29, `9de44a9`) 🟢 differentiator
+Studio 3D tab: text to a .glb mesh with PBR materials, three detail presets.
+Reuses the video task endpoint; settings ride as CLI flags inside the prompt
+text; the file arrives under `content.file_url`. The one thing on this roadmap
+Higgsfield does not offer.
 
-R5 is now confirmed (`MODELARK_API_REFERENCE.md`). Two things shape the build:
+**Still open:**
+- **Image-to-3D is not wired.** The model supports it; the input shape is
+  presumed to be an `image_url` content item but was never confirmed.
+- Output is glb only. obj/stl/fbx/usdz are documented but the selecting flag is
+  unknown.
+- `--mesh_mode` and `--addons` are not exposed - only one sample value each is
+  confirmed, and guessing repeats the `1K` image-size mistake.
+- No 3D viewer. The gallery offers a download; an inline preview would need a
+  glTF renderer.
+- **Cost is a placeholder** anchored to one observation (~30,000 tokens, ~$0.40
+  a mesh). Verify against a real invoice before launch.
+- Hitem3d-2.0 (image-to-3D, 500K free quota) is untouched.
 
-- **It reuses the video task endpoint**, so the worker's existing create-poll
-  path is most of the transport. What differs is the output: a 3D file, not a
-  video, and the poll response field carrying it is **not yet confirmed**.
-  Confirm that with one live call before writing the download path.
-- **Options are CLI flags appended to the prompt text**, not JSON fields —
-  `--material PBR --quality_override 1000000` and so on. That means the
-  prompt-library composition pattern from C5 fits better here than a params
-  object does.
+### C9 — Batch generation / variants ✅ DONE (2026-08-29, `22388cb`)
+Up to 15 images per request via `sequential_image_generation: "auto"` (R9).
+Job completion went plural to hold them, and the shortfall between images
+requested and images returned is credited back inside the completion
+transaction — `max_images` is a ceiling, not a quantity.
 
-Also needed: `Asset.type` currently spans image/video/audio only, and a `.glb`
-is none of those. Storage, the gallery, and the asset API all assume a media
-element can render it — a 3D asset needs a download affordance instead, or a
-viewer.
+**Still open:** batch is image-only. Video has no equivalent, and the Gallery
+does not group a batch as one set.
 
 ---
 

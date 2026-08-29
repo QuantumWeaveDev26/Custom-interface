@@ -70,8 +70,10 @@ and saw the correct result.
 
 | Semantic search + more-like-this (C7) | `/gallery` | ⚠️ Built, tests pass, **not yet exercised in the browser**. Nothing is indexed yet — the first search will return nothing until "Index up to 20" is run. |
 
-Four items are currently built but unproven: saved named characters, the cinema
-presets, batch image generation, and semantic search. These are queued for one
+| 3D generation (C8) | `/studio` (3D tab) | Built, tests pass, **not yet exercised in the browser**. The underlying API was proven with a direct call: a .glb mesh came back in ~98s. |
+
+Five items are currently built but unproven: saved named characters, the cinema
+presets, batch image generation, semantic search, and 3D generation. These are queued for one
 batched browser-test pass rather than being verified one at a time.
 
 ---
@@ -144,17 +146,15 @@ Two things to know before building on it:
   **UNCONFIRMED** and deliberately biased high. Verify against real BytePlus
   per-resolution pricing before any launch.
 
-### 3.5 3D generation — UNBLOCKED 2026-08-29, one unknown left
+### 3.5 3D generation — RESOLVED 2026-08-29, built in C8
 
-Resolved by reading the console model card directly (BytePlus still publishes no
-3D documentation page). 3D reuses the **video task endpoint** with model
-`hyper3d-gen2-260112`, already activated on this account, and its options are
-CLI-style flags inside the prompt text rather than JSON fields. Full contract in
-`MODELARK_API_REFERENCE.md` § R5.
+No longer blocked. BytePlus still publishes no 3D documentation; the contract
+was recovered from the console model card and confirmed with one live call, and
+`MODELARK_API_REFERENCE.md` R5 now records it in full.
 
-**One unknown before building:** the poll response field carrying the 3D file.
-Output is glb/obj/stl/fbx/usdz, so it will not be `content.video_url`. Confirm
-with a single live call rather than guessing.
+What remains open is narrower: image-to-3D input shape, the flag that selects a
+format other than glb, and the accepted values for `--mesh_mode` and `--addons`.
+Do not guess any of them.
 
 ### 3.3 Phase 4 (Billing / Admin / Community) — blocked on business decisions
 
@@ -230,7 +230,7 @@ previous agent (this project has been burned by an agent self-reporting
 
 ```bash
 pnpm typecheck   # all 8 packages
-pnpm test        # 300 tests, all must pass
+pnpm test        # 307 tests, all must pass
 pnpm build       # full monorepo build
 ```
 
