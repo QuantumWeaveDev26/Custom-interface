@@ -325,3 +325,139 @@ Notes:
 `Single image-to-image` (one reference), `Multi-Image Blending`,
 `Multi-Reference Image-to-Batch-Image`, `Layer decomposition` (5.0-pro only),
 `sequential_image_generation` (batch variants), and streaming output.
+
+---
+
+## Video edit / extend / omni reference (R4) — CONFIRMED via official docs, 2026-08-29
+
+Source: BytePlus ModelArk "Dreamina Seedance 2.0 series tutorial" (doc 2291680),
+read directly. **Documented, not yet exercised by a live call from this project.**
+
+Same `POST /contents/generations/tasks` endpoint as text-to-video. What changes
+is the `content[]` items and their `role`.
+
+### Role values on the wire
+
+These are **not** the same strings as the `InputAssetRole` values this project
+stores. Map at the worker boundary:
+
+| Our `InputAssetRole` | Wire `role` | Content item type |
+|---|---|---|
+| `first_frame` | `first_frame` | `image_url` |
+| `last_frame` | `last_frame` | `image_url` |
+| `reference` | `reference_image` | `image_url` |
+| `source_video` | `reference_video` | `video_url` |
+| (none yet) | `reference_audio` | `audio_url` |
+
+A bare `image_url` with **no** role is treated as a first frame. So an omni
+reference image sent without `role: "reference_image"` is silently misread as a
+keyframe — which is what this project was doing before R4.
+
+### Edit video
+
+Text + the video to edit + optional reference images:
+```json
+{
+  "model": "dreamina-seedance-2-0-260128",
+  "content": [
+    { "type": "text", "text": "Replace the cat in [Video 1] with the lion from [Image 1]." },
+    { "type": "image_url", "image_url": { "url": "..." }, "role": "reference_image" },
+    { "type": "video_url", "video_url": { "url": "..." }, "role": "reference_video" }
+  ],
+  "generate_audio": true, "ratio": "16:9", "duration": 5
+}
+```
+
+### Extend video
+
+Text + **1–3** videos, all `role: "reference_video"`. With one video it extends
+forward or backward; with 2–3 it generates the transitions between them.
+```json
+{
+  "content": [
+    { "type": "text", "text": "The window in [Video 1] opens ... transitioning into [Video 2]." },
+    { "type": "video_url", "video_url": { "url": "..." }, "role": "reference_video" },
+    { "type": "video_url", "video_url": { "url": "..." }, "role": "reference_video" }
+  ]
+}
+```
+
+Documented behaviour worth surfacing in UI copy: extending one clip usually
+yields **only the new footage**, not the original plus the new. To keep the
+original, the prompt must say so ("...and then end with Video 1"). With 2–3
+clips the output does include the originals.
+
+### Omni reference
+
+Same shape, mixing modalities. Prompts address inputs positionally as
+`[Image 1]`, `[Video 1]`, `[Audio 1]` — the number is the order among items *of
+that type* in the request body.
+
+Per-request caps for the **2.0 series** (what we run): 0–9 images, 0–3 videos,
+0–3 audio. Seedance 2.5 allows 1–30 images and 10 videos/audio. `text + audio`
+and audio-only inputs are rejected.
+
+For strict keyframe control the docs say to use `first_frame`/`last_frame`
+rather than describing it in the prompt.
+
+### Input limits (all modalities)
+
+- **Images:** jpeg/png/webp/bmp/tiff/gif (2.0 also heic/heif); aspect ratio
+  0.4–2.5; 300–6000 px per side; < 30 MB each.
+- **Videos:** mp4/mov, H.264 or H.265, audio AAC/MP3; 2–15 s each for the 2.0
+  series, ≤ 15 s total across clips; 480p–4K; 24–60 fps; < 200 MB each.
+- **Audio:** wav/mp3; 2–15 s each for the 2.0 series.
+- **Request body must stay under 64 MB** — do not base64 large files, send URLs.
+- Input may also be an **asset id**, passed as `asset://<asset ID>` in the same
+  `url` field.
+
+---
+
+## Real human faces in input (R8) — CONFIRMED live + docs, 2026-08-29
+
+Seedance 2.5 and the 2.0 series **reject input images or videos that may contain
+a real human face**. Confirmed live by this project on a keyframe job:
+
+```json
+{"error":{"code":"InputImageSensitiveContentDetected.PrivacyInformation",
+"message":"The request failed because the input image 'content[1]' may contain real person."}}
+```
+
+Source for the workarounds: "Create portrait videos with Dreamina Seedance
+models" (doc 2608626).
+
+### Workaround 1 — trusted outputs
+
+ModelArk trusts **its own face-containing outputs, on the same account**, as
+input for secondary creation:
+
+| Trusted input | Trusted if generated after | Valid for |
+|---|---|---|
+| Face-containing videos from Seedance 2.5 / 2.0 series | 2026-03-11 | 30 days |
+| Last-frame images of those videos | 2026-04-16 | 30 days |
+| Face-containing images from **Seedream 5.0 lite text-to-image** | 2026-04-16 | 30 days |
+
+Constraints, all of which matter to how this project stores assets:
+- Same account only; cross-account and cross-platform are not trusted.
+- **Original outputs only** — secondary editing breaks trust.
+- "Compressing or forwarding files may invalidate trust verification. We
+  recommend saving the original model outputs directly to BytePlus TOS."
+- Trust covers the *input*; output can still fail moderation.
+
+**Open question this project must answer with a live test:** we download each
+generated image and re-upload the bytes to our own TOS bucket, then hand
+BytePlus a signed URL. Whether that counts as "forwarding" and breaks trust is
+unknown. The one live data point we have — an astronaut image generated by
+`seedream-5-0-lite` on this account, re-served from our bucket — was **rejected**,
+which is weak evidence that it does. Before building any face feature, test the
+same image served straight from the BytePlus-issued URL.
+
+### Workaround 2 — preset digital characters
+
+A library of sanctioned character assets, passed as `asset://<asset ID>`. This
+is the closest documented equivalent to a consistent human identity, and it is
+allowed by design rather than by trust heuristics. Requires activating the
+Digital Character Library in the console.
+
+Prompts must address them by type + position ("the influencer in Image 1"),
+never by asset id.

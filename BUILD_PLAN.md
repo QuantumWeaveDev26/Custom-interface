@@ -90,7 +90,8 @@ lost days to building against unconfirmed BytePlus contracts.
 | ~~**R1**~~ | ⚠️ **PARTIAL** — see `CAPABILITY_MAP.md` §4b. Seedance 2.5 confirmed GA (30s, multimodal ref); Seedream 5.0-pro confirmed (image editing); OmniHuman **not seen**. Video/image sections were cut off — recapture to close. | C2, C4, B2 |
 | ~~**R2**~~ | ✅ **DONE** — request shape confirmed from official docs, recorded in `MODELARK_API_REFERENCE.md`. Same endpoint, extra `content[]` items; roles `first_frame`/`last_frame` match what A2 already defined. **Our current cheap model already supports i2v, edit, extend, and references.** | C2, C6 |
 | ~~**R3**~~ | ✅ **DONE** — `image` is `string \| string[]`; array = multi-reference. Recorded in `MODELARK_API_REFERENCE.md`. `seedream-5-0-lite` supports it. | C4 |
-| ~~**R4**~~ | ✅ Covered by the same R2 doc read — `seedance-2-0-fast` supports Edit video and Extend video. Exact request shapes for those two still need a targeted read. | C6 |
+| ~~**R4**~~ | ✅ **DONE** — edit, extend, and omni reference request shapes recorded in `MODELARK_API_REFERENCE.md`. Wire roles are `reference_image` / `reference_video` / `reference_audio`, **not** our stored role names; a bare image with no role is read as a first frame. | C6 |
+| ~~**R8**~~ | ✅ **DONE** — the real-face input restriction and its two documented workarounds (trusted same-account outputs; preset digital characters via `asset://`). See `MODELARK_API_REFERENCE.md` § R8. | B2, C4 |
 | **R5** | 3D generation (Rodin / Hitem3d) endpoints + quota metering | C8 |
 | **R6** | `skylark-embedding-vision` request shape | C7 |
 | **R7** | Managed Agents / App Lab — replace or complement `packages/agents`? | future agent work |
@@ -225,9 +226,13 @@ Lipsync Studio equivalent.
 
 **Second blocker found 2026-08-29:** BytePlus rejects input images that may show
 a real person (`InputImageSensitiveContentDetected.PrivacyInformation`,
-confirmed live). A talking avatar of a real person is exactly that input, so
-confirm with support whether a per-account allowlist or consent flow exists
-before building B2 — the model ID alone is not enough to unblock it.
+confirmed live). A talking avatar of a real person is exactly that input.
+
+R8 found two sanctioned routes around it — trusted same-account model outputs
+(30-day window), and the preset **digital character library** (`asset://<id>`).
+The digital-character route is the more promising one for B2, since it is
+allowed by design rather than by a trust heuristic our storage pipeline may
+already be breaking. See `MODELARK_API_REFERENCE.md` § R8.
 
 ### B3 — Phase 4: Billing, Admin
 Blocked on payment provider, pricing tiers, and audience (real customers vs
