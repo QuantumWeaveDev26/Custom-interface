@@ -180,7 +180,12 @@ Studio picker has an Upload tile. Format decided by magic bytes, never the
 declared Content-Type or filename; storage key built from user id + UUID so a
 crafted filename cannot escape the prefix. Asset row written only after the
 object lands. `Asset.jobId` became nullable (uploads have no job).
-**Images only** — audio upload for lipsync is not built.
+**Video added 2026-08-29 (`d82cc0a`)** — MP4 and MOV are recognised by their
+`ftyp` box, with the size limit applied per kind after detection (15 MB image,
+100 MB video). Attachment is available from the prompt box on Studio, Director,
+and Marketing, not only from the dedicated pickers.
+
+**Still open:** audio upload for lipsync is not built.
 
 ### C4 — Character consistency ✅ DONE (2026-08-29, `9c3db6a`)
 Image mode takes ordered reference images (`image: string[]`). Selection order
