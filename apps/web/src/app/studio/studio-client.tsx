@@ -20,6 +20,7 @@ import {
   LOOK_PRESETS,
   composeShotPrompt,
 } from "@creative-ai/prompt-library";
+import { ReferencePicker } from "./reference-picker";
 import {
   INITIAL_STUDIO_STATE,
   studioReducer,
@@ -96,8 +97,11 @@ export function StudioClient({
     [uploadedIds, recentImageIds],
   );
 
-  const handleUpload = useCallback(
-    async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const uploadImage = useCallback(
+    async (
+      event: React.ChangeEvent<HTMLInputElement>,
+      target: "reference" | "keyframe",
+    ) => {
       const file = event.target.files?.[0];
       // Reset immediately so re-picking the same file still fires onChange.
       event.target.value = "";
@@ -119,9 +123,11 @@ export function StudioClient({
         }
         const { assetId } = (await response.json()) as { assetId: string };
         setUploadedIds((previous) => [assetId, ...previous]);
-        // Select it straight away, in whichever way this mode means "use it".
+        // Select it straight away, into whichever picker the upload came from.
+        // Video mode has two, so the caller says which — inferring it from the
+        // mode would put every uploaded face into the first-frame slot.
         dispatch(
-          state.mode === "image"
+          target === "reference"
             ? { type: "TOGGLE_REFERENCE", assetId }
             : frameSlot === "last_frame"
               ? { type: "SET_LAST_FRAME", assetId }
@@ -133,7 +139,16 @@ export function StudioClient({
         setUploading(false);
       }
     },
-    [state.mode, frameSlot],
+    [frameSlot],
+  );
+
+  const handleUploadReference = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => uploadImage(event, "reference"),
+    [uploadImage],
+  );
+  const handleUploadKeyframe = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => uploadImage(event, "keyframe"),
+    [uploadImage],
   );
 
 
@@ -222,8 +237,19 @@ export function StudioClient({
         assetId,
         role: "source_video" as const,
       })),
+      // Omni reference (R4): the 2.0 series accepts reference images on a video
+      // task, which is how a saved character carries into a shot.
+      ...state.referenceAssetIds.map((assetId) => ({
+        assetId,
+        role: "reference" as const,
+      })),
     ],
-    [state.firstFrameAssetId, state.lastFrameAssetId, state.sourceVideoAssetIds],
+    [
+      state.firstFrameAssetId,
+      state.lastFrameAssetId,
+      state.sourceVideoAssetIds,
+      state.referenceAssetIds,
+    ],
   );
 
   // "adaptive" copies the ratio of an input image, so it is only offered once
@@ -417,181 +443,27 @@ export function StudioClient({
 
       {state.mode === "image" && (
         <div className="mt-3">
-          <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-[var(--text-faint)]">
-            Reference images{" "}
-            <span className="normal-case tracking-normal">
-              (optional — keeps a character or style consistent)
-            </span>
-          </p>
-          <div className="flex gap-2 overflow-x-auto pb-1">
-            <label
-              htmlFor="upload-reference"
-              className={`flex h-16 w-16 shrink-0 flex-col items-center justify-center gap-0.5 rounded-lg border border-dashed text-[10px] transition-colors ${
-                isBusy || uploading
-                  ? "cursor-not-allowed opacity-50"
-                  : "cursor-pointer hover:border-[var(--border-strong)]"
-              }`}
-              style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}
-            >
-              {uploading ? (
-                <span className="spinner h-4 w-4" aria-hidden="true" />
-              ) : (
-                <>
-                  <span className="text-base leading-none">+</span>
-                  <span>Upload</span>
-                </>
-              )}
-            </label>
-            <input
-              id="upload-reference"
-              type="file"
-              accept="image/png,image/jpeg,image/webp"
-              onChange={handleUpload}
-              disabled={isBusy || uploading}
-              className="sr-only"
-            />
-            {pickableImageIds.map((assetId) => {
-              const order = state.referenceAssetIds.indexOf(assetId);
-              const selected = order !== -1;
-              return (
-                <button
-                  key={assetId}
-                  type="button"
-                  disabled={isBusy}
-                  aria-pressed={selected}
-                  aria-label={
-                    selected ? `Reference ${order + 1}, click to remove` : "Add as reference"
-                  }
-                  onClick={() => dispatch({ type: "TOGGLE_REFERENCE", assetId })}
-                  className="relative shrink-0 overflow-hidden rounded-lg transition-all disabled:opacity-50"
-                  style={{
-                    border: selected
-                      ? "2px solid var(--accent-via)"
-                      : "2px solid var(--border)",
-                  }}
-                >
-                  <img src={`/api/assets/${assetId}`} alt="" className="h-16 w-16 object-cover" />
-                  {selected && (
-                    // The number is the position the prompt can address as
-                    // "image 1", "image 2" — selection order is send order.
-                    <span
-                      className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-bold text-white"
-                      style={{ background: "var(--accent-via)" }}
-                    >
-                      {order + 1}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-          {uploadError !== null && (
-            <p className="mt-1.5 text-[11px] text-[var(--danger)]">{uploadError}</p>
-          )}
-          {state.referenceAssetIds.length > 0 && (
-            <p className="mt-1.5 text-[11px] text-[var(--text-muted)]">
-              Refer to them in your prompt as “image 1”, “image 2”, and so on.
-            </p>
-          )}
-
-          {savedCharacters.length > 0 && (
-            <div className="mt-3">
-              <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-[var(--text-faint)]">
-                Saved characters
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {savedCharacters.map((character) => (
-                  <span
-                    key={character.id}
-                    className="inline-flex items-center gap-1 rounded-full border px-1 py-0.5 text-xs"
-                    style={{ borderColor: "var(--border)", background: "var(--surface)" }}
-                  >
-                    <button
-                      type="button"
-                      disabled={isBusy}
-                      onClick={() => handleLoadCharacter(character.assetIds)}
-                      className="rounded-full px-2 py-0.5 text-[var(--text)] disabled:opacity-50"
-                      title={`Load ${character.assetIds.length} reference image(s)`}
-                    >
-                      {character.name}
-                    </button>
-                    <button
-                      type="button"
-                      disabled={isBusy}
-                      onClick={() => handleDeleteCharacter(character.id)}
-                      aria-label={`Delete character ${character.name}`}
-                      className="px-1 text-[var(--text-faint)] hover:text-[var(--danger)] disabled:opacity-50"
-                    >
-                      ×
-                    </button>
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {state.referenceAssetIds.length > 0 && (
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <input
-                type="text"
-                value={characterName}
-                onChange={(event) => setCharacterName(event.target.value)}
-                disabled={isBusy || savingCharacter}
-                maxLength={60}
-                placeholder="Name this character…"
-                className="input-field !w-48 !py-1.5 text-xs"
-              />
-              <button
-                type="button"
-                onClick={handleSaveCharacter}
-                disabled={
-                  isBusy || savingCharacter || characterName.trim().length === 0
-                }
-                className="btn-secondary gap-1.5 !px-3 !py-1.5 text-xs"
-              >
-                {savingCharacter && <span className="spinner h-3 w-3" aria-hidden="true" />}
-                Save {state.referenceAssetIds.length} as character
-              </button>
-            </div>
-          )}
-          {characterError !== null && (
-            <p className="mt-1.5 text-[11px] text-[var(--danger)]">{characterError}</p>
-          )}
-
-          <label
-            htmlFor="image-count"
-            className="mb-1.5 mt-3 flex items-center justify-between text-[11px] font-medium uppercase tracking-wide text-[var(--text-faint)]"
-          >
-            <span>How many</span>
-            <span className="text-[var(--text)]">
-              {state.imageCount} image{state.imageCount === 1 ? "" : "s"}
-            </span>
-          </label>
-          <input
-            id="image-count"
-            type="range"
-            min={1}
-            // References and generated images share one ceiling of 15, so the
-            // slider shrinks as references are added rather than offering a
-            // number the server would reject.
-            max={Math.max(1, MAX_BATCH_IMAGES - state.referenceAssetIds.length)}
-            step={1}
-            value={state.imageCount}
+          <ReferencePicker
+            inputId="upload-reference"
+            label="Reference images"
+            hint="(optional — keeps a character or style consistent)"
+            promptHint={"Refer to them in your prompt as “image 1”, “image 2”, and so on."}
+            pickableImageIds={pickableImageIds}
+            selectedIds={state.referenceAssetIds}
+            characters={savedCharacters}
+            characterName={characterName}
             disabled={isBusy}
-            onChange={(event) =>
-              dispatch({
-                type: "SET_IMAGE_COUNT",
-                imageCount: Number(event.target.value),
-              })
-            }
-            className="w-full accent-[var(--accent-via)] disabled:opacity-50"
+            uploading={uploading}
+            savingCharacter={savingCharacter}
+            uploadError={uploadError}
+            characterError={characterError}
+            onUpload={handleUploadReference}
+            onToggle={(assetId) => dispatch({ type: "TOGGLE_REFERENCE", assetId })}
+            onLoadCharacter={handleLoadCharacter}
+            onDeleteCharacter={handleDeleteCharacter}
+            onCharacterNameChange={setCharacterName}
+            onSaveCharacter={handleSaveCharacter}
           />
-          {state.imageCount > 1 && (
-            <p className="mb-1 text-[11px] text-[var(--text-muted)]">
-              A set generated together, so they hold a consistent style. The model
-              may return fewer — you are only charged for what arrives.
-            </p>
-          )}
 
           <p className="mb-1.5 mt-3 text-[11px] font-medium uppercase tracking-wide text-[var(--text-faint)]">
             Size
@@ -669,7 +541,7 @@ export function StudioClient({
               id="upload-image"
               type="file"
               accept="image/png,image/jpeg,image/webp"
-              onChange={handleUpload}
+              onChange={handleUploadKeyframe}
               disabled={isBusy || uploading}
               className="sr-only"
             />
@@ -739,6 +611,30 @@ export function StudioClient({
             </p>
           )}
         </div>
+      )}
+
+      {state.mode === "video" && (
+        <ReferencePicker
+          inputId="upload-video-reference"
+          label="Keep a character"
+          hint="(optional — the same face or subject across shots)"
+          promptHint={"Refer to them in your prompt as “Image 1”, “Image 2”, and so on."}
+          pickableImageIds={pickableImageIds}
+          selectedIds={state.referenceAssetIds}
+          characters={savedCharacters}
+          characterName={characterName}
+          disabled={isBusy}
+          uploading={uploading}
+          savingCharacter={savingCharacter}
+          uploadError={uploadError}
+          characterError={characterError}
+          onUpload={handleUploadReference}
+          onToggle={(assetId) => dispatch({ type: "TOGGLE_REFERENCE", assetId })}
+          onLoadCharacter={handleLoadCharacter}
+          onDeleteCharacter={handleDeleteCharacter}
+          onCharacterNameChange={setCharacterName}
+          onSaveCharacter={handleSaveCharacter}
+        />
       )}
 
       {state.mode === "video" && recentVideoIds.length > 0 && (

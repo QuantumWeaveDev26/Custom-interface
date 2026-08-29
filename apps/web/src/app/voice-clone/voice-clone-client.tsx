@@ -148,7 +148,9 @@ export function VoiceCloneClient() {
                 ? "Voice cloned — ready to use"
                 : "Voice cloned — training"}
             </p>
-            <p className="gradient-text mt-1 text-lg font-semibold">Your voice ID</p>
+            <p className="mt-3 text-[11px] font-medium uppercase tracking-wide text-[var(--text-faint)]">
+              Your voice ID
+            </p>
             <p className="mt-1 font-mono text-sm text-[var(--text)]">{state.speakerId}</p>
             <p className="mt-2 text-xs text-[var(--text-muted)]">
               Save this ID — it identifies your cloned voice for future generation.

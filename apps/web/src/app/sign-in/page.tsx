@@ -32,7 +32,7 @@ export default function SignInPage() {
         <div className="mb-8 flex flex-col items-center text-center">
           <span className="gradient-ring mb-4 h-10 w-10 rounded-2xl" aria-hidden="true" />
           <h1 className="text-2xl font-semibold tracking-tight text-[var(--text)]">
-            Sign in to <span className="gradient-text">Creative AI</span>
+            Sign in to Creative AI
           </h1>
           <p className="mt-2 text-sm text-[var(--text-muted)]">
             Create images, video, and voice with AI

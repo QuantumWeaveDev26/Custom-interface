@@ -13,7 +13,9 @@
   --border-strong: #34384470;
   --text: #f4f4f6;
   --text-muted: #9ca0ac;
-  --text-faint: #63666f;
+  /* Raised from #63666f, which measured 3.47:1 on --bg and sat well under the
+     4.5:1 floor for the small labels and hints that use it. */
+  --text-faint: #82868f;
   --accent-from: #8b5cf6;
   --accent-via: #d946ef;
   --accent-to: #f97316;
@@ -23,6 +25,32 @@
 
 * {
   @apply box-border;
+}
+
+/* Keyboard focus was invisible everywhere: nothing in this file styled :focus
+   outside .input-field, and Tailwind's preflight removes the browser default.
+   One systemic rule rather than a ring bolted onto each control, so a new
+   button cannot ship without it. :focus-visible keeps it off mouse clicks. */
+:focus-visible {
+  outline: 2px solid var(--accent-via);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* The field draws its own focus treatment; a second ring outside it reads as a
+   double border. */
+.input-field:focus-visible {
+  outline: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 html,
@@ -42,13 +70,6 @@ body {
 
 /* Reusable design-system utility classes -- kept here instead of duplicated
    Tailwind strings in every page so the visual language stays consistent. */
-
-.gradient-text {
-  background-image: linear-gradient(90deg, var(--accent-from), var(--accent-via), var(--accent-to));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
 
 .gradient-ring {
   background-image: linear-gradient(135deg, var(--accent-from), var(--accent-via), var(--accent-to));

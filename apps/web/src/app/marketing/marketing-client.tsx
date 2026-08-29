@@ -1,5 +1,6 @@
 "use client";
 
+import { EmptyState } from "../empty-state";
 import { useCallback, useEffect, useRef, useReducer, useState } from "react";
 import {
   INITIAL_MARKETING_STATE,
@@ -166,6 +167,15 @@ export function MarketingClient() {
         </button>
       </form>
 
+      {state.phase === "idle" && (
+        <EmptyState
+          title="No ad planned yet"
+          description="Paste a product page URL. The page is read for you, then a creative direction, tagline, and shot are proposed from what it actually says."
+          example="https://www.apple.com/airpods-pro/"
+          onUseExample={(url) => dispatch({ type: "SET_URL", url })}
+        />
+      )}
+
       {state.phase === "failed" && (
         <div className="card border-[var(--danger)]/30 mt-4 p-4">
           <p className="text-sm text-[var(--danger)]">{state.errorMessage}</p>
@@ -193,7 +203,7 @@ export function MarketingClient() {
             <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--text-faint)]">
               {STYLE_LABELS[state.direction.style] ?? state.direction.style}
             </p>
-            <p className="gradient-text mt-1 text-lg font-semibold">{state.direction.tagline}</p>
+            <p className="mt-1 text-xl font-semibold text-[var(--text)]">{state.direction.tagline}</p>
             <p className="mt-2 text-sm text-[var(--text-muted)]">{state.direction.prompt}</p>
             <p className="mt-2 text-[11px] text-[var(--text-faint)]">
               {state.direction.cameraLabel} &middot; {state.direction.lensLabel} &middot;{" "}

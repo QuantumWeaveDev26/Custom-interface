@@ -1,5 +1,6 @@
 "use client";
 
+import { EmptyState } from "../empty-state";
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import {
   directorReducer,
@@ -177,6 +178,15 @@ export function DirectorClient() {
           {state.phase === "planning" ? "Planning..." : "Plan Shots"}
         </button>
       </form>
+
+      {state.phase === "idle" && (
+        <EmptyState
+          title="No shot list yet"
+          description="Describe a scene in one line. The Director breaks it into shots, picks a camera move and lens for each, and grades them all alike."
+          example="A street food vendor at night in Bangkok"
+          onUseExample={(brief) => dispatch({ type: "SET_BRIEF", brief })}
+        />
+      )}
 
       {state.phase === "failed" && (
         <div className="card border-[var(--danger)]/30 mt-4 p-4">

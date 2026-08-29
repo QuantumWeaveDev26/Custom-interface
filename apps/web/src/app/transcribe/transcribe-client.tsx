@@ -1,5 +1,6 @@
 "use client";
 
+import { EmptyState } from "../empty-state";
 import { useCallback, useReducer, useRef } from "react";
 import {
   INITIAL_TRANSCRIBE_STATE,
@@ -140,6 +141,13 @@ export function TranscribeClient() {
       </div>
 
       <div className="mt-6" aria-live="polite">
+        {state.phase === "idle" && (
+          <EmptyState
+            title="No transcript yet"
+            description="Choose an audio file above. Speech is transcribed with timings; a recording with no speech in it says so rather than returning an empty result."
+          />
+        )}
+
         {state.phase === "failed" && (
           <div className="card border-[var(--danger)]/30 p-4">
             <p className="text-sm text-[var(--danger)]">{state.errorMessage}</p>
