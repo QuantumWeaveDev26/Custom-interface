@@ -1476,3 +1476,30 @@ test("a 3D task with no file URL fails rather than completing empty", async () =
     await createGenerationProcessor(harness.dependencies)("model3d-job");
   });
 });
+
+test("an attached image becomes an image-to-3D input, unroled", async () => {
+  const harness = create3dHarness();
+  harness.dependencies.loadInputAssets = async () => [
+    inputAsset("photo-1", "reference"),
+  ];
+
+  await createGenerationProcessor(harness.dependencies)("model3d-job");
+
+  const item = harness.createRequests[0]?.content[1];
+  assert.equal(item?.type, "image_url");
+  // 3D has no keyframe concept, so there is no role to name. The confirmed
+  // sample sends the image bare.
+  assert.equal(item?.role, undefined);
+  assert.match(item?.image_url?.url ?? "", /^https:\/\/signed\.example\//);
+});
+
+test("a 3D job skips non-image inputs rather than guessing a shape", async () => {
+  const harness = create3dHarness();
+  harness.dependencies.loadInputAssets = async () => [
+    inputAsset("clip-1", "source_video", "video"),
+  ];
+
+  await createGenerationProcessor(harness.dependencies)("model3d-job");
+
+  assert.equal(harness.createRequests[0]?.content.length, 1);
+});

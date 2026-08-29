@@ -353,6 +353,14 @@ export function StudioClient({
             ...(state.mode === "video" && videoInputAssets.length > 0
               ? { inputAssets: videoInputAssets }
               : {}),
+            ...(state.mode === "model3d" && state.referenceAssetIds.length > 0
+              ? {
+                  inputAssets: state.referenceAssetIds.map((assetId) => ({
+                    assetId,
+                    role: "reference",
+                  })),
+                }
+              : {}),
             ...(state.mode === "image" && state.referenceAssetIds.length > 0
               ? {
                   inputAssets: state.referenceAssetIds.map((assetId) => ({
@@ -962,8 +970,9 @@ export function StudioClient({
           </div>
           <p className="mt-1.5 text-[11px] text-[var(--text-muted)]">
             {MODEL3D_QUALITY_PRESETS[state.model3dQuality].toLocaleString()} polygons,
-            PBR materials, exported as .glb. Takes a couple of minutes and the file
-            is large — around 25 MB.
+            PBR materials, exported as .glb. Attach a photo below to model that
+            object instead of describing one. Takes a couple of minutes and the
+            file is large — around 25 MB.
           </p>
         </div>
       )}

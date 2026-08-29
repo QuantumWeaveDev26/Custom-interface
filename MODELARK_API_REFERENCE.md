@@ -595,8 +595,19 @@ Observed on that call:
 - Which flag selects an output format other than glb.
 - Accepted values for `--material`, `--mesh_mode`, and `--addons` beyond the one
   sample value each.
-- Image-to-3D input shape (presumably an `image_url` content item alongside the
-  text, matching video).
+**Image-to-3D CONFIRMED LIVE 2026-08-29:** an `image_url` content item beside
+the text, carrying **no role** — 3D has no keyframe concept for a role to name.
+Same 30,000 tokens and roughly the same runtime as text-to-3D.
+
+```json
+{
+  "model": "hyper3d-gen2-260112",
+  "content": [
+    { "type": "text", "text": "turn this product into a 3D model --material PBR --quality_override 100000" },
+    { "type": "image_url", "image_url": { "url": "https://..." } }
+  ]
+}
+```
 
 ### Pricing
 

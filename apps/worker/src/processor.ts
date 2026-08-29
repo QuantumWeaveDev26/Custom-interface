@@ -233,14 +233,24 @@ async function processModel3d(
   let externalTaskId = resumedTaskId;
   if (externalTaskId === null) {
     const budget = MODEL3D_QUALITY_PRESETS[params.quality];
+
+    // Image-to-3D (R5, confirmed live): an image_url item alongside the text,
+    // carrying no role — 3D has no keyframe concept for a role to name.
+    const content: CreateContentGenerationContentItem[] = [
+      {
+        type: "text",
+        text: `${job.inputParams.prompt} --material PBR --quality_override ${budget}`,
+      },
+    ];
+    for (const asset of await dependencies.loadInputAssets(job.id, job.userId)) {
+      if (asset.type !== "image") continue;
+      const url = await dependencies.signAssetUrl(asset.storageUrl);
+      content.push({ type: "image_url", image_url: { url } });
+    }
+
     const createdTask = await dependencies.modelArk.createVideoTask({
       model: job.model,
-      content: [
-        {
-          type: "text",
-          text: `${job.inputParams.prompt} --material PBR --quality_override ${budget}`,
-        },
-      ],
+      content,
     });
     if (createdTask.id.length === 0) {
       throw new Error("3D task creation returned an empty task ID");
