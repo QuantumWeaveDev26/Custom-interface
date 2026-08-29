@@ -16,8 +16,12 @@ import {
 
 import {
   SAFE_CONTENT_FILTER_MESSAGE,
-  SAFE_INPUT_IMAGE_REJECTED_MESSAGE,
   SAFE_GENERATION_FAILURE_MESSAGE,
+  SAFE_INPUT_IMAGE_REJECTED_MESSAGE,
+  SAFE_INVALID_SETTING_MESSAGE,
+  SAFE_QUOTA_MESSAGE,
+  SAFE_RATE_LIMITED_MESSAGE,
+  SAFE_TIMEOUT_MESSAGE,
 } from "./config.js";
 import type {
   DownloadedMedia,
@@ -58,11 +62,29 @@ function safeFailureMessage(error: unknown): string {
     return SAFE_INPUT_IMAGE_REJECTED_MESSAGE;
   }
 
-  return /content[\s_-]*filter|safety[\s_-]*(?:filter|violation)|moderation|sensitive/i.test(
-    text,
-  )
-    ? SAFE_CONTENT_FILTER_MESSAGE
-    : SAFE_GENERATION_FAILURE_MESSAGE;
+  if (/content[\s_-]*filter|safety[\s_-]*(?:filter|violation)|moderation|sensitive/i.test(text)) {
+    return SAFE_CONTENT_FILTER_MESSAGE;
+  }
+
+  // Quota and rate limiting are separated deliberately: both mean "the provider
+  // said no for now", but only one of them is fixed by waiting. Telling a user
+  // out of quota to wait a minute sends them into a loop.
+  if (/quota|insufficient[\s_-]*balance|arrears|out of credit/i.test(text)) {
+    return SAFE_QUOTA_MESSAGE;
+  }
+  if (/rate[\s_-]*limit|too many requests|429|concurrency|throttl/i.test(text)) {
+    return SAFE_RATE_LIMITED_MESSAGE;
+  }
+  if (/timed out|timeout|deadline exceeded/i.test(text)) {
+    return SAFE_TIMEOUT_MESSAGE;
+  }
+  // An unsupported setting reads as a generic failure otherwise, and rewording
+  // the prompt — the obvious next move — can never fix it.
+  if (/InvalidParameter|is not valid|unsupported|must be one of/i.test(text)) {
+    return SAFE_INVALID_SETTING_MESSAGE;
+  }
+
+  return SAFE_GENERATION_FAILURE_MESSAGE;
 }
 
 async function failAndPublish(

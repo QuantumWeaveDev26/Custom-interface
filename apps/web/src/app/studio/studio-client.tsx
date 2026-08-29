@@ -333,9 +333,8 @@ export function StudioClient({
     state.phase === "queued" ||
     state.phase === "processing";
 
-  const handleSubmit = useCallback(
-    async (event: React.FormEvent<HTMLFormElement>) => {
-      event.preventDefault();
+  const submitGeneration = useCallback(
+    async () => {
       if (isBusy || state.prompt.trim().length === 0) return;
 
       dispatch({ type: "SUBMIT_START" });
@@ -412,6 +411,14 @@ export function StudioClient({
       };
     },
     [isBusy, state.mode, state.prompt, composedPrompt, params, videoInputAssets, state.referenceAssetIds],
+  );
+
+  const handleSubmit = useCallback(
+    (event: React.FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      void submitGeneration();
+    },
+    [submitGeneration],
   );
 
   const modelLabel =
@@ -1063,6 +1070,17 @@ export function StudioClient({
         {state.phase === "failed" && (
           <div className="card border-[var(--danger)]/30 p-4">
             <p className="text-sm text-[var(--danger)]">{state.errorMessage}</p>
+            {/* The prompt and every setting are still on screen, so a failure
+                that was transient — a busy provider, a timeout — should not
+                cost the user a round trip through the form to retry. */}
+            <button
+              type="button"
+              onClick={() => void submitGeneration()}
+              disabled={!affordable}
+              className="btn-secondary mt-3 !px-4 !py-2 text-xs"
+            >
+              Try again · {estimatedCost} credit{estimatedCost === 1 ? "" : "s"}
+            </button>
           </div>
         )}
         {state.phase === "complete" &&

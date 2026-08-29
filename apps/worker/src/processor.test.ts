@@ -15,6 +15,12 @@ import type {
   GenerationProcessorDependencies,
   StorageUploadInput,
 } from "./contracts.js";
+import {
+  SAFE_CONTENT_FILTER_MESSAGE,
+  SAFE_GENERATION_FAILURE_MESSAGE,
+  SAFE_INPUT_IMAGE_REJECTED_MESSAGE,
+  SAFE_TIMEOUT_MESSAGE,
+} from "./config.js";
 import { createGenerationProcessor } from "./processor.js";
 
 const FIXED_TIME = new Date("2026-08-27T00:00:00.000Z");
@@ -657,7 +663,7 @@ test("provider exceptions refund once without publishing raw details", async () 
   assertSafeFailure(
     harness.refunds,
     harness.events,
-    "Generation failed. Your credits have been refunded.",
+    SAFE_GENERATION_FAILURE_MESSAGE,
     /credential-adjacent|raw upstream/i,
   );
   assert.deepEqual(harness.operations, [
@@ -687,7 +693,7 @@ test("content-filter responses refund with a safe filter message", async () => {
   assertSafeFailure(
     harness.refunds,
     harness.events,
-    "This prompt was rejected by the safety filter. Your credits have been refunded.",
+    SAFE_CONTENT_FILTER_MESSAGE,
     /raw moderation|payload detail/i,
   );
 });
@@ -714,7 +720,7 @@ test("a rejected input image is reported as an image problem, not a prompt probl
   assertSafeFailure(
     harness.refunds,
     harness.events,
-    "One of your input images was rejected: the provider does not accept images that may show a real person. Try a different image. Your credits have been refunded.",
+    SAFE_INPUT_IMAGE_REJECTED_MESSAGE,
     /content\[1\]|PrivacyInformation/i,
   );
 });
@@ -733,7 +739,7 @@ test("missing generated media refunds once", async () => {
   assertSafeFailure(
     harness.refunds,
     harness.events,
-    "Generation failed. Your credits have been refunded.",
+    SAFE_GENERATION_FAILURE_MESSAGE,
   );
 });
 
@@ -750,7 +756,7 @@ for (const [name, options] of [
     assertSafeFailure(
       harness.refunds,
       harness.events,
-      "Generation failed. Your credits have been refunded.",
+      SAFE_GENERATION_FAILURE_MESSAGE,
       /private|TOS|database/i,
     );
   });
@@ -766,7 +772,7 @@ test("video polling timeout refunds once and publishes a safe message", async ()
   assertSafeFailure(
     harness.refunds,
     harness.events,
-    "Generation failed. Your credits have been refunded.",
+    SAFE_TIMEOUT_MESSAGE,
     /modelark-task|60000/i,
   );
 });
@@ -784,7 +790,7 @@ test("an empty created video task ID refunds before persistence or polling", asy
   assertSafeFailure(
     harness.refunds,
     harness.events,
-    "Generation failed. Your credits have been refunded.",
+    SAFE_GENERATION_FAILURE_MESSAGE,
   );
 });
 
@@ -806,7 +812,7 @@ for (const status of ["failed", "cancelled"] as const) {
     assertSafeFailure(
       harness.refunds,
       harness.events,
-      "Generation failed. Your credits have been refunded.",
+      SAFE_GENERATION_FAILURE_MESSAGE,
       status === "failed" ? /raw terminal|provider_terminal/i : undefined,
     );
   });
@@ -822,7 +828,7 @@ test("a succeeded video without a URL refunds once", async () => {
   assertSafeFailure(
     harness.refunds,
     harness.events,
-    "Generation failed. Your credits have been refunded.",
+    SAFE_GENERATION_FAILURE_MESSAGE,
   );
 });
 
@@ -1502,4 +1508,80 @@ test("a 3D job skips non-image inputs rather than guessing a shape", async () =>
   await createGenerationProcessor(harness.dependencies)("model3d-job");
 
   assert.equal(harness.createRequests[0]?.content.length, 1);
+});
+
+// --- Failure classification ordering ----------------------------------------
+// Each branch overlaps the next in wording, so the order they are tested in is
+// the behaviour. These assert the classification a user would act on, not the
+// raw provider text.
+
+function classify(code: string, message: string) {
+  return createImageFailureHarness({
+    response: {
+      model: "seedream-5-0-lite-260128",
+      created: 1_777_000_000,
+      data: [],
+      error: { code, message },
+    },
+  });
+}
+
+test("an unsupported setting is not reported as a prompt problem", async () => {
+  // The real failure that motivated this: an image size the provider never
+  // accepted read as a bare "Generation failed", so the obvious next move —
+  // rewording the prompt — could never have fixed it.
+  const harness = classify(
+    "InvalidParameter",
+    "The parameter `size` specified in the request is not valid",
+  );
+
+  await createGenerationProcessor(harness.dependencies)("image-job");
+
+  const message = harness.events.at(-1)?.errorMessage ?? "";
+  assert.match(message, /settings/i);
+  assert.match(message, /prompt is not the problem/i);
+});
+
+test("quota is distinguished from a temporary refusal", async () => {
+  // "quota exceeded" contains wording a rate-limit rule also matches. Telling
+  // the user to wait a minute would be wrong: waiting never restores quota.
+  const harness = classify("QuotaExceeded", "account quota exceeded for this model");
+
+  await createGenerationProcessor(harness.dependencies)("image-job");
+
+  const message = harness.events.at(-1)?.errorMessage ?? "";
+  assert.match(message, /out of quota/i);
+  assert.doesNotMatch(message, /wait a minute/i);
+});
+
+test("a rate limit tells the user to wait rather than to change anything", async () => {
+  const harness = classify("TooManyRequests", "rate limit reached, please retry");
+
+  await createGenerationProcessor(harness.dependencies)("image-job");
+
+  assert.match(harness.events.at(-1)?.errorMessage ?? "", /wait a minute/i);
+});
+
+test("every failure message names a recovery, not just a failure", async () => {
+  // A message that only says something failed sends the user back to the same
+  // button with the same settings.
+  for (const [code, detail] of [
+    ["InvalidParameter", "size is not valid"],
+    ["QuotaExceeded", "quota exceeded"],
+    ["TooManyRequests", "rate limit"],
+    ["Timeout", "deadline exceeded"],
+    ["content_filter_rejected", "moderation"],
+    ["Unknown", "something else entirely"],
+  ] as const) {
+    const harness = classify(code, detail);
+    await createGenerationProcessor(harness.dependencies)("image-job");
+
+    const message = harness.events.at(-1)?.errorMessage ?? "";
+    assert.match(message, /refunded/i, code);
+    assert.match(
+      message,
+      /try|wait|use a different|topped up|rewording|shorter|lower/i,
+      `${code} must tell the user what to do next`,
+    );
+  }
 });
