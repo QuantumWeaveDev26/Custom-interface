@@ -92,7 +92,8 @@ lost days to building against unconfirmed BytePlus contracts.
 | ~~**R3**~~ | ✅ **DONE** — `image` is `string \| string[]`; array = multi-reference. Recorded in `MODELARK_API_REFERENCE.md`. `seedream-5-0-lite` supports it. | C4 |
 | ~~**R4**~~ | ✅ **DONE** — edit, extend, and omni reference request shapes recorded in `MODELARK_API_REFERENCE.md`. Wire roles are `reference_image` / `reference_video` / `reference_audio`, **not** our stored role names; a bare image with no role is read as a first frame. | C6 |
 | ~~**R8**~~ | ✅ **DONE** — the real-face input restriction and its two documented workarounds (trusted same-account outputs; preset digital characters via `asset://`). See `MODELARK_API_REFERENCE.md` § R8. | B2, C4 |
-| **R5** | 3D generation (Rodin / Hitem3d) endpoints + quota metering | C8 |
+| **R5** | ⛔ **BLOCKED** — the two 3D models exist with generous free quota, but ModelArk publishes **no 3D tutorial or API reference at all**; the whole docs nav was enumerated to confirm it. Needs the console model card's API sample. See `MODELARK_API_REFERENCE.md` § R5. | C8 |
+| ~~**R9**~~ | ✅ **DONE** — batch image generation shape confirmed and recorded. | C9 |
 | **R6** | `skylark-embedding-vision` request shape | C7 |
 | **R7** | Managed Agents / App Lab — replace or complement `packages/agents`? | future agent work |
 
@@ -215,13 +216,28 @@ plus a prompt) but has no dedicated UI framing separating it from extending.
 Semantic search and "more like this" over generated assets via
 `skylark-embedding-vision`. Needs R6. Overlaps Phase 4's community goal.
 
-### C8 — 3D generation 🟢 differentiator
+### C8 — 3D generation 🟢 differentiator — ⛔ BLOCKED on R5
 Text-to-3D and image-to-3D with PBR materials and glb/obj/fbx/usdz export.
-**Higgsfield does not offer this.** Free-tier quota available. Needs R5.
+**Higgsfield does not offer this**, and the free quota is generous (150K on
+Hyper3d-Rodin-Gen2, 500K on Hitem3d-2.0).
 
-### C9 — Batch generation / variants
-Seedream batch modes — N variants per prompt, a standard expectation in this
-product category.
+**Blocked because BytePlus publishes no 3D API documentation.** The models are
+listed with capabilities and output formats, but unlike every other capability
+row they carry no tutorial or API links, and there is no 3D page anywhere in the
+ModelArk docs tree.
+
+**Owner: user.** Open the console model card for `hyper3d-gen2` and copy its API
+sample — endpoint path, request body, and whether it is synchronous or a
+create-then-poll task. Do not guess it.
+
+### C9 — Batch generation / variants ✅ DONE (2026-08-29, `22388cb`)
+Up to 15 images per request via `sequential_image_generation: "auto"` (R9).
+Job completion went plural to hold them, and the shortfall between images
+requested and images returned is credited back inside the completion
+transaction — `max_images` is a ceiling, not a quantity.
+
+**Still open:** batch is image-only. Video has no equivalent, and the Gallery
+does not group a batch as one set.
 
 ---
 

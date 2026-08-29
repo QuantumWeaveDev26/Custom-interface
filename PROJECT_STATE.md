@@ -66,9 +66,11 @@ and saw the correct result.
 | **Video extend / edit (C6)** | `/studio` (Video tab) | ✅ **Verified live 2026-08-29** — a two-clip extend job completed. Confirmed on the wire, not just in the UI: the job carried two `source_video` inputs at positions 0 and 1. |
 
 | Cinema presets — camera / lens / look (C5) | `/studio` | ⚠️ Built, tests pass, **not yet exercised in the browser** |
+| Batch image generation (C9) | `/studio` (Image tab) | ⚠️ Built, tests pass, **not yet exercised in the browser** |
 
-Two items are currently built but unproven: saved named characters, and the
-cinema presets.
+Three items are currently built but unproven: saved named characters, the
+cinema presets, and batch image generation. These are queued for one batched
+browser-test pass rather than being verified one at a time.
 
 ---
 
@@ -140,6 +142,18 @@ Two things to know before building on it:
   **UNCONFIRMED** and deliberately biased high. Verify against real BytePlus
   per-resolution pricing before any launch.
 
+### 3.5 3D generation — blocked on undocumented API (needs user)
+
+`Hyper3d-Rodin-Gen2` and `Hitem3d-2.0` are listed in the Model list with real
+capabilities and generous free quota, but **ModelArk publishes no 3D tutorial
+or API reference**. Every other capability row in that table links a tutorial
+and an API page; the 3D row links only console model cards, and the full docs
+navigation (80+ entries) contains no 3D page.
+
+**Next action:** user opens the console model card for `hyper3d-gen2` and copies
+its API sample. Do not write 3D code before that — the exact endpoint,
+request body, and whether it is synchronous or create-then-poll are all unknown.
+
 ### 3.3 Phase 4 (Billing / Admin / Community) — blocked on business decisions
 
 Cannot start without: payment provider (Stripe / Razorpay / other), pricing
@@ -197,7 +211,7 @@ previous agent (this project has been burned by an agent self-reporting
 
 ```bash
 pnpm typecheck   # all 8 packages
-pnpm test        # 274 tests, all must pass
+pnpm test        # 287 tests, all must pass
 pnpm build       # full monorepo build
 ```
 
