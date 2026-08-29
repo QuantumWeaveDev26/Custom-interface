@@ -19,23 +19,14 @@ export default function SignInPage() {
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[var(--bg)] px-4 py-12">
-      <div
-        className="pointer-events-none absolute -top-40 left-1/2 h-[36rem] w-[36rem] -translate-x-1/2 rounded-full opacity-20 blur-[120px]"
-        style={{
-          backgroundImage:
-            "radial-gradient(circle, var(--accent-from), var(--accent-via) 45%, transparent 70%)",
-        }}
-        aria-hidden="true"
-      />
-
       <div className="relative w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center text-center">
-          <span className="gradient-ring mb-4 h-10 w-10 rounded-2xl" aria-hidden="true" />
+          <span className="gradient-ring mb-4 h-10 w-10 rounded-[6px]" aria-hidden="true" />
           <h1 className="text-2xl font-semibold tracking-tight text-[var(--text)]">
             Sign in to Creative AI
           </h1>
           <p className="mt-2 text-sm text-[var(--text-muted)]">
-            Create images, video, and voice with AI
+            Images, video, speech, and 3D — on your studio's own credits
           </p>
         </div>
 

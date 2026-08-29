@@ -22,11 +22,11 @@ export function AssetTile({
 }) {
   return (
     <div className="relative">
-      <span className="absolute left-2 top-2 z-10 rounded-full bg-black/60 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-white backdrop-blur-sm">
+      <span className="absolute left-2 top-2 z-10 rounded-[2px] bg-black/75 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-white">
         {TYPE_LABELS[asset.type] ?? asset.type}
       </span>
       {badge !== undefined && (
-        <span className="absolute right-2 top-2 z-10 rounded-full bg-black/60 px-2 py-1 text-[10px] font-semibold text-white backdrop-blur-sm">
+        <span className="absolute right-2 top-2 z-10 rounded-[2px] tabular bg-black/75 px-2 py-1 font-mono text-[10px] font-semibold text-white">
           {badge}
         </span>
       )}
@@ -59,7 +59,7 @@ export function AssetTile({
       )}
       {asset.type === "model3d" && (
         <div className="flex aspect-square w-full flex-col items-center justify-center gap-3 bg-[var(--bg-elevated)] p-6 text-center">
-          <span className="gradient-ring h-10 w-10 rounded-2xl opacity-60" aria-hidden="true" />
+          <span className="gradient-ring h-10 w-10 rounded-[6px] opacity-60" aria-hidden="true" />
           <p className="text-xs text-[var(--text-muted)]">3D mesh (.glb)</p>
           <a
             href={`/api/assets/${asset.id}`}

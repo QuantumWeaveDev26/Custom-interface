@@ -432,16 +432,34 @@ export function StudioClient({
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-10 sm:py-14">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Studio</h1>
-        <span className="flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs font-medium text-[var(--text-muted)]">
-          <span className="gradient-ring h-2 w-2 rounded-full" aria-hidden="true" />
-          {creditBalance} credits
-        </span>
-      </div>
+      {/* The report header: what sheet this is, and what stock is left. */}
+      <header
+        className="flex flex-wrap items-end justify-between gap-4 border-b pb-3"
+        style={{ borderColor: "var(--border-strong)" }}
+      >
+        <div>
+          <p className="field-label">Camera report</p>
+          <h1 className="mt-1 text-xl font-semibold tracking-tight">Studio</h1>
+        </div>
+        <div className="text-right">
+          <p className="field-label">Stock remaining</p>
+          <p className="tabular mt-1 font-mono text-lg leading-none text-[var(--text)]">
+            {creditBalance}
+            <span className="ml-1.5 text-[11px] text-[var(--text-faint)]">cr</span>
+          </p>
+        </div>
+      </header>
 
-      <div className="mt-6 card p-1.5">
-        <div className="flex gap-1" role="radiogroup" aria-label="Generation mode">
+      {/* Department: which crew is working this take. Segmented and ruled, not
+          a row of capsules. */}
+      <div className="mt-5">
+        <p className="field-label">Department</p>
+        <div
+          className="mt-1.5 flex divide-x overflow-hidden border"
+          role="radiogroup"
+          aria-label="Generation mode"
+          style={{ borderColor: "var(--border)", borderRadius: "2px" }}
+        >
           {MODES.map((mode) => (
             <button
               key={mode}
@@ -456,7 +474,18 @@ export function StudioClient({
                 setAttachments([]);
                 dispatch({ type: "SET_MODE", mode });
               }}
-              className="pill flex-1"
+              // A segment of one ruled bar, marked by an inked bottom rule
+              // rather than filled like a tab.
+              className="flex-1 px-3 py-2 text-xs font-medium transition-colors duration-150 disabled:opacity-40"
+              style={{
+                borderColor: "var(--border)",
+                color:
+                  state.mode === mode ? "var(--text)" : "var(--text-muted)",
+                background:
+                  state.mode === mode ? "var(--surface)" : "transparent",
+                boxShadow:
+                  state.mode === mode ? "inset 0 -2px 0 0 var(--pencil)" : "none",
+              }}
             >
               {MODE_LABELS[mode]}
             </button>
@@ -464,7 +493,10 @@ export function StudioClient({
         </div>
       </div>
 
-      <p className="mt-3 text-xs text-[var(--text-faint)]">Model: {modelLabel}</p>
+      <p className="mt-2 font-mono text-[11px] text-[var(--text-faint)]">
+        <span className="field-label">Model</span>{" "}
+        <span className="text-[var(--text-muted)]">{modelLabel}</span>
+      </p>
 
       {state.mode === "voice" && (
         <div className="mt-3 flex gap-2" role="radiogroup" aria-label="Voice style">
@@ -570,7 +602,7 @@ export function StudioClient({
           <div className="flex gap-2 overflow-x-auto pb-1">
             <label
               htmlFor="upload-image"
-              className={`flex h-16 w-16 shrink-0 flex-col items-center justify-center gap-0.5 rounded-lg border border-dashed text-[10px] transition-colors ${
+              className={`flex h-16 w-16 shrink-0 flex-col items-center justify-center gap-0.5 rounded-[2px] border border-dashed text-[10px] transition-colors ${
                 isBusy || uploading
                   ? "cursor-not-allowed opacity-50"
                   : "cursor-pointer hover:border-[var(--border-strong)]"
@@ -622,7 +654,7 @@ export function StudioClient({
                       assetId: selectedInActiveSlot ? null : assetId,
                     })
                   }
-                  className="relative shrink-0 overflow-hidden rounded-lg transition-all disabled:opacity-50"
+                  className="relative shrink-0 overflow-hidden rounded-[2px] transition-all disabled:opacity-50"
                   style={{
                     border:
                       isFirst || isLast
@@ -637,7 +669,7 @@ export function StudioClient({
                   />
                   {badge !== null && (
                     <span
-                      className="absolute right-1 top-1 rounded-full px-1.5 text-[9px] font-bold text-white"
+                      className="absolute right-1 top-1 rounded-[2px] px-1.5 text-[9px] font-bold text-white"
                       style={{ background: "var(--accent-via)" }}
                     >
                       {badge}
@@ -711,7 +743,7 @@ export function StudioClient({
                     selected ? `Clip ${order + 1}, click to remove` : "Add as a clip"
                   }
                   onClick={() => dispatch({ type: "TOGGLE_SOURCE_VIDEO", assetId })}
-                  className="relative shrink-0 overflow-hidden rounded-lg transition-all disabled:opacity-40"
+                  className="relative shrink-0 overflow-hidden rounded-[2px] transition-all disabled:opacity-40"
                   style={{
                     border: selected
                       ? "2px solid var(--accent-via)"
@@ -726,7 +758,7 @@ export function StudioClient({
                   />
                   {selected && (
                     <span
-                      className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-bold text-white"
+                      className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-[2px] text-[10px] font-bold text-white"
                       style={{ background: "var(--accent-via)" }}
                     >
                       {order + 1}
@@ -1024,7 +1056,7 @@ export function StudioClient({
         )}
 
         {composedPrompt !== state.prompt && state.prompt.trim().length > 0 && (
-          <div className="rounded-lg border p-2.5" style={{ borderColor: "var(--border)" }}>
+          <div className="rounded-[2px] border p-2.5" style={{ borderColor: "var(--border)" }}>
             <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-[var(--text-faint)]">
               Sent to the model
             </p>
@@ -1061,15 +1093,25 @@ export function StudioClient({
       <div className="mt-6" aria-live="polite">
         {(state.phase === "queued" || state.phase === "processing") && (
           <div className="card flex items-center gap-3 p-4">
-            <span className="spinner text-[var(--accent-via)]" aria-hidden="true" />
-            <p className="text-sm text-[var(--text-muted)]">
-              {state.phase === "queued" ? "Queued..." : "Generating..."}
-            </p>
+            <span className="spinner text-[var(--pencil)]" aria-hidden="true" />
+            <div>
+              {/* State is stamped in its own words, so it reads without colour
+                  and survives a monochrome print. */}
+              <span className="stamp text-[var(--text-faint)]">
+                {state.phase === "queued" ? "Slated" : "Rolling"}
+              </span>
+              <p className="mt-1.5 text-xs text-[var(--text-muted)]">
+                {state.phase === "queued"
+                  ? "Queued behind other takes."
+                  : "The provider is generating. This can take a couple of minutes."}
+              </p>
+            </div>
           </div>
         )}
         {state.phase === "failed" && (
-          <div className="card border-[var(--danger)]/30 p-4">
-            <p className="text-sm text-[var(--danger)]">{state.errorMessage}</p>
+          <div className="card p-4" style={{ borderColor: "var(--pencil-dim)" }}>
+            <span className="stamp text-[var(--danger)]">No good</span>
+            <p className="mt-2 text-sm text-[var(--text-muted)]">{state.errorMessage}</p>
             {/* The prompt and every setting are still on screen, so a failure
                 that was transient — a busy provider, a timeout — should not
                 cost the user a round trip through the form to retry. */}
@@ -1089,8 +1131,11 @@ export function StudioClient({
         {state.history.length > 0 && (
           <div className="mt-4">
             <div className="mb-1.5 flex items-center justify-between">
-              <p className="text-[11px] font-medium uppercase tracking-wide text-[var(--text-faint)]">
-                This session
+              <p className="field-label">
+                Takes this session
+                <span className="tabular ml-2 font-mono text-[var(--text-muted)]">
+                  {String(state.history.length).padStart(2, "0")}
+                </span>
               </p>
               <a
                 href="/gallery"
@@ -1100,16 +1145,24 @@ export function StudioClient({
               </a>
             </div>
             <div className="flex gap-2 overflow-x-auto pb-1">
-              {state.history.map((asset) => (
+              {state.history.map((asset, index) => (
                 <a
                   key={asset.id}
                   href={asset.url}
                   target="_blank"
                   rel="noreferrer"
                   title="Open full size"
-                  className="shrink-0 overflow-hidden rounded-lg"
+                  className="relative shrink-0 overflow-hidden rounded-[2px]"
                   style={{ border: "1px solid var(--border)" }}
                 >
+                  {/* Counted backwards from the newest, so take 01 stays take
+                      01 as the session grows. */}
+                  <span
+                    className="tabular absolute left-0 top-0 z-10 px-1 font-mono text-[9px] font-bold text-white"
+                    style={{ background: "rgba(0,0,0,0.65)" }}
+                  >
+                    {String(state.history.length - index).padStart(2, "0")}
+                  </span>
                   {asset.type === "image" ? (
                     <img src={asset.url} alt="" className="h-16 w-16 object-cover" />
                   ) : asset.type === "video" ? (

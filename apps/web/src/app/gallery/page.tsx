@@ -98,7 +98,7 @@ export default async function GalleryPage({
 
       {totalAssets === 0 ? (
         <div className="card mt-8 flex flex-col items-center gap-3 px-6 py-16 text-center">
-          <span className="gradient-ring h-10 w-10 rounded-2xl opacity-60" aria-hidden="true" />
+          <span className="gradient-ring h-10 w-10 rounded-[6px] opacity-60" aria-hidden="true" />
           <p className="text-sm text-[var(--text-muted)]">
             Nothing generated yet. Head to the Studio to create your first asset.
           </p>
@@ -107,7 +107,7 @@ export default async function GalleryPage({
           </Link>
         </div>
       ) : assets.length === 0 ? (
-        <div className="mt-6 rounded-xl border border-dashed border-[var(--border)] px-6 py-10 text-center">
+        <div className="mt-6 rounded-[3px] border border-dashed border-[var(--border)] px-6 py-10 text-center">
           <p className="text-sm text-[var(--text-muted)]">
             No {FILTER_LABELS[filter].toLowerCase()} yet.
           </p>
@@ -124,7 +124,7 @@ export default async function GalleryPage({
               // ones.
               <section
                 key={row.key}
-                className="rounded-xl border p-3"
+                className="rounded-[3px] border p-3"
                 style={{ borderColor: "var(--border)" }}
                 aria-label={`Set of ${row.assets.length}`}
               >

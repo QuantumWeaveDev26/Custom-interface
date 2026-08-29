@@ -18,7 +18,7 @@ export function EmptyState({
   onUseExample?: (example: string) => void;
 }) {
   return (
-    <div className="mt-6 rounded-xl border border-dashed border-[var(--border)] px-6 py-10 text-center">
+    <div className="mt-6 rounded-[3px] border border-dashed border-[var(--border)] px-6 py-10 text-center">
       <p className="text-sm font-medium text-[var(--text)]">{title}</p>
       <p className="mx-auto mt-1.5 max-w-md text-sm text-[var(--text-muted)]">
         {description}

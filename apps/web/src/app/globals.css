@@ -4,45 +4,67 @@
   --font-sans: var(--font-inter), system-ui, -apple-system, sans-serif;
 }
 
+/* ---------------------------------------------------------------------------
+   Camera report / call sheet. See DESIGN.md for the direction contract.
+
+   A generation is a take, and this interface is the paperwork that records it:
+   ruled fields whose caption sits inside the rule, tabular figures, stamped
+   state, and one grease-pencil accent that only ever marks a take.
+
+   The old token names are kept as the public surface so markup reads the same,
+   but every value is new. Anything that was gradient or violet is now ink and
+   rule; the gradient survives on the logo mark alone.
+--------------------------------------------------------------------------- */
+
 :root {
-  --bg: #08090d;
-  --bg-elevated: #0f1117;
-  --surface: #13151c;
-  --surface-hover: #191c25;
-  --border: #23262f;
-  --border-strong: #34384470;
-  --text: #f4f4f6;
-  --text-muted: #9ca0ac;
-  /* Raised from #63666f, which measured 3.47:1 on --bg and sat well under the
-     4.5:1 floor for the small labels and hints that use it. */
-  --text-faint: #82868f;
-  --accent-from: #8b5cf6;
-  --accent-via: #d946ef;
-  --accent-to: #f97316;
-  --danger: #f87171;
-  --success: #34d399;
+  /* Truly neutral. The previous violet-tinted ground made every generated
+     frame beside it look colour-shifted. */
+  --bg: #0b0b0c;
+  --surface: #141416;
+  --bg-elevated: #1b1b1e;
+  --surface-hover: #212125;
+  --border: #2a2a2e;
+  --border-strong: #3d3d43;
+  --text: #ededee;
+  --text-muted: #a1a1a6;
+  /* Measured >= 4.5:1 on --bg, --surface and --bg-elevated. */
+  --text-faint: #82828a;
+
+  /* Grease pencil: the one accent. It marks a take, a selection, or the action
+     that spends credits. Never decoration. */
+  --pencil: #e0563c;
+  --pencil-dim: #8f3728;
+  /* Kept as the historical name so existing markup keeps working; it now means
+     "marked with the pencil". */
+  --accent-via: var(--pencil);
+
+  /* The logo mark, and nothing else in the interface. */
+  --mark-from: #8b5cf6;
+  --mark-via: #d946ef;
+  --mark-to: #f97316;
+
+  --danger: #e0563c;
+  --success: #5fa37a;
 }
 
 * {
   @apply box-border;
 }
 
-/* Keyboard focus was invisible everywhere: nothing in this file styled :focus
-   outside .input-field, and Tailwind's preflight removes the browser default.
+/* Keyboard focus is the user marking their place, so it is drawn in pencil.
    One systemic rule rather than a ring bolted onto each control, so a new
    button cannot ship without it. :focus-visible keeps it off mouse clicks. */
 :focus-visible {
-  outline: 2px solid var(--accent-via);
+  outline: 2px solid var(--pencil);
   outline-offset: 2px;
-  border-radius: 4px;
+  border-radius: 2px;
 }
 
-/* The field draws its own focus treatment; a second ring outside it reads as a
-   double border. */
 .input-field:focus-visible {
   outline: none;
 }
 
+/* Paper does not animate. What little moves is state arriving. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -64,53 +86,79 @@ body {
 }
 
 ::selection {
-  background: var(--accent-via);
-  color: white;
+  background: var(--pencil);
+  color: #ffffff;
 }
 
-/* Reusable design-system utility classes -- kept here instead of duplicated
-   Tailwind strings in every page so the visual language stays consistent. */
+/* Figures on a form line up in columns. Proportional numerals in a take table
+   are the tell that nobody looked. */
+.tabular,
+input[type="number"],
+time {
+  font-variant-numeric: tabular-nums;
+}
 
+/* ---------------------------------------------------------------------------
+   Components
+--------------------------------------------------------------------------- */
+
+/* The logo mark. The single licensed use of the gradient. */
 .gradient-ring {
-  background-image: linear-gradient(135deg, var(--accent-from), var(--accent-via), var(--accent-to));
+  background-image: linear-gradient(135deg, var(--mark-from), var(--mark-via), var(--mark-to));
 }
 
+/* The action that exposes a take. Inked, not lit: a filled slab with a pencil
+   rule under it rather than a glowing capsule. */
 .btn-primary {
-  @apply inline-flex items-center justify-center rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition-all duration-150;
-  background-image: linear-gradient(90deg, var(--accent-from), var(--accent-via));
-  box-shadow: 0 1px 0 0 rgba(255, 255, 255, 0.08) inset, 0 8px 20px -8px rgba(217, 70, 239, 0.45);
+  @apply inline-flex items-center justify-center px-5 py-2.5 text-sm font-semibold transition-colors duration-150;
+  border-radius: 3px;
+  background: var(--pencil);
+  color: #ffffff;
+  border: 1px solid var(--pencil);
+  box-shadow: 0 1px 0 0 var(--pencil-dim);
 }
 .btn-primary:hover:not(:disabled) {
-  filter: brightness(1.08);
-  box-shadow: 0 1px 0 0 rgba(255, 255, 255, 0.1) inset, 0 10px 24px -6px rgba(217, 70, 239, 0.55);
+  background: #ea6349;
+  border-color: #ea6349;
 }
 .btn-primary:disabled {
-  @apply cursor-not-allowed opacity-40;
-  filter: grayscale(0.4);
+  @apply cursor-not-allowed;
+  background: transparent;
+  border-color: var(--border);
+  color: var(--text-faint);
+  box-shadow: none;
 }
 
 .btn-secondary {
-  @apply inline-flex items-center justify-center rounded-xl border px-5 py-2.5 text-sm font-medium transition-colors duration-150;
-  background: var(--surface);
+  @apply inline-flex items-center justify-center border px-5 py-2.5 text-sm font-medium transition-colors duration-150;
+  border-radius: 3px;
+  background: transparent;
   border-color: var(--border);
   color: var(--text);
 }
 .btn-secondary:hover:not(:disabled) {
-  background: var(--surface-hover);
   border-color: var(--border-strong);
+  background: var(--surface);
 }
 .btn-secondary:disabled {
-  @apply cursor-not-allowed opacity-40;
+  @apply cursor-not-allowed;
+  color: var(--text-faint);
+  border-color: var(--border);
 }
 
+/* A sheet laid on the desk. Elevation is declared once, as a rule -- a border
+   under a soft shadow is the ghost card. */
 .card {
-  border-radius: 1rem;
+  border-radius: 3px;
   background: var(--surface);
   border: 1px solid var(--border);
 }
 
+/* A printed field. The caption is notched into the top rule by the markup that
+   uses .field-label; the input itself carries no rounded corners to speak of. */
 .input-field {
-  @apply w-full rounded-xl px-4 py-3 text-sm outline-none transition-colors duration-150;
+  @apply w-full px-3 py-2.5 text-sm outline-none transition-colors duration-150;
+  border-radius: 2px;
   background: var(--bg-elevated);
   border: 1px solid var(--border);
   color: var(--text);
@@ -119,28 +167,55 @@ body {
   color: var(--text-faint);
 }
 .input-field:focus {
-  border-color: var(--accent-via);
-  box-shadow: 0 0 0 3px rgba(217, 70, 239, 0.15);
+  border-color: var(--border-strong);
 }
 .input-field:disabled {
   @apply cursor-not-allowed opacity-50;
 }
 
+/* The printed field caption. Small, uppercase, letterspaced -- a form's field
+   name, not a sentence. */
+.field-label {
+  @apply text-[10px] font-medium uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-faint);
+}
+
+/* A setting on the form. Selected settings are ticked in pencil; unselected
+   ones are printed options, not empty capsules. */
 .pill {
-  @apply inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-medium transition-all duration-150;
+  @apply inline-flex items-center justify-center px-3 py-1.5 text-xs font-medium transition-colors duration-150;
+  border-radius: 2px;
+  border: 1px solid var(--border);
+  background: transparent;
   color: var(--text-muted);
 }
 .pill[data-active="true"] {
-  color: white;
-  background-image: linear-gradient(90deg, var(--accent-from), var(--accent-via));
-  box-shadow: 0 6px 16px -6px rgba(217, 70, 239, 0.5);
+  color: var(--text);
+  border-color: var(--pencil);
+  box-shadow: inset 0 -2px 0 0 var(--pencil);
 }
 .pill[data-active="false"]:hover:not(:disabled) {
-  background: var(--surface-hover);
+  border-color: var(--border-strong);
   color: var(--text);
 }
 .pill:disabled {
-  @apply cursor-not-allowed opacity-50;
+  @apply cursor-not-allowed opacity-40;
+}
+
+/* State is stamped in its own column, never tinted across a whole row: a
+   colourblind reader and a monochrome print both still carry it. */
+.stamp {
+  @apply inline-flex items-center text-[10px] font-semibold uppercase;
+  letter-spacing: 0.1em;
+  border: 1px solid currentColor;
+  border-radius: 2px;
+  padding: 1px 6px;
+}
+
+/* A rule that carries a caption, the way a form section divides a sheet. */
+.sheet-rule {
+  border-top: 1px solid var(--border);
 }
 
 .spinner {

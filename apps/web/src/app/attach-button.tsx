@@ -101,7 +101,7 @@ export function AttachButton({
         {attachments.map((attachment) => (
           <span
             key={attachment.assetId}
-            className="inline-flex max-w-[14rem] items-center gap-1 rounded-full border px-1 py-0.5 text-xs"
+            className="inline-flex max-w-[14rem] items-center gap-1 rounded-[2px] border px-1 py-0.5 text-xs"
             style={{ borderColor: "var(--border)", background: "var(--surface)" }}
           >
             <span className="truncate px-2 py-0.5 text-[var(--text)]" title={attachment.name}>

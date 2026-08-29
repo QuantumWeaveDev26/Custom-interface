@@ -154,10 +154,10 @@ export function GallerySearch({ unindexedCount }: { unindexedCount: number }) {
             {results.map((result) => (
               <div key={result.id} className="card group overflow-hidden">
                 <div className="relative">
-                  <span className="absolute left-2 top-2 z-10 rounded-full bg-black/60 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-white backdrop-blur-sm">
+                  <span className="absolute left-2 top-2 z-10 rounded-[2px] bg-black/75 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-white">
                     {TYPE_LABELS[result.type] ?? result.type}
                   </span>
-                  <span className="absolute right-2 top-2 z-10 rounded-full bg-black/60 px-2 py-1 text-[10px] font-semibold text-white backdrop-blur-sm">
+                  <span className="absolute right-2 top-2 z-10 rounded-[2px] tabular bg-black/75 px-2 py-1 font-mono text-[10px] font-semibold text-white">
                     {/* Cosine similarity, shown so a weak match reads as weak
                         rather than as the best the library has. */}
                     {(result.score * 100).toFixed(0)}%

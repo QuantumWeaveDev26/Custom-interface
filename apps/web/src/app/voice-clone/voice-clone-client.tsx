@@ -105,7 +105,7 @@ export function VoiceCloneClient() {
             state.consent ? "cursor-pointer hover:border-[var(--border-strong)]" : "cursor-not-allowed opacity-50"
           }`}
         >
-          <span className="gradient-ring h-8 w-8 rounded-xl" aria-hidden="true" />
+          <span className="gradient-ring h-8 w-8 rounded-[3px]" aria-hidden="true" />
           <span className="text-sm font-medium text-[var(--text)]">
             {state.fileName ?? "Choose a voice sample"}
           </span>
