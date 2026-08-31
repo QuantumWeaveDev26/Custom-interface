@@ -163,13 +163,13 @@ export function MarketingClient({
     generation.phase === "submitting" || generation.phase === "queued" || generation.phase === "processing";
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-10 sm:py-14">
-      <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Marketing</h1>
+    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6">
+      <h1 className="text-xl font-semibold tracking-tight">Marketing</h1>
       <p className="mt-1 text-sm text-[var(--text-muted)]">
         Paste a product URL; the agent extracts the product and proposes an ad creative direction.
       </p>
 
-      <form onSubmit={handlePlan} className="mt-6 space-y-3">
+      <form onSubmit={handlePlan} className="panel mt-5 space-y-3 p-4">
         <label htmlFor="product-url" className="block text-xs font-medium text-[var(--text-muted)]">
           Product URL
         </label>

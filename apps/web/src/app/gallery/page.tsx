@@ -62,32 +62,47 @@ export default async function GalleryPage({
   const rows = toGalleryRows(groupAssets(assets));
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-10 sm:py-14">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Gallery</h1>
+    <div className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6">
+      {/* Title, filters and count on one bar. A library is browsed by filtering
+          and scanning, so the controls that do that belong together and stay
+          put — they are sticky, because a filter you have to scroll back up to
+          reach stops being used. */}
+      <header
+        className="sticky top-0 z-10 -mx-4 flex flex-wrap items-center gap-x-4 gap-y-3 px-4 pb-4 pt-1 sm:-mx-6 sm:px-6"
+        style={{ background: "var(--bg)" }}
+      >
+        <h1 className="text-xl font-semibold tracking-tight">Gallery</h1>
+
+        {totalAssets > 0 && (
+          <>
+            <nav className="flex flex-wrap gap-1.5" aria-label="Filter by type">
+              {(Object.keys(FILTER_LABELS) as GalleryFilter[]).map((option) => {
+                const active = filter === option;
+                return (
+                  <Link
+                    key={option}
+                    href={option === "all" ? "/gallery" : `/gallery?type=${option}`}
+                    aria-current={active ? "page" : undefined}
+                    className="opt"
+                    data-active={active}
+                  >
+                    {FILTER_LABELS[option]}
+                  </Link>
+                );
+              })}
+            </nav>
+
+            <p className="val ml-auto text-[13px] text-[var(--text-faint)]">
+              {assets.length}
+              {filter === "all" ? "" : ` of ${totalAssets}`}
+            </p>
+          </>
+        )}
+
         <Link href="/studio" className="btn-secondary !px-4 !py-2 text-sm">
           Back to Studio
         </Link>
-      </div>
-
-      {totalAssets > 0 && (
-        <div className="mt-5 flex flex-wrap gap-2">
-          {(Object.keys(FILTER_LABELS) as GalleryFilter[]).map((option) => {
-            const active = filter === option;
-            return (
-              <Link
-                key={option}
-                href={option === "all" ? "/gallery" : `/gallery?type=${option}`}
-                aria-current={active ? "page" : undefined}
-                className="opt"
-                data-active={active}
-              >
-                {FILTER_LABELS[option]}
-              </Link>
-            );
-          })}
-        </div>
-      )}
+      </header>
 
       {totalAssets > 0 && <GallerySearch unindexedCount={unindexedCount} />}
 
@@ -126,7 +141,7 @@ export default async function GalleryPage({
                 <p className="rule-cap mb-2 px-1">
                   Set of {row.assets.length}
                 </p>
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
                   {row.assets.map((asset, index) => (
                     <div key={asset.id} className="card overflow-hidden">
                       <AssetTile asset={asset} badge={String(index + 1)} />
@@ -137,7 +152,7 @@ export default async function GalleryPage({
             ) : (
               <div
                 key={row.key}
-                className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
+                className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4"
               >
                 {row.assets.map((asset) => (
                   <div key={asset.id} className="card overflow-hidden">

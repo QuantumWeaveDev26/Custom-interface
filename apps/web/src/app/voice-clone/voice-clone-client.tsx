@@ -75,8 +75,8 @@ export function VoiceCloneClient() {
   }, [isBusy, state.consent]);
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-10 sm:py-14">
-      <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Voice Cloning</h1>
+    <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
+      <h1 className="text-xl font-semibold tracking-tight">Voice Cloning</h1>
       <p className="mt-1 text-sm text-[var(--text-muted)]">
         Upload a voice sample to create a reusable AI voice clone.
       </p>

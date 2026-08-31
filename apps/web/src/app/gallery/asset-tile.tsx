@@ -21,7 +21,7 @@ export function AssetTile({
   badge?: string;
 }) {
   return (
-    <div className="relative">
+    <div className="group relative">
       <span className="absolute left-2 top-2 z-10 rounded-[10px] bg-black/75 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-white">
         {TYPE_LABELS[asset.type] ?? asset.type}
       </span>
@@ -36,7 +36,7 @@ export function AssetTile({
           src={`/api/assets/${asset.id}`}
           alt="Generated asset"
           loading="lazy"
-          className="aspect-square w-full object-cover"
+          className="aspect-square w-full object-cover transition-transform duration-200 group-hover:scale-[1.03]"
         />
       )}
       {asset.type === "video" && (

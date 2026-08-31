@@ -180,13 +180,15 @@ export function DirectorClient({
   }, [characters, castId, attachments]);
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-10 sm:py-14">
-      <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Director</h1>
+    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6">
+      <h1 className="text-xl font-semibold tracking-tight">Director</h1>
       <p className="mt-1 text-sm text-[var(--text-muted)]">
         Describe a scene in one line; the director agent breaks it into a shot list.
       </p>
 
-      <form onSubmit={handlePlan} className="mt-6 space-y-3">
+      {/* Same panel as Studio's composer: the brief is this page's prompt, and
+          the two tools should not look like different products. */}
+      <form onSubmit={handlePlan} className="panel mt-5 space-y-3 p-4">
         <label htmlFor="brief" className="block text-xs font-medium text-[var(--text-muted)]">
           Creative brief
         </label>
