@@ -55,6 +55,11 @@
   outline: 2px solid var(--signal);
   outline-offset: 2px;
   border-radius: 8px;
+  /* Sticky headers sit over the top of scrolling regions, so a control focused
+     by keyboard can be scrolled to a position the header covers. This keeps it
+     clear of them. */
+  scroll-margin-top: 6rem;
+  scroll-margin-bottom: 2rem;
 }
 
 .input-field:focus-visible {

@@ -23,6 +23,16 @@ export default async function RootLayout({
       {/* The shell is a column so a page can ask to fill what is left below the
           nav, rather than guessing the nav's height in a calc. */}
       <body className="flex h-full flex-col font-sans">
+        {/* First stop for a keyboard user. Without it, reaching the page means
+            tabbing past every nav link on every navigation. Visually hidden
+            until focused, which is the one time it is useful. */}
+        <a
+          href="#main"
+          className="sr-only focus-visible:not-sr-only focus-visible:fixed focus-visible:left-4 focus-visible:top-4 focus-visible:z-50 focus-visible:rounded-[10px] focus-visible:bg-[var(--signal)] focus-visible:px-4 focus-visible:py-2 focus-visible:text-sm focus-visible:font-semibold focus-visible:text-[var(--signal-ink)]"
+        >
+          Skip to content
+        </a>
+
         {session?.user && (
           <NavBar
             signOutAction={async () => {
@@ -33,7 +43,9 @@ export default async function RootLayout({
         )}
         {/* Pages that are taller than the shell scroll here. Studio asks for
             h-full instead and scrolls inside its own columns. */}
-        <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
+        <main id="main" className="min-h-0 flex-1 overflow-y-auto">
+          {children}
+        </main>
       </body>
     </html>
   );

@@ -1,3 +1,5 @@
+import { MeshViewer } from "./mesh-viewer";
+
 const TYPE_LABELS: Record<string, string> = {
   image: "Image",
   video: "Video",
@@ -61,13 +63,18 @@ export function AssetTile({
         <div className="flex aspect-square w-full flex-col items-center justify-center gap-3 bg-[var(--bg-elevated)] p-6 text-center">
           <span className="gradient-ring h-10 w-10 rounded-[14px] opacity-60" aria-hidden="true" />
           <p className="text-xs text-[var(--text-muted)]">3D mesh (.glb)</p>
-          <a
-            href={`/api/assets/${asset.id}`}
-            download
-            className="btn-secondary !px-3 !py-1.5 text-xs"
-          >
-            Download
-          </a>
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            {/* The viewer is only fetched when asked for: a mesh is ~25 MB and
+                a gallery can hold dozens. */}
+            <MeshViewer assetId={asset.id} />
+            <a
+              href={`/api/assets/${asset.id}`}
+              download
+              className="btn-secondary !px-3 !py-1.5 text-xs"
+            >
+              Download
+            </a>
+          </div>
         </div>
       )}
     </div>
