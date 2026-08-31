@@ -65,6 +65,22 @@ interface JobStatusMessage {
 }
 
 const MODES: StudioMode[] = ["image", "video", "voice", "model3d"];
+
+// What the viewer says before anything exists. Named per department, because
+// "start creating" is true of every tool and therefore says nothing.
+const HERO_HEADLINE: Record<StudioMode, string> = {
+  image: "Make a still",
+  video: "Make it move",
+  voice: "Give it a voice",
+  model3d: "Build it in 3D",
+};
+
+const HERO_SUBLINE: Record<StudioMode, string> = {
+  image: "Describe the frame. Add references to hold a character or a style across takes.",
+  video: "Describe the motion. Animate a still, extend a clip, or set a first and last frame.",
+  voice: "Type what should be said. Standard reads it plainly; expressive performs it.",
+  model3d: "Describe the object, or attach a photo of one. You get a .glb mesh with PBR materials.",
+};
 const MODE_LABELS: Record<StudioMode, string> = {
   image: "Image",
   video: "Video",
@@ -935,48 +951,31 @@ export function StudioClient({
         </div>
 
         <div style={{ gridArea: "viewer" }}>
-          {/* The slate: what this take will be, before it exists. A viewer that
-              is simply blank at rest reads as a page that failed to load, and
-              this is the state the user looks at most — every setting they
-              change is shown back to them here while nothing is generating. */}
+          {/* At rest the viewer carries the tool's own name and what it does.
+              A 300px panel holding five short rows of metadata is worse than
+              blank: it fills the space the work will occupy without earning it,
+              and it is the state a user looks at longest. */}
           {state.phase === "idle" && state.history.length === 0 && (
-            <div
-              className="flex min-h-[18rem] flex-col justify-between border p-5"
-              style={{ borderColor: "var(--border)", borderRadius: "2px" }}
-            >
-              <div>
-                <p className="rule-cap mb-3">Slate</p>
-                <dl className="space-y-1.5 text-[11px]">
-                  {[
-                    ["Dept", MODE_LABELS[state.mode]],
-                    ["Model", modelLabel],
-                    [
-                      "Setup",
-                      state.mode === "image"
-                        ? `${state.imageSize} · ${state.imageCount} frame${state.imageCount === 1 ? "" : "s"}`
-                        : state.mode === "video"
-                          ? `${state.resolution} · ${state.ratio} · ${state.durationSeconds}s`
-                          : state.mode === "model3d"
-                            ? `${MODEL3D_QUALITY_PRESETS[state.model3dQuality].toLocaleString()} polys`
-                            : state.voiceStyle,
-                    ],
-                    [
-                      "Refs",
-                      state.referenceAssetIds.length === 0
-                        ? "none"
-                        : String(state.referenceAssetIds.length),
-                    ],
-                    ["Cost", `${estimatedCost} cr`],
-                  ].map(([term, value]) => (
-                    <div key={term} className="flex gap-3">
-                      <dt className="w-16 shrink-0 text-[var(--text-faint)]">{term}</dt>
-                      <dd className="val text-[11px]">{value}</dd>
-                    </div>
-                  ))}
-                </dl>
-              </div>
-              <p className="mt-6 text-[11px] text-[var(--text-faint)]">
-                Write the shot in Notes below, then expose the take.
+            <div className="flex h-full min-h-[20rem] flex-col items-center justify-center px-6 text-center">
+              <h2 className="max-w-xl text-2xl font-semibold leading-tight tracking-tight sm:text-3xl">
+                {HERO_HEADLINE[state.mode]}
+              </h2>
+              <p className="mt-3 max-w-md text-sm text-[var(--text-muted)]">
+                {HERO_SUBLINE[state.mode]}
+              </p>
+              <p className="mt-6 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[11px] text-[var(--text-faint)]">
+                <span className="val">{modelLabel}</span>
+                <span aria-hidden="true">·</span>
+                <span className="val">{estimatedCost} cr a take</span>
+                {state.referenceAssetIds.length > 0 && (
+                  <>
+                    <span aria-hidden="true">·</span>
+                    <span className="val">
+                      {state.referenceAssetIds.length} reference
+                      {state.referenceAssetIds.length === 1 ? "" : "s"}
+                    </span>
+                  </>
+                )}
               </p>
             </div>
           )}
