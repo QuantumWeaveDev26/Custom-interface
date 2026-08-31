@@ -53,3 +53,29 @@ test("no source paints a hardcoded white, which is invisible on the signal", () 
     `use a token instead of a hardcoded white: ${offenders.join(", ")}`,
   );
 });
+
+/**
+ * Every `var(--token)` a component names must exist in globals.css.
+ *
+ * An undefined custom property does not error — it silently resolves to
+ * nothing, so the element renders with an inherited or initial colour and looks
+ * plausible. Two survived the redesigns this way: the working spinner and the
+ * failure card were still asking for `--pencil` and `--pencil-dim`, tokens from
+ * a direction that was abandoned two days earlier.
+ */
+test("every design token a component uses is actually defined", () => {
+  const css = readFileSync(join(APP_ROOT, "globals.css"), "utf8");
+  const defined = new Set(
+    [...css.matchAll(/^\s*(--[a-z0-9-]+)\s*:/gim)].map((match) => match[1]),
+  );
+
+  const missing = new Set<string>();
+  for (const file of sourceFiles(APP_ROOT)) {
+    const source = readFileSync(file, "utf8");
+    for (const match of source.matchAll(/var\((--[a-z0-9-]+)\)/g)) {
+      if (!defined.has(match[1])) missing.add(match[1]!);
+    }
+  }
+
+  assert.deepEqual([...missing], [], `undefined tokens: ${[...missing].join(", ")}`);
+});

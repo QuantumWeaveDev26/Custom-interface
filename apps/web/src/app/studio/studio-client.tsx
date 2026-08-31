@@ -950,7 +950,16 @@ export function StudioClient({
       </form>
         </div>
 
-        <div style={{ gridArea: "viewer" }}>
+        {/* Focusable because it scrolls and its contents may not be: a column
+            of finished images contains nothing tabbable, so without a stop of
+            its own a keyboard user cannot reach the results below the fold.
+            Labelled, because an unnamed tab stop is a mystery. */}
+        <div
+          style={{ gridArea: "viewer" }}
+          tabIndex={0}
+          role="region"
+          aria-label="Results"
+        >
           {/* At rest the viewer carries the tool's own name and what it does.
               A 300px panel holding five short rows of metadata is worse than
               blank: it fills the space the work will occupy without earning it,
@@ -983,7 +992,7 @@ export function StudioClient({
       <div className="mt-6" aria-live="polite">
         {(state.phase === "queued" || state.phase === "processing") && (
           <div className="card flex items-center gap-3 p-4">
-            <span className="spinner text-[var(--pencil)]" aria-hidden="true" />
+            <span className="spinner text-[var(--text-muted)]" aria-hidden="true" />
             <div>
               {/* State is stamped in its own words, so it reads without colour
                   and survives a monochrome print. */}
@@ -999,7 +1008,7 @@ export function StudioClient({
           </div>
         )}
         {state.phase === "failed" && (
-          <div className="card p-4" style={{ borderColor: "var(--pencil-dim)" }}>
+          <div className="card border-[var(--danger)]/30 p-4">
             <span className="stamp text-[var(--danger)]">No good</span>
             <p className="mt-2 text-sm text-[var(--text-muted)]">{state.errorMessage}</p>
             {/* The prompt and every setting are still on screen, so a failure

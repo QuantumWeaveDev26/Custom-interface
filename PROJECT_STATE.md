@@ -132,6 +132,9 @@ a bug.
 - [ ] **Gallery (3D):** Click "Preview in 3D" on a mesh; the viewer loads only on that click.
 - [ ] **Accessibility:** Press Tab key through all controls; verify 2px signal focus ring on every element.
 - [ ] **Accessibility:** Press Tab on a fresh page load; the first stop is "Skip to content".
+- [ ] **Accessibility (Studio):** Tab to the results column and scroll it with the arrow keys — it is a focus stop of its own because a column of images has nothing tabbable in it.
+- [ ] **Studio:** Read the credit cost on the Generate button. It was invisible until 2026-08-31 (white on the acid signal, 1.26:1).
+- [ ] **Gallery:** Hover a tile — the type label and Share fade in; tab to the Share button and confirm they appear on focus too.
 
 ### Then: the work that needs a decision, not code
 
