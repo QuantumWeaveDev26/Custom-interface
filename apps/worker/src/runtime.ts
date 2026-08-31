@@ -1,6 +1,7 @@
 import { createModelArkClient } from "@creative-ai/modelark-client";
 import { createVoiceClient } from "@creative-ai/voice-client";
 import {
+  autoIndexEnabled,
   claimQueuedJob,
   completeJobWithAssets,
   failAndRefund,
@@ -8,8 +9,10 @@ import {
   prismaStore,
   loadJobInputAssets,
   saveExternalTaskId,
+  storeAssetEmbedding,
 } from "@creative-ai/db";
 import {
+  EMBEDDING_DIMENSIONS,
   GENERATION_QUEUE_NAME,
   parseTosUrl,
   type GenerationJobPayload,
@@ -44,6 +47,10 @@ export interface WorkerRuntimeConfig {
   videoModel: string;
   voiceApiKey: string;
   voiceBaseUrl: string;
+  // Same environment variable the web app reads, so both sides write vectors
+  // under one model name. Vectors stored under a name search does not query for
+  // are invisible rather than wrong, which is harder to notice.
+  embeddingModel: string;
 }
 
 export interface WorkerRuntime {
@@ -186,6 +193,61 @@ export async function createWorkerRuntime(
     loadInputAssets: async (jobId, userId) =>
       loadJobInputAssets(prismaStore, jobId, userId),
     signAssetUrl,
+    indexCompletedAssets: async (jobId, assets) => {
+      // Only images and video carry a vector; audio and meshes are not
+      // embeddable by this model, and asking would spend tokens on a rejection.
+      const candidates = assets.filter(
+        (asset) => asset.type === "image" || asset.type === "video",
+      );
+      if (candidates.length === 0) return;
+
+      // The owner comes from the job, not from the assets, because every asset
+      // read is scoped to a user id — there is no unscoped lookup to make.
+      const job = await prismaStore.job.findUnique({ where: { id: jobId } });
+      if (job === null) return;
+      if (!(await autoIndexEnabled(job.userId))) return;
+
+      const rows = await prismaStore.asset.findMany({
+        where: { id: { in: candidates.map((asset) => asset.id) }, userId: job.userId },
+      });
+
+      for (const row of rows) {
+        // The provider fetches the media itself and cannot read our private
+        // bucket, so it gets the same short-lived signed URL that generation
+        // inputs get.
+        const signedUrl = await signAssetUrl(row.storageUrl);
+        const response = await modelArk.createEmbedding({
+          model: config.embeddingModel,
+          dimensions: EMBEDDING_DIMENSIONS,
+          encoding_format: "float",
+          input:
+            row.type === "video"
+              ? [{ type: "video_url", video_url: { url: signedUrl } }]
+              : [{ type: "image_url", image_url: { url: signedUrl } }],
+        });
+
+        if (response.error !== undefined) {
+          throw new Error(
+            `Embedding failed for asset ${row.id}: ${response.error.message}`,
+          );
+        }
+
+        const vector = response.data.embedding;
+        if (vector.length !== EMBEDDING_DIMENSIONS) {
+          throw new Error(
+            `Embedding for asset ${row.id} has ${vector.length} dimensions, expected ${EMBEDDING_DIMENSIONS}`,
+          );
+        }
+
+        await storeAssetEmbedding({
+          assetId: row.id,
+          userId: row.userId,
+          model: config.embeddingModel,
+          dimensions: EMBEDDING_DIMENSIONS,
+          vector,
+        });
+      }
+    },
   });
 
   // Create BullMQ processor that adapts the generation processor

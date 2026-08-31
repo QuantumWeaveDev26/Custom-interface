@@ -1585,3 +1585,33 @@ test("every failure message names a recovery, not just a failure", async () => {
     );
   }
 });
+
+test("a completed job's assets are handed to the indexer after the result is published", async () => {
+  const harness = createVideoHarness(videoJob());
+  const indexed: { jobId: string; assetIds: string[] }[] = [];
+  harness.dependencies.indexCompletedAssets = async (jobId, assets) => {
+    harness.operations.push("index");
+    indexed.push({ jobId, assetIds: assets.map((asset) => asset.id) });
+  };
+
+  await createGenerationProcessor(harness.dependencies)("video-job");
+
+  assert.deepEqual(indexed, [{ jobId: "video-job", assetIds: ["video-asset-1"] }]);
+  // Order matters: indexing costs a provider round trip, and doing it before
+  // the publish would hold the finished video back from the user.
+  assert.deepEqual(harness.operations.slice(-2), ["publish:complete", "index"]);
+});
+
+test("an indexer that throws does not fail an already completed job", async () => {
+  const harness = createVideoHarness(videoJob());
+  harness.dependencies.indexCompletedAssets = async () => {
+    throw new Error("embedding provider is down");
+  };
+
+  await createGenerationProcessor(harness.dependencies)("video-job");
+
+  // The completion stands and nothing is refunded: the user has their video,
+  // and a missing search vector is not a failed generation.
+  assert.deepEqual(harness.refunds, []);
+  assert.equal(harness.events.at(-1)?.status, JobStatus.Complete);
+});

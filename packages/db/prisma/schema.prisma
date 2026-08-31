@@ -17,6 +17,10 @@ model User {
   image         String?
   createdAt     DateTime            @default(now())
   creditBalance Int                 @default(0)
+  // Embedding a generated asset costs provider tokens, so indexing on
+  // completion is something the user turns on, not something that happens to
+  // them. Off by default for that reason alone.
+  autoIndexAssets Boolean           @default(false)
   jobs          Job[]
   characters    Character[]
   ledger        CreditLedgerEntry[]

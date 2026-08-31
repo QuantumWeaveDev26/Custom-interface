@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 import {
@@ -560,7 +561,17 @@ test("every studio action has a dispatch site in the client", () => {
   // Reads the whole studio directory, not one file: settings moved into their
   // own component the first time this test ran after the composer was built,
   // and a single-file check would have called that a regression.
-  const dir = join(process.cwd(), "src", "app", "studio");
+  // Resolved from this file's own location, not the caller's cwd, so the test
+  // cannot pass or fail depending on which directory it was run from.
+  const dir = join(
+    dirname(fileURLToPath(import.meta.url)),
+    "..",
+    "..",
+    "..",
+    "src",
+    "app",
+    "studio",
+  );
   const client = readdirSync(dir)
     .filter((name) => name.endsWith(".tsx"))
     .map((name) => readFileSync(join(dir, name), "utf8"))

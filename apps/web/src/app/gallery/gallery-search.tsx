@@ -14,7 +14,13 @@ const TYPE_LABELS: Record<string, string> = {
   audio: "Voice",
 };
 
-export function GallerySearch({ unindexedCount }: { unindexedCount: number }) {
+export function GallerySearch({
+  unindexedCount,
+  autoIndex,
+}: {
+  unindexedCount: number;
+  autoIndex: boolean;
+}) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[] | null>(null);
   const [searching, setSearching] = useState(false);
@@ -23,6 +29,7 @@ export function GallerySearch({ unindexedCount }: { unindexedCount: number }) {
   // Server-rendered at page load; kept in state so indexing updates it without
   // a reload.
   const [remaining, setRemaining] = useState(unindexedCount);
+  const [auto, setAuto] = useState(autoIndex);
 
   const runSearch = useCallback(
     async (params: string, label: string) => {
@@ -89,6 +96,28 @@ export function GallerySearch({ unindexedCount }: { unindexedCount: number }) {
     }
   }, []);
 
+  // Optimistic, then reverted if the server refuses: the checkbox is a
+  // preference, and a control that lags a round trip behind the click reads as
+  // broken.
+  const handleAutoIndex = useCallback(async (enabled: boolean) => {
+    setAuto(enabled);
+    setMessage(null);
+    try {
+      const response = await fetch("/api/search/auto-index", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled }),
+      });
+      if (!response.ok) {
+        setAuto(!enabled);
+        setMessage("Could not change that setting.");
+      }
+    } catch {
+      setAuto(!enabled);
+      setMessage("Could not reach the server.");
+    }
+  }, []);
+
   return (
     <div className="mt-6">
       <form onSubmit={handleSearch} className="flex flex-wrap gap-2">
@@ -140,6 +169,19 @@ export function GallerySearch({ unindexedCount }: { unindexedCount: number }) {
           </button>
         </div>
       )}
+
+      <label className="mt-2 flex cursor-pointer items-center gap-2 text-[11px] text-[var(--text-muted)]">
+        <input
+          type="checkbox"
+          checked={auto}
+          onChange={(event) => void handleAutoIndex(event.target.checked)}
+          className="accent-[var(--signal)]"
+        />
+        Index new generations automatically
+        <span className="text-[var(--text-faint)]">
+          — costs a little on every image and video you make
+        </span>
+      </label>
 
       {message !== null && (
         <p className="mt-2 text-[11px] text-[var(--text-muted)]">{message}</p>

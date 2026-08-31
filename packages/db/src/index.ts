@@ -16,4 +16,9 @@ export {
   type SubmitJobResult,
 } from "./jobs.js";
 export { createPrismaStore, prismaStore } from "./prisma-store.js";
+export {
+  autoIndexEnabled,
+  setAutoIndex,
+  storeAssetEmbedding,
+} from "./embeddings.js";
 export { createUserWithWelcomeGrant } from "./users.js";

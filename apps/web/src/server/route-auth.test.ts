@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 /**
@@ -11,9 +12,14 @@ import test from "node:test";
  * guard" — it is "a new route shipped without one", and a per-route test suite
  * cannot catch that, because the new route simply arrives with no test.
  *
- * Tests run with cwd at apps/web.
+ * Paths resolve from this file's own compiled location rather than the
+ * caller's working directory. Run from the repo root instead of apps/web, these
+ * tests used to fail by finding nothing — a test whose result depends on where
+ * you stand is worse than no test.
  */
-const API_ROOT = join(process.cwd(), "src", "app", "api");
+// dist-test/server/<file> -> up two is apps/web.
+const WEB_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
+const API_ROOT = join(WEB_ROOT, "src", "app", "api");
 
 function routeFiles(directory: string): string[] {
   const found: string[] = [];

@@ -55,5 +55,7 @@ export type {
 export { GENERATION_QUEUE_NAME, generationJobOptions } from "./queue.js";
 export type { GenerationJobPayload } from "./queue.js";
 
+export { EMBEDDING_DIMENSIONS } from "./embedding.js";
+
 export { parseTosUrl } from "./tos.js";
 export type { ParsedTosUrl } from "./tos.js";

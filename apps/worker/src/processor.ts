@@ -525,6 +525,18 @@ export function createGenerationProcessor(
 
     if (completedEvent !== null) {
       await dependencies.publish(completedEvent);
+
+      // Deliberately after the publish, and deliberately swallowing failures:
+      // the user has their assets, and a provider hiccup while indexing them
+      // must not turn a finished job into a failed one. An unindexed asset is
+      // still picked up by the manual sweep later.
+      if (completedEvent.assets !== undefined) {
+        try {
+          await dependencies.indexCompletedAssets?.(jobId, completedEvent.assets);
+        } catch (error) {
+          console.error(`Failed to index assets for job ${jobId}:`, error);
+        }
+      }
     }
   };
 }

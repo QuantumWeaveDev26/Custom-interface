@@ -59,6 +59,14 @@ export default async function GalleryPage({
     },
   });
 
+  const autoIndex =
+    (
+      await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { autoIndexAssets: true },
+      })
+    )?.autoIndexAssets ?? false;
+
   const rows = toGalleryRows(groupAssets(assets));
 
   return (
@@ -104,7 +112,7 @@ export default async function GalleryPage({
         </Link>
       </header>
 
-      {totalAssets > 0 && <GallerySearch unindexedCount={unindexedCount} />}
+      {totalAssets > 0 && <GallerySearch unindexedCount={unindexedCount} autoIndex={autoIndex} />}
 
       {totalAssets === 0 ? (
         <div className="card mt-8 flex flex-col items-center gap-3 px-6 py-16 text-center">

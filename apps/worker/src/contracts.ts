@@ -5,7 +5,7 @@ import type {
   ResolvedInputAsset,
 } from "@creative-ai/db";
 import type { ModelArkClient } from "@creative-ai/modelark-client";
-import type { JobStatusEvent } from "@creative-ai/shared-types";
+import type { JobAssetSummary, JobStatusEvent } from "@creative-ai/shared-types";
 import type { VoiceClient } from "@creative-ai/voice-client";
 
 export interface DownloadedMedia {
@@ -51,4 +51,16 @@ export interface GenerationProcessorDependencies {
    * private bucket.
    */
   signAssetUrl(storageUrl: string): Promise<string>;
+  /**
+   * Embeds the assets a finished job produced, if the owner has asked for it.
+   *
+   * Optional because indexing is not part of generating: a worker wired without
+   * it still produces correct assets. It runs after the completion event has
+   * already been published, so an embedding call that is slow or failing can
+   * never delay the result the user is waiting for, and never fails the job.
+   */
+  indexCompletedAssets?(
+    jobId: string,
+    assets: readonly JobAssetSummary[],
+  ): Promise<void>;
 }

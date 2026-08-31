@@ -1,4 +1,5 @@
 import { prisma } from "@creative-ai/db";
+import { EMBEDDING_DIMENSIONS } from "@creative-ai/shared-types";
 import { createModelArkClient } from "@creative-ai/modelark-client";
 
 import { getSignedAssetUrl } from "./assets";
@@ -15,9 +16,9 @@ import {
 export const EMBEDDING_MODEL =
   process.env.MODELARK_EMBEDDING_MODEL || "skylark-embedding-vision-250615";
 
-// 1024 or 2048. Vectors of different dimensions cannot be compared, so changing
-// this invalidates every stored vector — see reindexing note in PROJECT_STATE.
-export const EMBEDDING_DIMENSIONS = 2048;
+// Shared with the worker so both sides write comparable vectors — see the note
+// on EMBEDDING_DIMENSIONS in shared-types.
+export { EMBEDDING_DIMENSIONS };
 
 export function semanticSearchDependencies(): SemanticSearchDependencies {
   const client = createModelArkClient({
