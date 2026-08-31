@@ -69,7 +69,16 @@ node node_modules/next/dist/bin/next dev
 node --env-file-if-exists=.env dist/index.js
 ```
 
-If `pnpm` scripts must be used, prefer PowerShell over Git Bash.
+**This appears specific to the Git Bash shell.** The same commands run fine in
+PowerShell — `npx pnpm --filter @creative-ai/web dev` works there. If your
+tooling uses PowerShell, ignore this section and use the normal scripts:
+
+```powershell
+npx pnpm --filter @creative-ai/worker build
+npx pnpm --filter @creative-ai/worker start
+npx pnpm --filter @creative-ai/web dev
+npx pnpm test
+```
 
 ### 3.2 PostgreSQL has no Windows service
 
@@ -150,7 +159,7 @@ node ../../node_modules/typescript/bin/tsc -p tsconfig.json --noEmit   # per pac
 
 Full suite is **353 tests** across 8 packages, all passing:
 prompt-library 14, voice-client 18, modelark-client 11, shared-types 58,
-agents 22, db 32, worker 52, web 146.
+agents 22, db 32, worker 56, web 142.
 
 CI (`.github/workflows/ci.yml`) runs install → `db:generate` → typecheck → test
 → build on push to `main` and on PRs. It has been verified to go red on a
