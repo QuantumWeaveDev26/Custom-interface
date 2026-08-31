@@ -602,7 +602,7 @@ export function StudioClient({
               </button>
             ))}
           </div>
-          <div className="flex gap-2 overflow-x-auto pb-1">
+          <div className="strip-scroll flex gap-2 overflow-x-auto pb-1">
             <label
               htmlFor="upload-image"
               className={`flex h-16 w-16 shrink-0 flex-col items-center justify-center gap-0.5 rounded-[2px] border border-dashed text-[10px] transition-colors ${
@@ -729,7 +729,7 @@ export function StudioClient({
               (optional — pick up to {MAX_SOURCE_VIDEOS_PER_JOB})
             </span>
           </p>
-          <div className="flex gap-2 overflow-x-auto pb-1">
+          <div className="strip-scroll flex gap-2 overflow-x-auto pb-1">
             {recentVideoIds.map((assetId) => {
               const order = state.sourceVideoAssetIds.indexOf(assetId);
               const selected = order !== -1;
@@ -1184,7 +1184,7 @@ export function StudioClient({
                 All results →
               </a>
             </div>
-            <div className="flex gap-2 overflow-x-auto pb-1">
+            <div className="strip-scroll flex gap-2 overflow-x-auto pb-1">
               {state.history.map((asset, index) => (
                 <a
                   key={asset.id}

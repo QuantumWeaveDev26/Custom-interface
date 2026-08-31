@@ -66,7 +66,7 @@ export function ReferencePicker({
         </span>
       </p>
 
-      <div className="flex gap-2 overflow-x-auto pb-1">
+      <div className="strip-scroll flex gap-2 overflow-x-auto pb-1">
         <label
           htmlFor={inputId}
           className={`flex h-16 w-16 shrink-0 flex-col items-center justify-center gap-0.5 rounded-[2px] border border-dashed text-[10px] transition-colors ${

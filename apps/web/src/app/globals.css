@@ -317,7 +317,11 @@ time {
     grid-template-areas:
       "setup viewer"
       "notes notes";
-    height: calc(100dvh - 9rem);
+    /* Nav, page padding, and the grid's own top margin. Deliberately generous:
+       if the workspace is a few pixels too tall the page grows a scrollbar of
+       its own, and a third bar beside the two column bars is worse than a few
+       unused pixels at the foot. */
+    height: calc(100dvh - 11rem);
     gap: 0;
   }
 
@@ -403,4 +407,63 @@ time {
   letter-spacing: 0.02em;
   color: var(--text-faint);
   opacity: 0.85;
+}
+
+/* ---------------------------------------------------------------------------
+   Scrollbars
+
+   The workspace scrolls in three places at once — the page, the setup column,
+   and the move list — so the platform default put three chunky light bars on a
+   dark sheet, side by side. They are drawn as rules instead: a hairline track
+   and a thumb in the same greys as every other rule on the page.
+--------------------------------------------------------------------------- */
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 0;
+  /* Inset by a transparent border so the thumb reads as a narrow rule rather
+     than a bar filling the gutter. */
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-faint);
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* The reference and clip strips scroll sideways under a row of thumbnails; a
+   gutter there costs more than it gives, so the bar only appears on hover or
+   while the strip has focus. */
+.strip-scroll {
+  scrollbar-width: none;
+}
+.strip-scroll::-webkit-scrollbar {
+  height: 0;
+}
+.strip-scroll:hover,
+.strip-scroll:focus-within {
+  scrollbar-width: thin;
+}
+.strip-scroll:hover::-webkit-scrollbar,
+.strip-scroll:focus-within::-webkit-scrollbar {
+  height: 8px;
 }

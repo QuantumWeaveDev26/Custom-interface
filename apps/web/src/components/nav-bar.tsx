@@ -54,7 +54,7 @@ export function NavBar({ signOutAction }: { signOutAction: () => Promise<void> }
           </button>
         </form>
       </div>
-      <div className="flex gap-1 overflow-x-auto px-4 pb-2 sm:hidden">
+      <div className="strip-scroll flex gap-1 overflow-x-auto px-4 pb-2 sm:hidden">
         {LINKS.map((link) => {
           const active = pathname?.startsWith(link.href);
           return (
