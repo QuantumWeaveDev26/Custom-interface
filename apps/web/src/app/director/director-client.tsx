@@ -188,8 +188,11 @@ export function DirectorClient({
 
       {/* Same panel as Studio's composer: the brief is this page's prompt, and
           the two tools should not look like different products. */}
-      <form onSubmit={handlePlan} className="panel mt-5 space-y-3 p-4">
-        <label htmlFor="brief" className="block text-xs font-medium text-[var(--text-muted)]">
+      {/* The same composer as Studio: one panel, the brief and the action that
+          spends credits together. The label is gone because the placeholder
+          already says what to type and the panel is the only input on screen. */}
+      <form onSubmit={handlePlan} className="composer panel mt-5 space-y-3 p-4">
+        <label htmlFor="brief" className="sr-only">
           Creative brief
         </label>
         <textarea
@@ -201,31 +204,33 @@ export function DirectorClient({
           maxLength={500}
           required
           placeholder="A lone traveler crosses a vast desert at sunset..."
-          className="input-field resize-none"
         />
-        <button
-          type="submit"
-          disabled={state.phase === "planning" || state.brief.trim().length === 0}
-          className="btn-primary gap-2"
-        >
-          {state.phase === "planning" && <span className="spinner" aria-hidden="true" />}
-          {state.phase === "planning" ? "Planning..." : "Plan Shots"}
-        </button>
 
-        <AttachButton
-          attachments={attachments}
-          disabled={state.phase === "planning"}
-          accept="images"
-          hint="Every shot in this plan is generated with these references."
-          onAttached={(attachment) =>
-            setAttachments((previous) => [...previous, attachment])
-          }
-          onRemove={(assetId) =>
-            setAttachments((previous) =>
-              previous.filter((item) => item.assetId !== assetId),
-            )
-          }
-        />
+        <div className="composer-footer">
+          <AttachButton
+            attachments={attachments}
+            disabled={state.phase === "planning"}
+            accept="images"
+            hint="Every shot in this plan is generated with these references."
+            onAttached={(attachment) =>
+              setAttachments((previous) => [...previous, attachment])
+            }
+            onRemove={(assetId) =>
+              setAttachments((previous) =>
+                previous.filter((item) => item.assetId !== assetId),
+              )
+            }
+          />
+
+          <button
+            type="submit"
+            disabled={state.phase === "planning" || state.brief.trim().length === 0}
+            className="btn-primary gap-2"
+          >
+            {state.phase === "planning" && <span className="spinner" aria-hidden="true" />}
+            {state.phase === "planning" ? "Planning..." : "Plan Shots"}
+          </button>
+        </div>
       </form>
 
       {characters.length > 0 && (

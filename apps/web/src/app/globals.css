@@ -328,6 +328,39 @@ time {
 /* The composer: prompt on top, then a row of the settings changed between takes
    with the action at its end. The action sits on that row rather than beside
    the prompt, so it lands at the composer's corner where the eye finishes. */
+/* The composer, wherever it appears.
+ *
+ * Studio, Director, and Marketing all put a prompt and one primary action in a
+ * panel. The prompt inside carries no chrome of its own: a bordered field
+ * inside a bordered panel is two frames around one input. The action sits on
+ * the same footer row as the attachments, so what you are about to spend and
+ * what it will run on are read together.
+ */
+.composer textarea {
+  width: 100%;
+  resize: none;
+  background: transparent;
+  border: 0;
+  outline: none;
+  padding: 0.25rem;
+  color: var(--text);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+.composer textarea::placeholder {
+  color: var(--text-faint);
+}
+.composer textarea:disabled {
+  opacity: 0.5;
+}
+.composer-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
 .composer-row {
   display: flex;
   flex-wrap: wrap;

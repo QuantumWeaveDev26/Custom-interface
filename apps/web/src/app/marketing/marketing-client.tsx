@@ -183,30 +183,36 @@ export function MarketingClient({
           placeholder="https://example.com/product"
           className="input-field"
         />
-        <button
-          type="submit"
-          disabled={state.phase === "planning" || state.url.trim().length === 0}
-          className="btn-primary gap-2"
-        >
-          {state.phase === "planning" && <span className="spinner" aria-hidden="true" />}
-          {state.phase === "planning" ? "Analyzing..." : "Generate Ad Direction"}
-        </button>
+        {/* Attachments and the action share the footer, as in Studio and
+            Director: what the ad will be built from sits beside the button
+            that builds it. The URL keeps its field and its label — unlike a
+            prompt, it is a short exact value, and a bare line would not say
+            what belongs on it. */}
+        <div className="composer-footer">
+          <AttachButton
+            attachments={attachments}
+            disabled={state.phase === "planning"}
+            accept="images"
+            hint="The ad is generated with these references."
+            onAttached={(attachment) =>
+              setAttachments((previous) => [...previous, attachment])
+            }
+            onRemove={(assetId) =>
+              setAttachments((previous) =>
+                previous.filter((item) => item.assetId !== assetId),
+              )
+            }
+          />
 
-        <AttachButton
-          attachments={attachments}
-          disabled={state.phase === "planning"}
-          accept="images"
-          hint="The ad is generated with these references."
-          onAttached={(attachment) =>
-            setAttachments((previous) => [...previous, attachment])
-          }
-          onRemove={(assetId) =>
-            setAttachments((previous) =>
-              previous.filter((item) => item.assetId !== assetId),
-            )
-          }
-        />
-
+          <button
+            type="submit"
+            disabled={state.phase === "planning" || state.url.trim().length === 0}
+            className="btn-primary gap-2"
+          >
+            {state.phase === "planning" && <span className="spinner" aria-hidden="true" />}
+            {state.phase === "planning" ? "Analyzing..." : "Generate Ad Direction"}
+          </button>
+        </div>
       </form>
 
       {characters.length > 0 && (

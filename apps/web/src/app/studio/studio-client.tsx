@@ -934,10 +934,11 @@ export function StudioClient({
         >
           {isBusy && <span className="spinner" aria-hidden="true" />}
           <span>{isBusy ? "Rolling" : "Expose take"}</span>
-          <span
-            className="val text-[11px]"
-            style={{ color: "rgba(255,255,255,0.75)" }}
-          >
+          {/* Inherits the button's own ink at reduced weight rather than
+              naming a colour. White here measured 1.26:1 on the signal — the
+              cost was invisible on the one control that spends credits — and a
+              fixed dark would be just as invisible on the disabled fill. */}
+          <span className="val text-[11px] opacity-70">
             {estimatedCost} cr
           </span>
         </button>
