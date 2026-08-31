@@ -3,6 +3,7 @@ export interface GalleryAsset {
   type: string;
   jobId: string | null;
   createdAt: Date;
+  published: boolean;
 }
 
 export interface AssetGroup {

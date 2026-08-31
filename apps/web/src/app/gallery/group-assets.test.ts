@@ -11,7 +11,7 @@ import {
 const AT = new Date("2026-08-29T00:00:00.000Z");
 
 function asset(id: string, jobId: string | null, type = "image"): GalleryAsset {
-  return { id, type, jobId, createdAt: AT };
+  return { id, type, jobId, createdAt: AT, published: false };
 }
 
 test("assets from one job become one set", () => {

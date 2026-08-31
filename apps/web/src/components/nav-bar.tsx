@@ -10,6 +10,7 @@ const LINKS = [
   { href: "/transcribe", label: "Transcribe" },
   { href: "/voice-clone", label: "Voice Clone" },
   { href: "/gallery", label: "Gallery" },
+  { href: "/feed", label: "Feed" },
 ] as const;
 
 export function NavBar({ signOutAction }: { signOutAction: () => Promise<void> }) {

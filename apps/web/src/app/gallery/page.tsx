@@ -41,7 +41,7 @@ export default async function GalleryPage({
       ...(filter === "all" ? {} : { type: filter }),
     },
     orderBy: { createdAt: "desc" },
-    select: { id: true, type: true, jobId: true, createdAt: true },
+    select: { id: true, type: true, jobId: true, createdAt: true, publishedAt: true },
   });
 
   // Counted unfiltered, so an empty filtered view can say "no video yet"
@@ -67,7 +67,11 @@ export default async function GalleryPage({
       })
     )?.autoIndexAssets ?? false;
 
-  const rows = toGalleryRows(groupAssets(assets));
+  const rows = toGalleryRows(
+    groupAssets(
+      assets.map((asset) => ({ ...asset, published: asset.publishedAt !== null })),
+    ),
+  );
 
   return (
     <div className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6">

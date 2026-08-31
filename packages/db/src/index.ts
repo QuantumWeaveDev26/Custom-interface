@@ -21,4 +21,5 @@ export {
   setAutoIndex,
   storeAssetEmbedding,
 } from "./embeddings.js";
+export { loadFeed, setAssetPublished, type FeedItem } from "./feed.js";
 export { createUserWithWelcomeGrant } from "./users.js";

@@ -106,9 +106,16 @@ model Asset {
   storageUrl   String
   thumbnailUrl String?
   createdAt    DateTime @default(now())
+  // Null means private, which is every asset until its owner says otherwise.
+  // A timestamp rather than a boolean because the feed is ordered by when a
+  // thing was shared, not by when it was made — an old asset published today
+  // belongs at the top.
+  publishedAt  DateTime?
   usedAsInput  JobInputAsset[]
   characterRefs CharacterReference[]
   embedding    AssetEmbedding?
+
+  @@index([publishedAt])
 }
 
 // A semantic vector for one asset, used for search and "more like this".

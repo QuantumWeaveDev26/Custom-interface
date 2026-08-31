@@ -1,4 +1,5 @@
 import { MeshViewer } from "./mesh-viewer";
+import { PublishToggle } from "./publish-toggle";
 
 const TYPE_LABELS: Record<string, string> = {
   image: "Image",
@@ -18,7 +19,7 @@ export function AssetTile({
   asset,
   badge,
 }: {
-  asset: { id: string; type: string };
+  asset: { id: string; type: string; published?: boolean };
   /** Position within a set, when the asset came from a batch. */
   badge?: string;
 }) {
@@ -59,6 +60,16 @@ export function AssetTile({
           />
         </div>
       )}
+      {/* Sharing sits on the tile rather than in a menu: it is a per-asset
+          decision, and one buried behind a menu is one nobody makes. Absent
+          when the caller did not load the flag — a feed tile is not a place to
+          publish from. */}
+      {asset.published !== undefined && (
+        <div className="absolute bottom-2 right-2 z-10">
+          <PublishToggle assetId={asset.id} published={asset.published} />
+        </div>
+      )}
+
       {asset.type === "model3d" && (
         <div className="flex aspect-square w-full flex-col items-center justify-center gap-3 bg-[var(--bg-elevated)] p-6 text-center">
           <span className="gradient-ring h-10 w-10 rounded-[14px] opacity-60" aria-hidden="true" />
