@@ -6,9 +6,13 @@ import {
   IMAGE_MODEL,
   MODEL3D_MODEL,
   VIDEO_MODEL,
+  VIDEO_MODELS,
   VOICE_MODEL,
 } from "@/server/config";
-import { videoCapabilitiesFor } from "@creative-ai/shared-types";
+import {
+  videoCapabilitiesFor,
+  type VideoResolutionLimits,
+} from "@creative-ai/shared-types";
 import { listCharacters } from "@/server/characters";
 import { StudioClient } from "./studio-client";
 
@@ -27,7 +31,22 @@ export default async function StudioPage() {
   // Capabilities come from the server-resolved model so the UI can only offer
   // settings the server would accept. Pricing is passed down so the cost
   // preview uses the same function the server charges with.
-  const videoCapabilities = videoCapabilitiesFor(VIDEO_MODEL);
+  // Every resolution any configured model offers, and the duration ceiling of
+  // each — the client needs both, because picking 4K changes which model serves
+  // the job and therefore how long the clip may be.
+  const videoResolutionLimits: VideoResolutionLimits = Object.fromEntries(
+    VIDEO_MODELS.flatMap((model) => {
+      const caps = videoCapabilitiesFor(model);
+      return caps.resolutions.map((resolution) => [
+        resolution,
+        {
+          model,
+          minDurationSeconds: caps.minDurationSeconds,
+          maxDurationSeconds: caps.maxDurationSeconds,
+        },
+      ]);
+    }),
+  );
 
   // Recent images the user owns, offered as first-frame candidates for
   // image-to-video. Scoped to this user — the API re-checks ownership at
@@ -59,9 +78,7 @@ export default async function StudioPage() {
       videoModelLabel={VIDEO_MODEL}
       voiceModelLabel={VOICE_MODEL}
       model3dModelLabel={MODEL3D_MODEL}
-      videoResolutions={[...videoCapabilities.resolutions]}
-      minDurationSeconds={videoCapabilities.minDurationSeconds}
-      maxDurationSeconds={videoCapabilities.maxDurationSeconds}
+      videoResolutionLimits={videoResolutionLimits}
       pricing={CREDIT_PRICING}
     />
   );

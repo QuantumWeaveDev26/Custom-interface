@@ -104,6 +104,15 @@ export interface VideoModelCapabilities {
   readonly resolutions: readonly VideoResolution[];
   readonly minDurationSeconds: number;
   readonly maxDurationSeconds: number;
+  /**
+   * What a second of 720p costs on this model.
+   *
+   * It lives here, beside the capabilities, because model and price have to
+   * move together — ARCHITECTURE.md §8 records that keeping them in separate
+   * places is how a model swap silently mis-bills. Keeping them in one record
+   * makes that mistake impossible rather than merely discouraged.
+   */
+  readonly creditsPerSecond720p: number;
 }
 
 // Sourced from BytePlus's published model list (docs.byteplus.com ModelArk
@@ -117,21 +126,35 @@ export const VIDEO_MODEL_CAPABILITIES: Readonly<
     resolutions: Object.freeze(["480p", "720p", "1080p"] as const),
     minDurationSeconds: 4,
     maxDurationSeconds: 30,
+    // $3.46 for 15s at 720p (confirmed console capture) / $0.04 a credit / 15s.
+    creditsPerSecond720p: 5.77,
   }),
   "dreamina-seedance-2-0-260128": Object.freeze({
     resolutions: Object.freeze(["480p", "720p", "1080p", "4K"] as const),
     minDurationSeconds: 4,
     maxDurationSeconds: 15,
+    // ⚠️ UNCONFIRMED. No published per-second price for 2.0-standard was found.
+    // Set equal to 2.5's rate as the least-bad placeholder: 2.0 is the older
+    // model and is unlikely to cost more per second, so this errs toward
+    // over-charging rather than under-charging against real spend. Confirm
+    // before this model carries meaningful volume.
+    creditsPerSecond720p: 5.77,
   }),
   "dreamina-seedance-2-0-fast-260128": Object.freeze({
     resolutions: Object.freeze(["480p", "720p"] as const),
     minDurationSeconds: 4,
     maxDurationSeconds: 15,
+    // ~$0.54 for 5s at 720p / $0.04 a credit / 5s = 2.7; held at the historical
+    // 2.8 this project shipped with.
+    creditsPerSecond720p: 2.8,
   }),
   "dreamina-seedance-2-0-mini-260615": Object.freeze({
     resolutions: Object.freeze(["480p", "720p"] as const),
     minDurationSeconds: 4,
     maxDurationSeconds: 15,
+    // ~$0.54 for 5s at 720p / $0.04 a credit / 5s = 2.7; held at the historical
+    // 2.8 this project shipped with.
+    creditsPerSecond720p: 2.8,
   }),
 });
 
@@ -143,10 +166,48 @@ export const CONSERVATIVE_VIDEO_CAPABILITIES: VideoModelCapabilities =
     resolutions: Object.freeze(["480p", "720p"] as const),
     minDurationSeconds: 4,
     maxDurationSeconds: 5,
+    // An unknown model is priced at the dearest rate we know of, so a mistake
+    // here overcharges us rather than the user.
+    creditsPerSecond720p: 5.77,
   });
 
 export function videoCapabilitiesFor(model: string): VideoModelCapabilities {
   return VIDEO_MODEL_CAPABILITIES[model] ?? CONSERVATIVE_VIDEO_CAPABILITIES;
+}
+
+/**
+ * Which model can actually deliver a requested resolution.
+ *
+ * No single model does both 4K and 30 seconds: Seedance 2.5 reaches 30s but
+ * stops at 1080p, and Seedance 2.0 reaches 4K but stops at 15s. Rather than
+ * making the user learn that, the resolution they pick chooses the model, and
+ * the duration ceiling follows from it.
+ *
+ * Given a list of candidates, the first one that supports the resolution wins,
+ * so callers express preference by ordering — put the longer-duration model
+ * first and 4K falls through to the only model that can do it.
+ */
+/** What a resolution costs the user in reach: which model, and how long. */
+export interface VideoResolutionLimit {
+  readonly model: string;
+  readonly minDurationSeconds: number;
+  readonly maxDurationSeconds: number;
+}
+
+export type VideoResolutionLimits = Partial<
+  Record<VideoResolution, VideoResolutionLimit>
+>;
+
+export function videoModelForResolution(
+  resolution: VideoResolution,
+  candidates: readonly string[],
+): string | null {
+  for (const model of candidates) {
+    if (videoCapabilitiesFor(model).resolutions.includes(resolution)) {
+      return model;
+    }
+  }
+  return null;
 }
 
 // --- Defaults ---------------------------------------------------------------
@@ -249,8 +310,17 @@ export interface CreditPricing {
   imageCredits: number;
   /** Flat per-request cost. Real Seed Speech per-request pricing unconfirmed. */
   voiceCredits: number;
-  /** Reference rate; scaled by duration and resolution. */
+  /**
+   * Fallback rate, used only for a resolution no configured model claims.
+   * Real pricing comes from the model the resolution routes to.
+   */
   videoCreditsPerSecond720p: number;
+  /**
+   * Video models this deployment may use, in preference order. The first one
+   * that supports a requested resolution serves it, so ordering decides
+   * whether 1080p is served by the long model or the 4K one.
+   */
+  videoModels: readonly string[];
   /** Base rate for a 3D mesh; scaled by the polygon budget. */
   model3dCredits: number;
 }
@@ -282,8 +352,17 @@ export function creditCostFor(
     return Math.max(1, Math.ceil(pricing.model3dCredits * multiplier));
   }
 
+  // The rate comes from whichever model will actually serve this resolution,
+  // not from a single global figure — 4K routes to a different model than 30s
+  // does, and each carries its own price. `pricing.videoCreditsPerSecond720p`
+  // remains the fallback for a resolution no known model claims.
+  const model = videoModelForResolution(params.resolution, pricing.videoModels);
+  const perSecond =
+    model === null
+      ? pricing.videoCreditsPerSecond720p
+      : videoCapabilitiesFor(model).creditsPerSecond720p;
+
   const multiplier = RESOLUTION_COST_MULTIPLIER[params.resolution];
-  const raw =
-    pricing.videoCreditsPerSecond720p * params.durationSeconds * multiplier;
+  const raw = perSecond * params.durationSeconds * multiplier;
   return Math.max(1, Math.ceil(raw));
 }

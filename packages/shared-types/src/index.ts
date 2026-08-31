@@ -35,6 +35,7 @@ export {
   creditCostFor,
   ratioRequiresInputImage,
   videoCapabilitiesFor,
+  videoModelForResolution,
 } from "./generation.js";
 export type {
   CreditPricing,
@@ -45,6 +46,8 @@ export type {
   JobInputAssetRef,
   VideoModelCapabilities,
   VideoRatio,
+  VideoResolutionLimit,
+  VideoResolutionLimits,
   VideoResolution,
   VoiceStyle,
 } from "./generation.js";

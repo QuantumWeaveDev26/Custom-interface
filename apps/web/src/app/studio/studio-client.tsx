@@ -12,7 +12,7 @@ import {
   ratioRequiresInputImage,
   type CreditPricing,
   type GenerationParams,
-  type VideoResolution,
+  type VideoResolutionLimits,
 } from "@creative-ai/shared-types";
 import {
   CAMERA_PRESETS,
@@ -46,9 +46,12 @@ export interface StudioClientProps {
   voiceModelLabel: string;
   model3dModelLabel: string;
   /** Only what the configured video model actually supports. */
-  videoResolutions: readonly VideoResolution[];
-  minDurationSeconds: number;
-  maxDurationSeconds: number;
+  /**
+   * Every resolution any configured model can serve, and what each costs in
+   * reach: which model serves it and how long a clip it allows. 4K and 30s live
+   * in different models, so the ceiling moves with the resolution.
+   */
+  videoResolutionLimits: VideoResolutionLimits;
   pricing: CreditPricing;
   /** Recent images the user owns, offered as image-to-video first frames. */
   recentImageIds: readonly string[];
@@ -94,9 +97,7 @@ export function StudioClient({
   videoModelLabel,
   voiceModelLabel,
   model3dModelLabel,
-  videoResolutions,
-  minDurationSeconds,
-  maxDurationSeconds,
+  videoResolutionLimits,
   pricing,
   recentImageIds,
   recentVideoIds,
@@ -920,9 +921,7 @@ export function StudioClient({
             state={state}
             dispatch={dispatch}
             disabled={isBusy}
-            videoResolutions={videoResolutions}
-            minDurationSeconds={minDurationSeconds}
-            maxDurationSeconds={maxDurationSeconds}
+            videoResolutionLimits={videoResolutionLimits}
           />
         </div>
 

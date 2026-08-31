@@ -9,6 +9,7 @@ import {
   assertParamsSupportedByModel,
   creditCostFor,
   parseSubmitJobRequest,
+  videoModelForResolution,
   type CreditPricing,
 } from "@creative-ai/shared-types";
 export interface SubmitJobDependencies {
@@ -35,8 +36,17 @@ export async function submitGenerationJob(
   // reason -- a generic "invalid request" makes parameter errors undebuggable.
   const parsedRequest = parseSubmitJobRequest(request);
 
-  // Model comes from server config, never the client.
-  const model = dependencies.modelByType[parsedRequest.type];
+  // Model comes from server config, never the client. For video the resolution
+  // decides which configured model serves the job, because no single one does
+  // both 30 seconds and 4K — asking for 4K routes to the model that can do it,
+  // and inherits that model's shorter duration ceiling and its own price.
+  const model =
+    parsedRequest.params.type === "video"
+      ? (videoModelForResolution(
+          parsedRequest.params.resolution,
+          dependencies.pricing.videoModels,
+        ) ?? dependencies.modelByType.video)
+      : dependencies.modelByType[parsedRequest.type];
 
   // A resolution or duration the configured model does not support is rejected
   // before any credits move.

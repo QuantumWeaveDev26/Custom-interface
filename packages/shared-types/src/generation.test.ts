@@ -10,6 +10,7 @@ import {
   MODEL3D_QUALITIES,
   MODEL3D_QUALITY_PRESETS,
   videoCapabilitiesFor,
+  videoModelForResolution,
   type CreditPricing,
 } from "./generation.js";
 
@@ -18,6 +19,7 @@ const PRICING: CreditPricing = {
   voiceCredits: 1,
   videoCreditsPerSecond720p: DEFAULT_VIDEO_CREDITS_PER_SECOND_720P,
   model3dCredits: 20,
+  videoModels: ["dreamina-seedance-2-5-260628", "dreamina-seedance-2-0-260128"],
 };
 
 // This assertion previously pinned 14 credits for 5s/720p, protecting the old
@@ -82,7 +84,10 @@ test("cost is never zero even at the smallest settings", () => {
     imageCredits: 0,
     voiceCredits: 0,
     videoCreditsPerSecond720p: 0,
-  model3dCredits: 20,
+    model3dCredits: 20,
+    // Empty, so the fallback rate above is what gets used — this test is about
+    // the floor, not about which model serves the request.
+    videoModels: [],
   };
   assert.equal(creditCostFor({ type: "image", size: "2K", count: 1 }, nearlyFree), 1);
   assert.equal(creditCostFor({ type: "voice", style: "standard" }, nearlyFree), 1);
@@ -102,8 +107,15 @@ test("image and voice are flat-priced regardless of settings", () => {
   assert.equal(creditCostFor({ type: "voice", style: "expressive" }, PRICING), 1);
 });
 
-test("a higher configured rate raises video cost proportionally", () => {
-  const pricier: CreditPricing = { ...PRICING, videoCreditsPerSecond720p: 5.6 };
+test("the fallback rate applies when no model claims the resolution", () => {
+  // Video pricing normally comes from the model the resolution routes to.
+  // videoCreditsPerSecond720p is the fallback for a resolution none of the
+  // configured models can serve, so an empty model list exercises it.
+  const pricier: CreditPricing = {
+    ...PRICING,
+    videoCreditsPerSecond720p: 5.6,
+    videoModels: [],
+  };
   const cost = creditCostFor(
     { type: "video", resolution: "720p", ratio: "21:9", durationSeconds: 5 },
     pricier,
@@ -163,4 +175,39 @@ test("every 3D quality preset stays inside the documented polygon range", () => 
     const budget = MODEL3D_QUALITY_PRESETS[quality];
     assert.ok(budget >= 500 && budget <= 1_000_000, quality);
   }
+});
+
+// --- Resolution routes to a model (4K) --------------------------------------
+
+test("4K routes to the model that supports it, not the default", () => {
+  // No single model does both 30s and 4K: 2.5 stops at 1080p, 2.0 stops at 15s.
+  const models = ["dreamina-seedance-2-5-260628", "dreamina-seedance-2-0-260128"];
+
+  assert.equal(videoModelForResolution("720p", models), "dreamina-seedance-2-5-260628");
+  assert.equal(videoModelForResolution("1080p", models), "dreamina-seedance-2-5-260628");
+  assert.equal(videoModelForResolution("4K", models), "dreamina-seedance-2-0-260128");
+});
+
+test("order expresses preference, so 1080p can be served by either", () => {
+  const fourKFirst = ["dreamina-seedance-2-0-260128", "dreamina-seedance-2-5-260628"];
+  assert.equal(
+    videoModelForResolution("1080p", fourKFirst),
+    "dreamina-seedance-2-0-260128",
+  );
+});
+
+test("a resolution no configured model claims routes nowhere", () => {
+  // The caller then falls back rather than silently billing at a rate that
+  // belongs to a model which cannot serve the request.
+  assert.equal(videoModelForResolution("4K", ["dreamina-seedance-2-5-260628"]), null);
+});
+
+test("4K is priced from its own model, not the default rate", () => {
+  const cost = creditCostFor(
+    { type: "video", resolution: "4K", ratio: "16:9", durationSeconds: 5 },
+    PRICING,
+  );
+  // 2.0's rate (5.77) x 5s x the 9x 4K multiplier. That multiplier is still
+  // UNCONFIRMED — this pins the arithmetic, not the multiplier's truth.
+  assert.equal(cost, 260);
 });

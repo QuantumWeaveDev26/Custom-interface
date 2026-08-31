@@ -6,6 +6,7 @@ import {
   MODEL3D_QUALITIES,
   VIDEO_RATIOS,
   type VideoResolution,
+  type VideoResolutionLimits,
 } from "@creative-ai/shared-types";
 
 import {
@@ -32,17 +33,19 @@ export function ComposerSettings({
   state,
   dispatch,
   disabled,
-  videoResolutions,
-  minDurationSeconds,
-  maxDurationSeconds,
+  videoResolutionLimits,
 }: {
   state: StudioState;
   dispatch: (action: StudioAction) => void;
   disabled: boolean;
-  videoResolutions: readonly VideoResolution[];
-  minDurationSeconds: number;
-  maxDurationSeconds: number;
+  videoResolutionLimits: VideoResolutionLimits;
 }) {
+  // 4K and 30s live in different models, so the duration ceiling depends on the
+  // resolution currently chosen rather than being fixed for the page.
+  const limit = videoResolutionLimits[state.resolution];
+  const minDurationSeconds = limit?.minDurationSeconds ?? 4;
+  const maxDurationSeconds = limit?.maxDurationSeconds ?? 5;
+  const videoResolutions = Object.keys(videoResolutionLimits) as VideoResolution[];
   return (
     <div className="flex flex-wrap items-center gap-1.5">
       {state.mode === "image" && (
@@ -78,7 +81,18 @@ export function ComposerSettings({
             value={state.resolution}
             options={videoResolutions}
             disabled={disabled}
-            onPick={(resolution) => dispatch({ type: "SET_RESOLUTION", resolution })}
+            onPick={(resolution) => {
+              dispatch({ type: "SET_RESOLUTION", resolution });
+              // Switching to 4K moves the job to a model that caps at 15s. A
+              // duration left above the new ceiling would be rejected by the
+              // server after the user had already chosen it, so it is brought
+              // down here instead.
+              const ceiling =
+                videoResolutionLimits[resolution]?.maxDurationSeconds ?? 5;
+              if (state.durationSeconds > ceiling) {
+                dispatch({ type: "SET_DURATION", durationSeconds: ceiling });
+              }
+            }}
           />
           <Cycle
             label="Aspect ratio"

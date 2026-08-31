@@ -150,9 +150,25 @@ Rate derived from a confirmed console price of **$3.46 for 15s at 720p 16:9**
 **Cost roughly doubled per second.** The default duration is deliberately
 unchanged at 5s; longer clips are opt-in on the slider.
 
-**4K is now unreachable** — 2.5 tops out at 1080p. The `9×` multiplier for 4K in
-`RESOLUTION_COST_MULTIPLIER` is still UNCONFIRMED and must be verified before any
-4K-capable model (such as `dreamina-seedance-2-0-260128`) is made the default.
+**4K is available again, on a second model.** No single model does both 30s and
+4K, so the resolution the user picks chooses the model:
+
+| Resolution | Model | Max duration |
+|---|---|---|
+| 480p, 720p, 1080p | `dreamina-seedance-2-5-260628` | 30s |
+| **4K** | `dreamina-seedance-2-0-260128` | **15s** |
+
+Picking 4K therefore drops the duration ceiling to 15s, and the UI brings a
+longer duration down rather than letting the server reject it.
+
+Each model carries its own per-second rate inside `VIDEO_MODEL_CAPABILITIES`,
+so a model can no longer be swapped without its price coming with it.
+
+⚠️ **Two numbers here are still UNCONFIRMED.** The `9×` 4K multiplier is derived
+from pixel count, never checked against real pricing; and no published
+per-second rate for 2.0-standard was found, so it is set equal to 2.5's as the
+least-bad placeholder. A 15s 4K clip bills **780 credits** on that arithmetic.
+Confirm both before anyone leans on 4K.
 
 ## 3. Active blockers
 

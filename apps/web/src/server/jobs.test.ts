@@ -24,6 +24,7 @@ const PRICING: CreditPricing = {
   voiceCredits: 1,
   videoCreditsPerSecond720p: 2.8,
   model3dCredits: 20,
+  videoModels: ["dreamina-seedance-2-5-260628", "dreamina-seedance-2-0-260128"],
 };
 
 const MODELS = {
@@ -199,9 +200,9 @@ test("video cost is derived from the requested params, not a flat constant", asy
     dependencies,
   );
 
-  // 2.8/sec * 10s * 0.5 (480p) = 14
-  assert.equal(result.job.creditsCost, 14);
-  assert.equal(state.balance, 86);
+  // 480p routes to seedance-2.5 at 5.77/sec: 5.77 * 10s * 0.5 = 28.85 -> 29.
+  assert.equal(result.job.creditsCost, 29);
+  assert.equal(state.balance, 71);
 });
 
 test("the model is taken from server config and never from the request", async () => {
@@ -233,14 +234,17 @@ test("rejects a malformed request before touching credits", async () => {
 test("rejects params the configured model does not support, before charging", async () => {
   const { dependencies, state } = harness();
 
-  // seedance-2-0-fast documents 480p/720p only
+  // 4K is legal now — it routes to seedance-2.0, which serves 4K but caps at
+  // 15s. Asking for 4K at 30s is the combination no configured model can do:
+  // the model that reaches 30s stops at 1080p. It must be refused before any
+  // credits move, not discovered by the provider after the user is charged.
   await assert.rejects(
     submitGenerationJob(
       "user-1",
       {
         type: "video",
         prompt: "orbit",
-        params: { resolution: "4K", ratio: "16:9", durationSeconds: 5 },
+        params: { resolution: "4K", ratio: "16:9", durationSeconds: 30 },
       },
       dependencies,
     ),

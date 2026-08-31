@@ -5,7 +5,19 @@ import {
 
 export const IMAGE_MODEL = process.env.MODELARK_IMAGE_MODEL || "seedream-5-0-lite-260128";
 export const IMAGE_COST = parseInt(process.env.IMAGE_CREDITS_COST || "1", 10);
-export const VIDEO_MODEL = process.env.MODELARK_VIDEO_MODEL || "dreamina-seedance-2-0-fast-260128";
+// Two video models, because no single one does both 30 seconds and 4K: 2.5
+// reaches 30s but stops at 1080p, 2.0 reaches 4K but stops at 15s. The
+// resolution a user picks decides which serves the job, and each model carries
+// its own per-second rate in VIDEO_MODEL_CAPABILITIES — so a model can never be
+// swapped without its price coming along.
+//
+// Order is preference: 2.5 first means 1080p and below are served by the
+// longer-duration model, and only 4K falls through to 2.0.
+export const VIDEO_MODEL =
+  process.env.MODELARK_VIDEO_MODEL || "dreamina-seedance-2-5-260628";
+export const VIDEO_MODEL_4K =
+  process.env.MODELARK_VIDEO_MODEL_4K || "dreamina-seedance-2-0-260128";
+export const VIDEO_MODELS: readonly string[] = [VIDEO_MODEL, VIDEO_MODEL_4K];
 export const MAX_IN_FLIGHT_JOBS = parseInt(process.env.MAX_IN_FLIGHT_JOBS || "3", 10);
 
 // Video is now priced per second and scaled by resolution rather than charged a
@@ -49,5 +61,6 @@ export const CREDIT_PRICING: CreditPricing = {
   imageCredits: IMAGE_COST,
   voiceCredits: VOICE_COST,
   videoCreditsPerSecond720p: VIDEO_CREDITS_PER_SECOND_720P,
+  videoModels: VIDEO_MODELS,
   model3dCredits: MODEL3D_COST,
 };
