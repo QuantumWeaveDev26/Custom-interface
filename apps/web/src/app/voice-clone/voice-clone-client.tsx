@@ -148,7 +148,7 @@ export function VoiceCloneClient() {
                 ? "Voice cloned — ready to use"
                 : "Voice cloned — training"}
             </p>
-            <p className="mt-3 text-[11px] font-medium uppercase tracking-wide text-[var(--text-faint)]">
+            <p className="rule-cap mt-3">
               Your voice ID
             </p>
             <p className="mt-1 font-mono text-sm text-[var(--text)]">{state.speakerId}</p>

@@ -211,7 +211,7 @@ export function MarketingClient({
 
       {characters.length > 0 && (
         <div className="mt-4">
-          <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-[var(--text-faint)]">
+          <p className="rule-cap mb-2">
             Cast <span className="normal-case tracking-normal">(optional)</span>
           </p>
           <div className="flex flex-wrap gap-2">

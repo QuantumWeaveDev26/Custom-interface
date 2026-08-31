@@ -147,7 +147,7 @@ export function GallerySearch({ unindexedCount }: { unindexedCount: number }) {
 
       {results !== null && results.length > 0 && (
         <div className="mt-5">
-          <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-[var(--text-faint)]">
+          <p className="rule-cap mb-2">
             {results.length} result{results.length === 1 ? "" : "s"}
           </p>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

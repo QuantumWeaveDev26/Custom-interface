@@ -60,7 +60,7 @@ export function ReferencePicker({
 }: ReferencePickerProps) {
   return (
     <div className="mt-3">
-      <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-[var(--text-faint)]">
+      <p className="rule-cap mb-2">
         {label} <span className="normal-case tracking-normal">{hint}</span>
       </p>
 
@@ -137,7 +137,7 @@ export function ReferencePicker({
 
       {characters.length > 0 && (
         <div className="mt-3">
-          <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-[var(--text-faint)]">
+          <p className="rule-cap mb-2">
             Saved characters
           </p>
           <div className="flex flex-wrap gap-2">

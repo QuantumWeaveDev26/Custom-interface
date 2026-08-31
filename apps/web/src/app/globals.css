@@ -314,3 +314,29 @@ time {
     align-items: start;
   }
 }
+
+/* A ruled section caption: the field name, then the rule running out to the
+   edge of the sheet. This is how a call sheet divides its sections, and unlike
+   a bordered box it needs no wrapper, so every setting group reads as part of
+   one form rather than as a stack of unrelated rows. */
+.rule-cap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.rule-cap::after {
+  content: "";
+  flex: 1 1 auto;
+  height: 1px;
+  background: var(--border);
+}
+.rule-cap .normal-case {
+  letter-spacing: 0.02em;
+  color: var(--text-faint);
+  opacity: 0.85;
+}

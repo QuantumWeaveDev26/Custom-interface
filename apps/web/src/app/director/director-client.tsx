@@ -228,7 +228,7 @@ export function DirectorClient({
 
       {characters.length > 0 && (
         <div className="mt-4">
-          <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-[var(--text-faint)]">
+          <p className="rule-cap mb-2">
             Cast <span className="normal-case tracking-normal">(optional)</span>
           </p>
           <div className="flex flex-wrap gap-2">
@@ -282,7 +282,7 @@ export function DirectorClient({
       )}
 
       {state.phase === "planned" && state.lookLabel !== null && (
-        <p className="mt-8 text-[11px] font-medium uppercase tracking-wide text-[var(--text-faint)]">
+        <p className="rule-cap mt-8">
           Graded as <span className="text-[var(--text)]">{state.lookLabel}</span> across
           every shot
         </p>

@@ -578,7 +578,7 @@ export function StudioClient({
 
       {state.mode === "video" && (
         <div className="mt-3">
-          <p className="field-label mb-1.5 block">
+          <p className="rule-cap mb-2">
             Animate an image <span className="normal-case tracking-normal">(optional)</span>
           </p>
           <div className="mb-2 flex gap-2" role="radiogroup" aria-label="Keyframe slot">
@@ -723,7 +723,7 @@ export function StudioClient({
 
       {state.mode === "video" && recentVideoIds.length > 0 && (
         <div className="mt-3">
-          <p className="field-label mb-1.5 block">
+          <p className="rule-cap mb-2">
             Extend or edit a clip{" "}
             <span className="normal-case tracking-normal">
               (optional — pick up to {MAX_SOURCE_VIDEOS_PER_JOB})
@@ -784,7 +784,7 @@ export function StudioClient({
       {state.mode === "video" && (
         <div className="mt-3 space-y-3">
           <div>
-            <p className="field-label mb-1.5 block">
+            <p className="rule-cap mb-2">
               Resolution
             </p>
             <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Resolution">
@@ -806,7 +806,7 @@ export function StudioClient({
           </div>
 
           <div>
-            <p className="field-label mb-1.5 block">
+            <p className="rule-cap mb-2">
               Aspect ratio
             </p>
             <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Aspect ratio">
@@ -830,7 +830,7 @@ export function StudioClient({
           <div>
             <label
               htmlFor="duration"
-              className="field-label mb-1.5 flex items-center justify-between"
+              className="rule-cap mb-2"
             >
               <span>Duration</span>
               <span className="text-[var(--text)]">{state.durationSeconds}s</span>
@@ -863,7 +863,7 @@ export function StudioClient({
         <div className="mt-3 space-y-3">
           {state.mode === "video" && (
             <div>
-              <p className="field-label mb-1.5 block">
+              <p className="rule-cap mb-2">
                 Camera move{" "}
                 <span className="normal-case tracking-normal">
                   (optional — stack them, order matters)
@@ -901,7 +901,7 @@ export function StudioClient({
           )}
 
           <div>
-            <p className="field-label mb-1.5 block">
+            <p className="rule-cap mb-2">
               Lens <span className="normal-case tracking-normal">(optional)</span>
             </p>
             <div className="flex flex-wrap gap-1.5">
@@ -938,7 +938,7 @@ export function StudioClient({
           </div>
 
           <div>
-            <p className="field-label mb-1.5 block">
+            <p className="rule-cap mb-2">
               Look <span className="normal-case tracking-normal">(optional)</span>
             </p>
             <div className="flex flex-wrap gap-1.5">
@@ -976,7 +976,7 @@ export function StudioClient({
 
       {state.mode === "model3d" && (
         <div className="mt-3">
-          <p className="field-label mb-1.5 block">
+          <p className="rule-cap mb-2">
             Detail
           </p>
           <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Mesh detail">
@@ -1083,6 +1083,52 @@ export function StudioClient({
         </div>
 
         <div style={{ gridArea: "viewer" }}>
+          {/* The slate: what this take will be, before it exists. A viewer that
+              is simply blank at rest reads as a page that failed to load, and
+              this is the state the user looks at most — every setting they
+              change is shown back to them here while nothing is generating. */}
+          {state.phase === "idle" && state.history.length === 0 && (
+            <div
+              className="flex min-h-[18rem] flex-col justify-between border p-5"
+              style={{ borderColor: "var(--border)", borderRadius: "2px" }}
+            >
+              <div>
+                <p className="rule-cap mb-3">Slate</p>
+                <dl className="space-y-1.5 text-[11px]">
+                  {[
+                    ["Dept", MODE_LABELS[state.mode]],
+                    ["Model", modelLabel],
+                    [
+                      "Setup",
+                      state.mode === "image"
+                        ? `${state.imageSize} · ${state.imageCount} frame${state.imageCount === 1 ? "" : "s"}`
+                        : state.mode === "video"
+                          ? `${state.resolution} · ${state.ratio} · ${state.durationSeconds}s`
+                          : state.mode === "model3d"
+                            ? `${MODEL3D_QUALITY_PRESETS[state.model3dQuality].toLocaleString()} polys`
+                            : state.voiceStyle,
+                    ],
+                    [
+                      "Refs",
+                      state.referenceAssetIds.length === 0
+                        ? "none"
+                        : String(state.referenceAssetIds.length),
+                    ],
+                    ["Cost", `${estimatedCost} cr`],
+                  ].map(([term, value]) => (
+                    <div key={term} className="flex gap-3">
+                      <dt className="w-16 shrink-0 text-[var(--text-faint)]">{term}</dt>
+                      <dd className="val text-[11px]">{value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+              <p className="mt-6 text-[11px] text-[var(--text-faint)]">
+                Write the shot in Notes below, then expose the take.
+              </p>
+            </div>
+          )}
+
       <div className="mt-6" aria-live="polite">
         {(state.phase === "queued" || state.phase === "processing") && (
           <div className="card flex items-center gap-3 p-4">

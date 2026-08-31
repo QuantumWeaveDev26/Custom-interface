@@ -123,7 +123,7 @@ export default async function GalleryPage({
                 style={{ borderColor: "var(--border)" }}
                 aria-label={`Set of ${row.assets.length}`}
               >
-                <p className="mb-2 px-1 text-[11px] font-medium uppercase tracking-wide text-[var(--text-faint)]">
+                <p className="rule-cap mb-2 px-1">
                   Set of {row.assets.length}
                 </p>
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
