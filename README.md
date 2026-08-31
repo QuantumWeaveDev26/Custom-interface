@@ -1,5 +1,10 @@
 # Creative AI
 
+> **New here?** Read [HANDOFF.md](HANDOFF.md) first. It carries the full
+> project context, the environment traps that will otherwise cost you hours,
+> and how to actually run this. This README covers setup commands only, and
+> its feature list lags.
+
 A Next.js + Node.js monorepo for AI generation workflows (image, video, voice,
 agent-driven creative direction) powered by BytePlus ModelArk and Seed Speech,
 with authentication and credit-based transactions.

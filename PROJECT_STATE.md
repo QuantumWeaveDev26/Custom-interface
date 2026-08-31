@@ -14,6 +14,7 @@ this file — this file is updated deliberately at the end of each work session.
 
 | File | What it is | Trust level |
 |---|---|---|
+| **`HANDOFF.md`** | Entry point for a new agent: environment, how to run, full context | **Read first** |
 | **`PROJECT_STATE.md`** (this file) | Current status, blockers, verification state | **Authoritative on status** |
 | `CAPABILITY_MAP.md` | BytePlus catalog vs Higgsfield parity, and the gaps | Authoritative on scope/ambition |
 | `BUILD_PLAN.md` | Forward plan, block by block | Authoritative on what to build next |
@@ -237,6 +238,15 @@ automatic.
   ```
 - The BytePlus docs site is a JS-rendered SPA. Plain HTTP fetching returns
   navigation chrome only. Use a real browser tool to read it.
+- **`npx` and the `node_modules/.bin` shims hang in Git Bash** (found
+  2026-08-31). `npx tsc --version` never returns; plain `node` is instant. A
+  typecheck that appears to hang is this, not your code — it cost an hour and a
+  false diagnosis of disk failure. Call binaries through node:
+  `node ../../node_modules/typescript/bin/tsc -p tsconfig.json --noEmit`,
+  `node node_modules/next/dist/bin/next dev`.
+- **Dev CSS is not content-hashed**, so a browser will serve a cached
+  stylesheet across reloads. Two "your change did nothing" reports were this.
+  Hard-reload after any CSS change.
 - **PostgreSQL has no registered Windows service on this machine.** Nothing
   starts it at boot, so a session that begins with the worker logging
   `Can't reach database server at localhost:5432` needs it started by hand —
@@ -258,7 +268,7 @@ previous agent (this project has been burned by an agent self-reporting
 
 ```bash
 pnpm typecheck   # all 8 packages
-pnpm test        # 352 tests, all must pass
+pnpm test        # 353 tests, all must pass
 pnpm build       # full monorepo build
 ```
 
