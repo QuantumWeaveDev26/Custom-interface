@@ -188,6 +188,9 @@ deliberate break, so a red badge is a real signal.
 | Gallery: batch grouping, type filter | Built, unverified |
 | Director: shot plan, lens per shot, one grade per film, cast | Built, unverified |
 | Marketing: URL → ad, with camera/lens/look and cast | Built, unverified |
+| 3D preview in the gallery (`<model-viewer>`, loaded on click) | Built, unverified |
+| Index-on-completion, off by default per user | Built, unverified |
+| Feed: per-asset opt-in publishing | Built, unverified |
 
 ### Key design decisions worth not relitigating
 
@@ -237,10 +240,19 @@ The non-obvious ones:
 | 1 | 🔴 **Rotate `ARK_API_KEY` and `BYTEPLUS_VOICE_API_KEY`** | Console. They appeared in shared screenshots and bill real spend. Open since day one. |
 | 2 | **Voice cloning** returns `55000000` at the BytePlus gateway | Support ticket. Four hypotheses ruled out; draft in `BUILD_PLAN.md`. Not our bug. |
 | 3 | **Lipsync / OmniHuman** | Same ticket: ask about the digital-character library, given the real-face rule. |
-| 4 | **Community feed** | Product decision: what is public, who sees it, how it is taken down. |
-| 5 | **Deployment (F4)** | Hosting spend decision. |
-| 6 | **glTF viewer** | Dependency decision (three.js ~600KB vs model-viewer ~300KB), and a 25MB mesh may choke a browser regardless. |
-| 7 | **Embed-on-completion** | Pricing decision — auto-indexing spends tokens per generation. |
+| 4 | **Deployment (F4)** | Hosting spend decision. |
+
+Resolved 2026-08-31, all three by choosing the narrow option rather than
+guessing the wide one:
+
+- **Community feed** — publishing is per asset, opt-in, and carries the media
+  and prompt only. No identity travels. Bylines, profiles, and moderation are
+  additions if the business wants them, not assumptions made now.
+- **Embed-on-completion** — off by default, because it spends provider tokens
+  per generated asset. The toggle sits beside the manual sweep, where the cost
+  is already the subject.
+- **glTF viewer** — `@google/model-viewer`, imported only when the user clicks
+  "Preview in 3D", so a gallery of 25MB meshes downloads none of them on sight.
 
 ---
 
@@ -289,9 +301,11 @@ node "<impeccable-skill>/scripts/detect.mjs" --json <changed files>
 
 ## 11. What to do next
 
-**Before building anything: verify in a browser.** Roughly fifteen features are
-built, tested, and never clicked. That is the project's largest risk. The
-walk-through list is in `PROJECT_STATE.md` § 2b.
+**Before building anything: verify in a browser.** Roughly eighteen features
+are built, tested, and never clicked. That is the project's largest risk, and it
+is now larger than any missing feature — everything buildable without a decision
+from the owner has been built. The walk-through list is in `PROJECT_STATE.md`
+§ 2b.
 
 Then, in order:
 
@@ -300,5 +314,5 @@ Then, in order:
 2. **A keyboard walkthrough of Studio** — the last open accessibility item.
 3. Whichever of § 8 the owner unblocks.
 
-Do not start the community feed, deployment, lipsync, or the glTF viewer
-without a decision from the owner — they are blocked on judgement, not effort.
+Do not start deployment or lipsync without a decision from the owner — they are
+blocked on judgement, not effort.

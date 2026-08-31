@@ -124,7 +124,14 @@ a bug.
 - [ ] **Director:** Enter brief; verify global grade banner and per-shot camera + lens labels.
 - [ ] **Director:** Cast character identity and attach reference image.
 - [ ] **Marketing:** Enter product URL; verify direction line (style, camera, lens, look), cast, and attach.
+- [ ] **Gallery:** Tick "Index new generations automatically", generate one image, and confirm the unindexed count does not grow (worker embeds it on completion).
+- [ ] **Gallery:** Untick it again and confirm the setting survives a page reload.
+- [ ] **Gallery:** Click "Share" on one asset; the label becomes "In the feed".
+- [ ] **Feed:** The shared asset appears newest-first, with its prompt and no name attached.
+- [ ] **Feed:** Click "Share" again on that asset in the Gallery; it leaves the Feed.
+- [ ] **Gallery (3D):** Click "Preview in 3D" on a mesh; the viewer loads only on that click.
 - [ ] **Accessibility:** Press Tab key through all controls; verify 2px signal focus ring on every element.
+- [ ] **Accessibility:** Press Tab on a fresh page load; the first stop is "Skip to content".
 
 ### Then: the work that needs a decision, not code
 
@@ -248,11 +255,19 @@ What remains open is narrower: image-to-3D input shape, the flag that selects a
 format other than glb, and the accepted values for `--mesh_mode` and `--addons`.
 Do not guess any of them.
 
-### 3.3 Phase 4 (Billing / Admin / Community) — blocked on business decisions
+### 3.3 Phase 4 (Billing / Admin) — blocked on business decisions
 
 Cannot start without: payment provider (Stripe / Razorpay / other), pricing
 tiers, and whether this serves real paying customers or is an internal demo.
 Guessing here produces throwaway work.
+
+**Community is no longer blocked and is built** (2026-08-31). The decision it
+was waiting on — what publishing means — was settled the narrow way rather than
+guessed the wide way: publishing is per asset, opt-in, and carries the media and
+prompt only, never the maker's identity. If the business later wants bylines,
+follow-able profiles, or moderation, those are additions on top; none of them
+are assumed here. Indexing-on-completion was settled the same way: off by
+default, because it spends provider tokens per asset.
 
 ---
 
