@@ -284,18 +284,30 @@ time {
     overscroll-behavior: contain;
   }
 
-  /* The composer: prompt and action on one line, the action sized to itself. */
-  .studio-grid > [style*="notes"] form {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: end;
-    gap: 0.75rem;
-  }
-  .studio-grid > [style*="notes"] form > textarea {
-    grid-column: 1;
-  }
+}
+
+/* The composer: prompt on top, then a row of the settings changed between takes
+   with the action at its end. The action sits on that row rather than beside
+   the prompt, so it lands at the composer's corner where the eye finishes. */
+.composer-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+.studio-grid > [style*="notes"] form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.studio-grid > [style*="notes"] form > button[type="submit"] {
+  align-self: flex-end;
+  margin-top: -2.75rem;
+}
+@media (max-width: 1023px) {
   .studio-grid > [style*="notes"] form > button[type="submit"] {
-    grid-column: 2;
+    align-self: stretch;
+    margin-top: 0;
   }
 }
 

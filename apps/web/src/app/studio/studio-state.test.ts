@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 
@@ -557,10 +557,14 @@ test("every studio action has a dispatch site in the client", () => {
   // gone from the page for four commits. Reducer tests cannot see markup, so
   // this reads the client and asserts each action is still dispatched
   // somewhere.
-  const client = readFileSync(
-    join(process.cwd(), "src", "app", "studio", "studio-client.tsx"),
-    "utf8",
-  );
+  // Reads the whole studio directory, not one file: settings moved into their
+  // own component the first time this test ran after the composer was built,
+  // and a single-file check would have called that a regression.
+  const dir = join(process.cwd(), "src", "app", "studio");
+  const client = readdirSync(dir)
+    .filter((name) => name.endsWith(".tsx"))
+    .map((name) => readFileSync(join(dir, name), "utf8"))
+    .join("\n");
 
   const actions = [
     "SET_MODE",

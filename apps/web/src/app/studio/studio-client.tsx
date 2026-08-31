@@ -30,6 +30,7 @@ import {
   QualityIcon,
   StackIcon,
 } from "./chip-icons";
+import { ComposerSettings } from "./composer-settings";
 import { ReferencePicker } from "./reference-picker";
 import {
   INITIAL_STUDIO_STATE,
@@ -482,30 +483,6 @@ export function StudioClient({
       <div className="studio-grid mt-4">
         <div className="setup-col space-y-4" style={{ gridArea: "setup" }}>
 
-      {state.mode === "voice" && (
-        <div className="mt-3 flex gap-2" role="radiogroup" aria-label="Voice style">
-          {(["standard", "expressive"] as const).map((style) => (
-            <button
-              key={style}
-              type="button"
-              role="radio"
-              aria-checked={state.voiceStyle === style}
-              disabled={isBusy}
-              data-active={state.voiceStyle === style}
-              onClick={() => dispatch({ type: "SET_VOICE_STYLE", voiceStyle: style })}
-              className="opt"
-              style={
-                state.voiceStyle !== style
-                  ? { background: "var(--surface)", border: "1px solid var(--border)" }
-                  : undefined
-              }
-            >
-              {style === "standard" ? "Standard" : "Expressive"}
-            </button>
-          ))}
-        </div>
-      )}
-
       {state.mode === "image" && (
         <div className="mt-3">
           <ReferencePicker
@@ -529,65 +506,6 @@ export function StudioClient({
             onCharacterNameChange={setCharacterName}
             onSaveCharacter={handleSaveCharacter}
           />
-
-          {/* Restored: this control was cut out by a block replacement in
-              faf14fb, which removed the inlined reference picker and took the
-              batch slider sitting inside that range with it. The reducer and its
-              tests never noticed, because only the markup was lost. */}
-          <label htmlFor="image-count" className="rule-cap mb-2 mt-4">
-            <StackIcon />
-            <span>How many</span>
-            <span className="val ml-auto text-[var(--text)]">
-              {state.imageCount}
-            </span>
-          </label>
-          <input
-            id="image-count"
-            type="range"
-            min={1}
-            // References and generated images share one ceiling of 15, so the
-            // slider shrinks as references are added rather than offering a
-            // number the server would reject.
-            max={Math.max(1, MAX_BATCH_IMAGES - state.referenceAssetIds.length)}
-            step={1}
-            value={state.imageCount}
-            disabled={isBusy}
-            onChange={(event) =>
-              dispatch({
-                type: "SET_IMAGE_COUNT",
-                imageCount: Number(event.target.value),
-              })
-            }
-            className="w-full accent-[var(--signal)] disabled:opacity-50"
-          />
-          {state.imageCount > 1 && (
-            <p className="mt-1 text-[11px] text-[var(--text-muted)]">
-              Generated together, so the set holds a consistent style. The model
-              may return fewer — you are only charged for what arrives.
-            </p>
-          )}
-
-          <p className="rule-cap mb-2 mt-4">
-            <QualityIcon />
-            <span>Size</span>
-          </p>
-          <div className="flex gap-2" role="radiogroup" aria-label="Image size">
-            {IMAGE_SIZES.map((size) => (
-              <button
-                key={size}
-                type="button"
-                role="radio"
-                aria-checked={state.imageSize === size}
-                disabled={isBusy}
-                data-active={state.imageSize === size}
-                onClick={() => dispatch({ type: "SET_IMAGE_SIZE", imageSize: size })}
-                className="opt"
-              >
-                <QualityIcon />
-                {size}
-              </button>
-            ))}
-          </div>
         </div>
       )}
 
@@ -796,88 +714,6 @@ export function StudioClient({
         </div>
       )}
 
-      {state.mode === "video" && (
-        <div className="mt-3 space-y-3">
-          <div>
-            <p className="rule-cap mb-2">
-              <QualityIcon /><span>Resolution</span>
-            </p>
-            <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Resolution">
-              {videoResolutions.map((resolution) => (
-                <button
-                  key={resolution}
-                  type="button"
-                  role="radio"
-                  aria-checked={state.resolution === resolution}
-                  disabled={isBusy}
-                  data-active={state.resolution === resolution}
-                  onClick={() => dispatch({ type: "SET_RESOLUTION", resolution })}
-                  className="opt"
-                >
-                  <QualityIcon />
-                  {resolution}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <p className="rule-cap mb-2">
-              <FrameIcon /><span>Aspect ratio</span>
-            </p>
-            <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Aspect ratio">
-              {ratioOptions.map((ratio) => (
-                <button
-                  key={ratio}
-                  type="button"
-                  role="radio"
-                  aria-checked={state.ratio === ratio}
-                  disabled={isBusy}
-                  data-active={state.ratio === ratio}
-                  onClick={() => dispatch({ type: "SET_RATIO", ratio })}
-                  className="opt"
-                >
-                  <FrameIcon />
-                  {ratio}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <label
-              htmlFor="duration"
-              className="rule-cap mb-2"
-            >
-              <ClockIcon />
-              <span>Duration</span>
-              <span className="val ml-auto text-[var(--text)]">
-                {state.durationSeconds}s
-              </span>
-            </label>
-            <input
-              id="duration"
-              type="range"
-              min={minDurationSeconds}
-              max={maxDurationSeconds}
-              step={1}
-              value={state.durationSeconds}
-              disabled={isBusy}
-              onChange={(event) =>
-                dispatch({
-                  type: "SET_DURATION",
-                  durationSeconds: Number(event.target.value),
-                })
-              }
-              className="w-full accent-[var(--accent-via)] disabled:opacity-50"
-            />
-            <div className="flex justify-between text-[10px] text-[var(--text-faint)]">
-              <span>{minDurationSeconds}s</span>
-              <span>{maxDurationSeconds}s</span>
-            </div>
-          </div>
-        </div>
-      )}
 
       {(state.mode === "image" || state.mode === "video") && (
         <div className="mt-3 space-y-3">
@@ -993,26 +829,6 @@ export function StudioClient({
 
       {state.mode === "model3d" && (
         <div className="mt-3">
-          <p className="rule-cap mb-2">
-            <QualityIcon /><span>Detail</span>
-          </p>
-          <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Mesh detail">
-            {MODEL3D_QUALITIES.map((quality) => (
-              <button
-                key={quality}
-                type="button"
-                role="radio"
-                aria-checked={state.model3dQuality === quality}
-                disabled={isBusy}
-                data-active={state.model3dQuality === quality}
-                onClick={() => dispatch({ type: "SET_MODEL3D_QUALITY", quality })}
-                className="opt capitalize"
-              >
-                <QualityIcon />
-                {quality}
-              </button>
-            ))}
-          </div>
           <p className="mt-1.5 text-[11px] text-[var(--text-muted)]">
             {MODEL3D_QUALITY_PRESETS[state.model3dQuality].toLocaleString()} polygons,
             PBR materials, exported as .glb. Attach a photo below to model that
@@ -1080,6 +896,20 @@ export function StudioClient({
             limit is 2000. Shorten it or drop a preset.
           </p>
         )}
+        {/* The settings a user changes between takes sit with the prompt and
+            the action, so the decision and its cost are read together. The
+            heavier setup chosen once a session stays in the left panel. */}
+        <div className="composer-row">
+          <ComposerSettings
+            state={state}
+            dispatch={dispatch}
+            disabled={isBusy}
+            videoResolutions={videoResolutions}
+            minDurationSeconds={minDurationSeconds}
+            maxDurationSeconds={maxDurationSeconds}
+          />
+        </div>
+
         <button
           type="submit"
           disabled={
