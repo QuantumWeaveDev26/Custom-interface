@@ -535,7 +535,7 @@ export function StudioClient({
           <ReferencePicker
             inputId="upload-reference"
             label="Reference images"
-            hint="(optional — keeps a character or style consistent)"
+            hint="(optional)"
             promptHint={"Refer to them in your prompt as “image 1”, “image 2”, and so on."}
             pickableImageIds={pickableImageIds}
             selectedIds={state.referenceAssetIds}
@@ -701,7 +701,7 @@ export function StudioClient({
         <ReferencePicker
           inputId="upload-video-reference"
           label="Keep a character"
-          hint="(optional — the same face or subject across shots)"
+          hint="(optional)"
           promptHint={"Refer to them in your prompt as “Image 1”, “Image 2”, and so on."}
           pickableImageIds={pickableImageIds}
           selectedIds={state.referenceAssetIds}
@@ -864,12 +864,9 @@ export function StudioClient({
           {state.mode === "video" && (
             <div>
               <p className="rule-cap mb-2">
-                Camera move{" "}
-                <span className="normal-case tracking-normal">
-                  (optional — stack them, order matters)
-                </span>
+                <span>Camera move <span className="normal-case tracking-normal">(stackable)</span></span>
               </p>
-              <div className="flex flex-wrap gap-1.5">
+              <div className="move-list flex flex-wrap gap-1.5">
                 {CAMERA_PRESETS.map((preset) => {
                   const order = state.cameraPresetIds.indexOf(preset.id);
                   const selected = order !== -1;
@@ -1007,16 +1004,16 @@ export function StudioClient({
         </div>
 
         <div style={{ gridArea: "notes" }}>
-      <form onSubmit={handleSubmit} className="mt-5 space-y-3">
-        <label htmlFor="prompt" className="block text-xs font-medium text-[var(--text-muted)]">
-          {state.mode === "voice" ? "Text to speak" : "Prompt"}
+      <form onSubmit={handleSubmit} className="space-y-2">
+        <label htmlFor="prompt" className="rule-cap">
+          <span>{state.mode === "voice" ? "Text to speak" : "Notes"}</span>
         </label>
         <textarea
           id="prompt"
           value={state.prompt}
           onChange={(event) => dispatch({ type: "SET_PROMPT", prompt: event.target.value })}
           disabled={isBusy}
-          rows={4}
+          rows={2}
           maxLength={2000}
           required
           placeholder={
@@ -1067,12 +1064,16 @@ export function StudioClient({
           disabled={
             isBusy || state.prompt.trim().length === 0 || !affordable || promptTooLong
           }
-          className="btn-primary w-full gap-2"
+          className="btn-primary gap-2.5 !px-6"
         >
           {isBusy && <span className="spinner" aria-hidden="true" />}
-          {isBusy
-            ? "Working..."
-            : `Generate · ${estimatedCost} credit${estimatedCost === 1 ? "" : "s"}`}
+          <span>{isBusy ? "Rolling" : "Expose take"}</span>
+          <span
+            className="val text-[11px]"
+            style={{ color: "rgba(255,255,255,0.75)" }}
+          >
+            {estimatedCost} cr
+          </span>
         </button>
         {!affordable && !isBusy && (
           <p className="text-xs text-[var(--danger)]">

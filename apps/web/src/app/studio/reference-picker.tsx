@@ -61,7 +61,9 @@ export function ReferencePicker({
   return (
     <div className="mt-3">
       <p className="rule-cap mb-2">
-        {label} <span className="normal-case tracking-normal">{hint}</span>
+        <span>
+          {label} <span className="normal-case tracking-normal">{hint}</span>
+        </span>
       </p>
 
       <div className="flex gap-2 overflow-x-auto pb-1">
