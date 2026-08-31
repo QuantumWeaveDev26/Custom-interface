@@ -103,6 +103,29 @@ list in order and note what breaks:
 Search returns nothing until "Index up to 20" is pressed. That is expected, not
 a bug.
 
+### Browser Verification Checklist (Human Pass)
+
+- [ ] **Studio (Image):** Click a saved character chip to populate references in composer.
+- [ ] **Studio (Image):** Click camera, lens, and look pills; verify prompt preview updates.
+- [ ] **Studio (Image):** Drag "How many" batch slider (1–15); verify credit cost total.
+- [ ] **Studio (Image):** Click prompt box paperclip and upload an image (PNG/JPEG/WebP).
+- [ ] **Studio (Video):** Click "Keep a character" picker; verify reference tags `[Image 1]`, `[Image 2]`.
+- [ ] **Studio (Video):** Drag/select First Frame and Last Frame stills; verify adaptive ratio.
+- [ ] **Studio (Video):** Select 1–3 source video clips to test extend transition mode.
+- [ ] **Studio (Video):** Attach an MP4/MOV video file via prompt box.
+- [ ] **Studio (3D):** Select Draft / Standard / High quality chips; verify credit calculation.
+- [ ] **Studio (3D):** Generate 1 mesh (observe single-generation quota policy).
+- [ ] **Studio (3D):** Attach a reference photo for image-to-3D mesh generation.
+- [ ] **Studio (3D):** Download generated `.glb` asset to disk.
+- [ ] **Gallery:** Click filter chips (`All`, `Images`, `Video`, `Voice`, `3D`); check asset lists.
+- [ ] **Gallery:** Visually verify multi-image batch renders as grouped "Set of N" card with badge.
+- [ ] **Gallery:** Click "Index up to 20", then search library with a text query.
+- [ ] **Gallery:** Click "More like this" on an asset tile to test similarity ranking.
+- [ ] **Director:** Enter brief; verify global grade banner and per-shot camera + lens labels.
+- [ ] **Director:** Cast character identity and attach reference image.
+- [ ] **Marketing:** Enter product URL; verify direction line (style, camera, lens, look), cast, and attach.
+- [ ] **Accessibility:** Press Tab key through all controls; verify 2px signal focus ring on every element.
+
 ### Then: the work that needs a decision, not code
 
 Nothing else can proceed without one of these being settled - see section 3.

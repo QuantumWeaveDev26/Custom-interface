@@ -278,6 +278,10 @@ node "<impeccable-skill>/scripts/detect.mjs" --json <changed files>
   for four commits while its tests stayed green. There is now a test asserting
   every studio action has a dispatch site somewhere in `src/app/studio`.
 - **Do not trust a self-report.** Including this document. Run § 5.
+- **A block labelled Output must be copy-pasted unedited.** If you are
+  summarising, label it summary.
+- **Never state a filename, route, identifier, or constant you have not read
+  in this session.** Cite where you read it.
 - **Update `PROJECT_STATE.md` at the end of a session.** A stale state doc is
   worse than none.
 
