@@ -24,12 +24,23 @@ export function AssetTile({
   badge?: string;
 }) {
   return (
-    <div className="group relative">
-      <span className="absolute left-2 top-2 z-10 rounded-[10px] bg-black/75 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-white">
+    <div className="tile group">
+      {/* One scrim behind every label, rather than a pill behind each: sixty
+          tiles with four floating pills apiece is noise, and a scrim keeps
+          white text legible over whatever the image happens to be. */}
+      <div
+        className="tile-chrome pointer-events-none absolute inset-0 z-10"
+        style={{
+          background:
+            "linear-gradient(to bottom, rgba(0,0,0,0.55), transparent 35%, transparent 60%, rgba(0,0,0,0.65))",
+        }}
+        aria-hidden="true"
+      />
+      <span className="tile-chrome absolute left-2 top-2 z-20 text-[10px] font-semibold uppercase tracking-wide text-white">
         {TYPE_LABELS[asset.type] ?? asset.type}
       </span>
       {badge !== undefined && (
-        <span className="absolute right-2 top-2 z-10 rounded-[10px] tabular bg-black/75 px-2 py-1 font-mono text-[10px] font-semibold text-white">
+        <span className="tile-chrome tabular absolute right-2 top-2 z-20 font-mono text-[10px] font-semibold text-white">
           {badge}
         </span>
       )}
@@ -65,7 +76,7 @@ export function AssetTile({
           when the caller did not load the flag — a feed tile is not a place to
           publish from. */}
       {asset.published !== undefined && (
-        <div className="absolute bottom-2 right-2 z-10">
+        <div className="tile-chrome absolute bottom-2 right-2 z-20">
           <PublishToggle assetId={asset.id} published={asset.published} />
         </div>
       )}

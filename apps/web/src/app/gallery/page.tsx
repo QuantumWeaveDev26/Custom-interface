@@ -80,8 +80,8 @@ export default async function GalleryPage({
           put — they are sticky, because a filter you have to scroll back up to
           reach stops being used. */}
       <header
-        className="sticky top-0 z-10 -mx-4 flex flex-wrap items-center gap-x-4 gap-y-3 px-4 pb-4 pt-1 sm:-mx-6 sm:px-6"
-        style={{ background: "var(--bg)" }}
+        className="sticky top-0 z-30 -mx-4 flex flex-wrap items-center gap-x-4 gap-y-3 border-b px-4 pb-4 pt-1 sm:-mx-6 sm:px-6"
+        style={{ background: "var(--bg)", borderColor: "var(--border)" }}
       >
         <h1 className="text-xl font-semibold tracking-tight">Gallery</h1>
 
@@ -138,7 +138,7 @@ export default async function GalleryPage({
           </Link>
         </div>
       ) : (
-        <div className="mt-6 space-y-6">
+        <div className="mt-6 space-y-4">
           {rows.map((row) =>
             row.kind === "set" ? (
               // A batch is one answer to one prompt, so it is framed as one
@@ -146,30 +146,35 @@ export default async function GalleryPage({
               // ones.
               <section
                 key={row.key}
-                className="rounded-[18px] border p-3"
-                style={{ borderColor: "var(--border)" }}
+                className="panel p-3"
                 aria-label={`Set of ${row.assets.length}`}
               >
                 <p className="rule-cap mb-2 px-1">
                   Set of {row.assets.length}
                 </p>
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+                {/* Tiles sit flush inside the band: the band is already the
+                    frame that says these belong together, and framing each
+                    member again is a border inside a border. */}
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
                   {row.assets.map((asset, index) => (
-                    <div key={asset.id} className="card overflow-hidden">
-                      <AssetTile asset={asset} badge={String(index + 1)} />
-                    </div>
+                    <AssetTile
+                      key={asset.id}
+                      asset={asset}
+                      badge={String(index + 1)}
+                    />
                   ))}
                 </div>
               </section>
             ) : (
+              // Unframed and tight: a library of work reads as a body of
+              // work, not as a filing cabinet of separately mounted items.
+              // Four across leaves each tile large enough to judge.
               <div
                 key={row.key}
-                className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4"
+                className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4"
               >
                 {row.assets.map((asset) => (
-                  <div key={asset.id} className="card overflow-hidden">
-                    <AssetTile asset={asset} />
-                  </div>
+                  <AssetTile key={asset.id} asset={asset} />
                 ))}
               </div>
             ),

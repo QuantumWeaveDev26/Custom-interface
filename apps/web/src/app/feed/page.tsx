@@ -29,7 +29,7 @@ export default async function FeedPage() {
       ) : (
         <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((item) => (
-            <article key={item.assetId} className="card overflow-hidden">
+            <article key={item.assetId} className="panel overflow-hidden">
               {/* No `published` prop: the share control belongs on your own
                   asset in the Gallery, not on somebody else's here. */}
               <AssetTile asset={{ id: item.assetId, type: item.type }} />

@@ -154,6 +154,40 @@ time {
   border: 1px solid var(--border);
 }
 
+/* A tile in the library.
+ *
+ * The media is the surface: no frame of its own, because sixty framed squares
+ * read as a filing cabinet rather than as a body of work. The fill only shows
+ * while an image is still loading, or behind a mesh that has no thumbnail.
+ */
+.tile {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--r-control);
+  background: var(--bg-elevated);
+}
+
+/* Labels and per-asset actions, revealed on approach.
+ *
+ * Hidden by opacity rather than display so the controls keep their place in the
+ * tab order, and revealed by focus-within as well as hover so a keyboard user
+ * can see what they have landed on.
+ */
+.tile-chrome {
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+.tile:hover .tile-chrome,
+.tile:focus-within .tile-chrome {
+  opacity: 1;
+}
+@media (hover: none) {
+  /* No hover to approach with: on a touch screen the chrome simply stays. */
+  .tile-chrome {
+    opacity: 1;
+  }
+}
+
 .input-field {
   @apply w-full px-4 py-3 text-sm outline-none transition-colors duration-150;
   border-radius: var(--r-control);
