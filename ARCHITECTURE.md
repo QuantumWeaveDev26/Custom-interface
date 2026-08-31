@@ -258,7 +258,12 @@ Both agents follow the same loop: LLM proposes a tool call → your backend exec
 - Debit credits **before** enqueuing, refund on failure — never let a user's balance go negative from a race condition (wrap debit + job-create in a DB transaction).
 - Rate-limit job submission per user (basic first: e.g. max N in-flight jobs per user).
 - **Welcome grant** (`INITIAL_CREDITS`, default 100): grant on user creation, in the same DB transaction as the user insert — never as a separate step that could fail independently and leave a user stuck at zero. Record it with `reason: "welcome_grant"`, not `"topup"` (see Section 4). This is a Phase-1 dev/testing convenience, not a production feature — before any public launch, Phase 4 billing work needs a signup-abuse guard (email verification, rate limiting) since these credits map directly to real BytePlus spend.
-- **Job credit costs** (`IMAGE_CREDITS_COST=1`, `VIDEO_CREDITS_COST=14`): stored on the `Job` row at submission time, not recomputed at refund time, so a later config change never alters a refund's value. These numbers are anchored so 1 credit ≈ $0.04 of real BytePlus spend (Seedream's actual cost) — video is priced at 14 credits because Seedance 2.0-fast actually costs ~13.5x an image (~$0.54 vs ~$0.04), not a round 10x. **This pairing is coupled to which models are set as the Phase 1 default** (Section 6): if `VIDEO_CREDITS_COST` and the active video model ever get updated independently, this stops holding. When the default video model later switches to Seedance 2.5 (~$3.46, ~86x an image), `VIDEO_CREDITS_COST` must jump to ~87 in that same change — update both together, always.
+- **Job credit costs** (`IMAGE_CREDITS_COST=1`, `VIDEO_CREDITS_COST=14`): stored on the `Job` row at submission time, not recomputed at refund time, so a later config change never alters a refund's value. These numbers are anchored so 1 credit ≈ $0.04 of real BytePlus spend (Seedream's actual cost) — video is priced at 14 credits because Seedance 2.0-fast actually costs ~13.5x an image (~$0.54 vs ~$0.04), not a round 10x. **This pairing is coupled to which models are set as the Phase 1 default** (Section 6): if `VIDEO_CREDITS_COST` and the active video model ever get updated independently, this stops holding. **That switch happened on 2026-08-31.** The default video model is now
+`dreamina-seedance-2-5-260628`, and the rate moved with it in the same change:
+`DEFAULT_VIDEO_CREDITS_PER_SECOND_720P` is **5.77**, derived as $3.46 per 15s at
+720p ÷ $0.04 a credit ÷ 15s. A 5s/720p clip therefore costs 29 credits where it
+used to cost 14. The pairing rule stands for the next switch — update both
+together, always.
 - Validate/sanitize all prompt input server-side before it reaches ModelArk.
 
 ---

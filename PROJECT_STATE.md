@@ -130,6 +130,30 @@ a bug.
 
 Nothing else can proceed without one of these being settled - see section 3.
 
+## 2c. Video model — switched 2026-08-31
+
+Default is now **`dreamina-seedance-2-5-260628`**, up from
+`dreamina-seedance-2-0-fast-260128`.
+
+| | Before | After |
+|---|---|---|
+| Max duration | 15s | **30s** |
+| Resolutions | 480p, 720p | 480p, 720p, **1080p** |
+| Rate | 2.8 cr/s at 720p | **5.77 cr/s at 720p** |
+| 5s at 720p | 14 credits | **29 credits** |
+| 30s at 720p | not possible | **174 credits** |
+
+Rate derived from a confirmed console price of **$3.46 for 15s at 720p 16:9**
+(`MODELARK_API_REFERENCE.md`), against the $0.04-a-credit anchor in
+`ARCHITECTURE.md` §8 — which had predicted this exact figure before the switch.
+
+**Cost roughly doubled per second.** The default duration is deliberately
+unchanged at 5s; longer clips are opt-in on the slider.
+
+**4K is now unreachable** — 2.5 tops out at 1080p. The `9×` multiplier for 4K in
+`RESOLUTION_COST_MULTIPLIER` is still UNCONFIRMED and must be verified before any
+4K-capable model (such as `dreamina-seedance-2-0-260128`) is made the default.
+
 ## 3. Active blockers
 
 ### 3.1 Voice Cloning — blocked on BytePlus support (external)

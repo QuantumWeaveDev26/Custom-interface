@@ -212,15 +212,29 @@ export const MAX_SOURCE_VIDEOS_PER_JOB = 3;
 
 // --- Credit pricing ---------------------------------------------------------
 
-// Anchored on ARCHITECTURE.md §8: 1 credit ~= $0.04 of real BytePlus spend, and
-// seedance-2-0-fast at 5s/720p cost 14 credits. 2.8 x 5s x 1.0 = 14, so the
-// previous fixed price is preserved exactly for the previous fixed profile.
-export const DEFAULT_VIDEO_CREDITS_PER_SECOND_720P = 2.8;
+// Anchored on ARCHITECTURE.md §8: 1 credit ~= $0.04 of real BytePlus spend.
+//
+// Derivation for the current default model, dreamina-seedance-2-5-260628:
+//   $3.46 for 15s at 720p 16:9   (console capture, MODELARK_API_REFERENCE.md
+//                                 § "Confirmed available models")
+//   $3.46 / $0.04 = 86.5 credits for 15s
+//   86.5 / 15s    = 5.77 credits per second at 720p
+//
+// This number is coupled to MODELARK_VIDEO_MODEL. Changing one without the
+// other silently mis-bills against real spend — see ARCHITECTURE.md §8. The
+// previous value was 2.8, derived the same way for seedance-2-0-fast at
+// ~$0.54 a clip; 2.5 costs roughly twice as much per second.
+export const DEFAULT_VIDEO_CREDITS_PER_SECOND_720P = 5.77;
 
 // ⚠️ UNCONFIRMED. Pixel-count-derived, then rounded UP at every step, because
 // under-charging costs real money and over-charging only costs goodwill.
 // 480p is ~0.34x of 720p by pixels and is billed at 0.5x here on purpose.
 // Verify against real BytePlus per-resolution pricing before launch.
+// ⚠️ The 4K entry is UNCONFIRMED — derived from the pixel-count ratio
+// (3840x2160 / 1280x720 = 9), never checked against real BytePlus per-resolution
+// pricing. It is currently unreachable: the default model tops out at 1080p, so
+// nothing can select 4K. Confirm it before ever defaulting to a 4K-capable
+// model such as dreamina-seedance-2-0-260128.
 export const RESOLUTION_COST_MULTIPLIER: Readonly<
   Record<VideoResolution, number>
 > = Object.freeze({

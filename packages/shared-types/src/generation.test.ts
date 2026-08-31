@@ -20,15 +20,21 @@ const PRICING: CreditPricing = {
   model3dCredits: 20,
 };
 
-// The single most important assertion in this file: the previous flat price for
-// the previous fixed profile must survive the move to parameterized pricing, or
-// every existing user silently gets repriced.
-test("5s 720p video still costs exactly 14 credits", () => {
+// This assertion previously pinned 14 credits for 5s/720p, protecting the old
+// fixed price through the move to parameterized pricing. That anchor is gone on
+// purpose: the default model changed from seedance-2-0-fast to seedance-2-5,
+// which costs roughly twice as much per second, and repricing was the point of
+// the change rather than an accident of it.
+//
+// It now pins the new derivation instead, so the rate still cannot drift
+// silently: $3.46 per 15s at 720p, 1 credit ~= $0.04, giving 5.77 credits a
+// second. 5.77 x 5 x 1.0 = 28.85, rounded up.
+test("5s 720p video costs 29 credits on seedance-2-5", () => {
   const cost = creditCostFor(
     { type: "video", resolution: "720p", ratio: "21:9", durationSeconds: 5 },
     PRICING,
   );
-  assert.equal(cost, 14);
+  assert.equal(cost, 29);
 });
 
 test("video cost scales linearly with duration", () => {
@@ -36,13 +42,14 @@ test("video cost scales linearly with duration", () => {
     { type: "video", resolution: "720p", ratio: "16:9", durationSeconds: 10 },
     PRICING,
   );
-  assert.equal(ten, 28);
+  assert.equal(ten, 58);
 
+  // 30s is now reachable — it is exactly what the model change bought.
   const thirty = creditCostFor(
     { type: "video", resolution: "720p", ratio: "16:9", durationSeconds: 30 },
     PRICING,
   );
-  assert.equal(thirty, 84);
+  assert.equal(thirty, 174);
 });
 
 test("video cost scales with resolution", () => {
@@ -52,19 +59,22 @@ test("video cost scales with resolution", () => {
       PRICING,
     );
 
-  assert.equal(at("480p"), 7); // 2.8 * 5 * 0.5
-  assert.equal(at("720p"), 14); // 2.8 * 5 * 1
-  assert.equal(at("1080p"), 32); // 2.8 * 5 * 2.25 = 31.5 -> ceil
-  assert.equal(at("4K"), 126); // 2.8 * 5 * 9
+  assert.equal(at("480p"), 15); // 5.77 * 5 * 0.5 = 14.425 -> ceil
+  assert.equal(at("720p"), 29); // 5.77 * 5 * 1 = 28.85 -> ceil
+  assert.equal(at("1080p"), 65); // 5.77 * 5 * 2.25 = 64.91 -> ceil
+  // 4K is unreachable on the current default model, which tops out at 1080p.
+  // The 9x multiplier behind this number is still UNCONFIRMED; it is asserted
+  // only so the arithmetic cannot drift unnoticed if a 4K model is adopted.
+  assert.equal(at("4K"), 260); // 5.77 * 5 * 9 = 259.65 -> ceil
 });
 
 test("cost always rounds up, never down", () => {
-  // 2.8 * 4 * 0.5 = 5.6 -> must not round to 5
+  // 5.77 * 4 * 0.5 = 11.54 -> must not round to 11
   const cost = creditCostFor(
     { type: "video", resolution: "480p", ratio: "16:9", durationSeconds: 4 },
     PRICING,
   );
-  assert.equal(cost, 6);
+  assert.equal(cost, 12);
 });
 
 test("cost is never zero even at the smallest settings", () => {
