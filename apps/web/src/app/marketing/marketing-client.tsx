@@ -268,7 +268,7 @@ export function MarketingClient({
               <img
                 src={state.product.imageUrl}
                 alt={state.product.title}
-                className="h-24 w-24 rounded-[2px] object-cover"
+                className="h-24 w-24 rounded-[10px] object-cover"
               />
             )}
             <div>
@@ -290,7 +290,7 @@ export function MarketingClient({
           </div>
 
           <div className="mt-4 flex items-center gap-3">
-            <div className="flex gap-2 rounded-[3px] bg-[var(--bg-elevated)] p-1" role="radiogroup" aria-label="Ad type">
+            <div className="flex gap-2 rounded-[18px] bg-[var(--bg-elevated)] p-1" role="radiogroup" aria-label="Ad type">
               {(["image", "video"] as const).map((type) => (
                 <button
                   key={type}
@@ -329,13 +329,13 @@ export function MarketingClient({
           {generation.phase === "complete" && generation.assetUrl && (
             adType === "image" ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={generation.assetUrl} alt="Generated ad" className="mt-4 w-full rounded-[2px]" />
+              <img src={generation.assetUrl} alt="Generated ad" className="mt-4 w-full rounded-[10px]" />
             ) : (
               <video
                 src={generation.assetUrl}
                 controls
                 preload="metadata"
-                className="mt-4 w-full rounded-[2px]"
+                className="mt-4 w-full rounded-[10px]"
               />
             )
           )}

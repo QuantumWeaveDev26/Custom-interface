@@ -432,35 +432,17 @@ export function StudioClient({
 
   return (
     <div className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6">
-      {/* The report header: what sheet this is, and what stock is left. */}
-      <header
-        className="flex flex-wrap items-end justify-between gap-4 border-b pb-3"
-        style={{ borderColor: "var(--border-strong)" }}
-      >
-        <div>
-          <p className="field-label">Camera report</p>
-          <h1 className="mt-1 text-xl font-semibold tracking-tight">Studio</h1>
-        </div>
-        <div className="text-right">
-          <p className="field-label">Stock remaining</p>
-          <p className="tabular mt-1 font-mono text-lg leading-none text-[var(--text)]">
-            {creditBalance}
-            <span className="ml-1.5 text-[11px] text-[var(--text-faint)]">cr</span>
-          </p>
-        </div>
+      <header className="flex flex-wrap items-center justify-between gap-4">
+        <h1 className="text-xl font-semibold tracking-tight">Studio</h1>
+        <span className="opt" data-active="false" style={{ cursor: "default" }}>
+          <span className="gradient-ring h-2 w-2 rounded-full" aria-hidden="true" />
+          <span className="val text-[13px]">{creditBalance}</span>
+          <span className="text-[var(--text-faint)]">credits</span>
+        </span>
       </header>
 
-      {/* Department: which crew is working this take. Segmented and ruled, not
-          a row of capsules. */}
-      <div className="mt-5">
-        <p className="field-label">Department</p>
-        <div
-          className="mt-1.5 flex divide-x overflow-hidden border"
-          role="radiogroup"
-          aria-label="Generation mode"
-          style={{ borderColor: "var(--border)", borderRadius: "2px" }}
-        >
-          {MODES.map((mode) => (
+      <div className="mt-4 flex flex-wrap gap-2" role="radiogroup" aria-label="Generation mode">
+        {MODES.map((mode) => (
             <button
               key={mode}
               type="button"
@@ -474,29 +456,14 @@ export function StudioClient({
                 setAttachments([]);
                 dispatch({ type: "SET_MODE", mode });
               }}
-              // A segment of one ruled bar, marked by an inked bottom rule
-              // rather than filled like a tab.
-              className="flex-1 px-3 py-2 text-xs font-medium transition-colors duration-150 disabled:opacity-40"
-              style={{
-                borderColor: "var(--border)",
-                color:
-                  state.mode === mode ? "var(--text)" : "var(--text-muted)",
-                background:
-                  state.mode === mode ? "var(--surface)" : "transparent",
-                boxShadow:
-                  state.mode === mode ? "inset 0 -2px 0 0 var(--pencil)" : "none",
-              }}
+              className="opt !px-4"
             >
-              {MODE_LABELS[mode]}
-            </button>
-          ))}
-        </div>
+            {MODE_LABELS[mode]}
+          </button>
+        ))}
       </div>
 
-      <p className="mt-2 font-mono text-[11px] text-[var(--text-faint)]">
-        <span className="field-label">Model</span>{" "}
-        <span className="text-[var(--text-muted)]">{modelLabel}</span>
-      </p>
+      <p className="mt-2 text-[11px] text-[var(--text-faint)]">{modelLabel}</p>
 
       {/* A workspace, not a column of stacked rows: setup on the left where a
           form is filled, the viewer on the right where the work is judged, and
@@ -605,7 +572,7 @@ export function StudioClient({
           <div className="strip-scroll flex gap-2 overflow-x-auto pb-1">
             <label
               htmlFor="upload-image"
-              className={`flex h-16 w-16 shrink-0 flex-col items-center justify-center gap-0.5 rounded-[2px] border border-dashed text-[10px] transition-colors ${
+              className={`flex h-16 w-16 shrink-0 flex-col items-center justify-center gap-0.5 rounded-[10px] border border-dashed text-[10px] transition-colors ${
                 isBusy || uploading
                   ? "cursor-not-allowed opacity-50"
                   : "cursor-pointer hover:border-[var(--border-strong)]"
@@ -657,7 +624,7 @@ export function StudioClient({
                       assetId: selectedInActiveSlot ? null : assetId,
                     })
                   }
-                  className="relative shrink-0 overflow-hidden rounded-[2px] transition-all disabled:opacity-50"
+                  className="relative shrink-0 overflow-hidden rounded-[10px] transition-all disabled:opacity-50"
                   style={{
                     border:
                       isFirst || isLast
@@ -672,7 +639,7 @@ export function StudioClient({
                   />
                   {badge !== null && (
                     <span
-                      className="absolute right-1 top-1 rounded-[2px] px-1.5 text-[9px] font-bold text-white"
+                      className="absolute right-1 top-1 rounded-[10px] px-1.5 text-[9px] font-bold text-white"
                       style={{ background: "var(--accent-via)" }}
                     >
                       {badge}
@@ -746,7 +713,7 @@ export function StudioClient({
                     selected ? `Clip ${order + 1}, click to remove` : "Add as a clip"
                   }
                   onClick={() => dispatch({ type: "TOGGLE_SOURCE_VIDEO", assetId })}
-                  className="relative shrink-0 overflow-hidden rounded-[2px] transition-all disabled:opacity-40"
+                  className="relative shrink-0 overflow-hidden rounded-[10px] transition-all disabled:opacity-40"
                   style={{
                     border: selected
                       ? "2px solid var(--accent-via)"
@@ -761,7 +728,7 @@ export function StudioClient({
                   />
                   {selected && (
                     <span
-                      className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-[2px] text-[10px] font-bold text-white"
+                      className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-[10px] text-[10px] font-bold text-white"
                       style={{ background: "var(--accent-via)" }}
                     >
                       {order + 1}
@@ -1003,11 +970,11 @@ export function StudioClient({
 
         </div>
 
-        <div style={{ gridArea: "notes" }}>
+        <div style={{ gridArea: "notes" }} className="panel p-3">
+      {/* The composer: one floating panel carrying the prompt and the action,
+          so the thing that spends credits reads as the centre of the tool
+          rather than as the last row of a settings form. */}
       <form onSubmit={handleSubmit} className="space-y-2">
-        <label htmlFor="prompt" className="rule-cap">
-          <span>{state.mode === "voice" ? "Text to speak" : "Notes"}</span>
-        </label>
         <textarea
           id="prompt"
           value={state.prompt}
@@ -1044,7 +1011,7 @@ export function StudioClient({
         )}
 
         {composedPrompt !== state.prompt && state.prompt.trim().length > 0 && (
-          <div className="rounded-[2px] border p-2.5" style={{ borderColor: "var(--border)" }}>
+          <div className="rounded-[10px] border p-2.5" style={{ borderColor: "var(--border)" }}>
             <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-[var(--text-faint)]">
               Sent to the model
             </p>
@@ -1192,7 +1159,7 @@ export function StudioClient({
                   target="_blank"
                   rel="noreferrer"
                   title="Open full size"
-                  className="relative shrink-0 overflow-hidden rounded-[2px]"
+                  className="relative shrink-0 overflow-hidden rounded-[10px]"
                   style={{ border: "1px solid var(--border)" }}
                 >
                   {/* Counted backwards from the newest, so take 01 stays take

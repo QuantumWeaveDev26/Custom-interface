@@ -69,7 +69,7 @@ export function ReferencePicker({
       <div className="strip-scroll flex gap-2 overflow-x-auto pb-1">
         <label
           htmlFor={inputId}
-          className={`flex h-16 w-16 shrink-0 flex-col items-center justify-center gap-0.5 rounded-[2px] border border-dashed text-[10px] transition-colors ${
+          className={`flex h-16 w-16 shrink-0 flex-col items-center justify-center gap-0.5 rounded-[10px] border border-dashed text-[10px] transition-colors ${
             disabled || uploading
               ? "cursor-not-allowed opacity-50"
               : "cursor-pointer hover:border-[var(--border-strong)]"
@@ -107,7 +107,7 @@ export function ReferencePicker({
                 selected ? `Reference ${order + 1}, click to remove` : "Add as reference"
               }
               onClick={() => onToggle(assetId)}
-              className="relative shrink-0 overflow-hidden rounded-[2px] transition-all disabled:opacity-50"
+              className="relative shrink-0 overflow-hidden rounded-[10px] transition-all disabled:opacity-50"
               style={{
                 border: selected
                   ? "2px solid var(--accent-via)"
@@ -119,7 +119,7 @@ export function ReferencePicker({
                 // The number is the position the prompt addresses — selection
                 // order is send order.
                 <span
-                  className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-[2px] text-[10px] font-bold text-white"
+                  className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-[10px] text-[10px] font-bold text-white"
                   style={{ background: "var(--accent-via)" }}
                 >
                   {order + 1}
@@ -146,14 +146,14 @@ export function ReferencePicker({
             {characters.map((character) => (
               <span
                 key={character.id}
-                className="inline-flex items-center gap-1 rounded-[2px] border px-1 py-0.5 text-xs"
+                className="inline-flex items-center gap-1 rounded-[10px] border px-1 py-0.5 text-xs"
                 style={{ borderColor: "var(--border)", background: "var(--surface)" }}
               >
                 <button
                   type="button"
                   disabled={disabled}
                   onClick={() => onLoadCharacter(character.assetIds)}
-                  className="rounded-[2px] px-2 py-0.5 text-[var(--text)] disabled:opacity-50"
+                  className="rounded-[10px] px-2 py-0.5 text-[var(--text)] disabled:opacity-50"
                   title={`Load ${character.assetIds.length} reference image(s)`}
                 >
                   {character.name}

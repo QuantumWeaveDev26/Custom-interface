@@ -111,7 +111,7 @@ export function TranscribeClient() {
           htmlFor="audio-file"
           className="card flex cursor-pointer flex-col items-center justify-center gap-2 border-dashed px-6 py-10 text-center transition-colors hover:border-[var(--border-strong)]"
         >
-          <span className="gradient-ring h-8 w-8 rounded-[3px]" aria-hidden="true" />
+          <span className="gradient-ring h-8 w-8 rounded-[18px]" aria-hidden="true" />
           <span className="text-sm font-medium text-[var(--text)]">
             {state.fileName ?? "Choose an audio file"}
           </span>

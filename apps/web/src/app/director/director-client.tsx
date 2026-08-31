@@ -300,7 +300,7 @@ export function DirectorClient({
             return (
               <div key={index} className="card p-4">
                 <div className="flex items-center justify-between">
-                  <span className="rounded-[2px] bg-[var(--surface-hover)] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+                  <span className="rounded-[10px] bg-[var(--surface-hover)] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">
                     Shot {index + 1}
                   </span>
                   <span className="text-xs text-[var(--text-faint)]">
@@ -334,7 +334,7 @@ export function DirectorClient({
                     src={shotGeneration.assetUrl}
                     controls
                     preload="metadata"
-                    className="mt-3 w-full rounded-[2px]"
+                    className="mt-3 w-full rounded-[10px]"
                   />
                 )}
               </div>

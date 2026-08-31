@@ -72,9 +72,16 @@ Hard constraints, all confirmed live and recorded in `MODELARK_API_REFERENCE.md`
 The gradient mark (violet → magenta → orange) is the product's logo and is
 recognised by people who have already seen the tool. It survives as the mark.
 
-**Not a commitment:** that gradient as the interface's accent everywhere. The
-owner chose on 2026-08-30 to replace the visual world with something that reads
-as professional film-studio software.
+**Not a commitment:** that gradient as the interface's accent everywhere.
+
+**Pinned reference (2026-08-31): Higgsfield.** The owner named it as the bar and
+showed its Image and Video surfaces. Its craft level is the standard this
+interface is measured against: dark canvas, content floating on it as rounded
+panels, one saturated signal accent on primary actions, settings as icon-led
+chips, a composer that reads as the centre of the tool.
+
+This supersedes the camera-report direction chosen from a concept roll on
+2026-08-30. A pinned brief beats the roll.
 
 Name in use: **Creative AI**.
 
