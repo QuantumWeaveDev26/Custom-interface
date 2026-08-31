@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import test from "node:test";
 
 import {
@@ -544,4 +546,46 @@ test("a batch adds every image to the history, not just the first", () => {
   });
 
   assert.equal(state.history.length, 2);
+});
+
+// --- Every action stays reachable from the UI --------------------------------
+
+test("every studio action has a dispatch site in the client", () => {
+  // A block replacement in faf14fb removed the batch "How many" slider along
+  // with the markup it sat inside. Nothing failed: the reducer still handled
+  // SET_IMAGE_COUNT, its unit tests still passed, and the control was simply
+  // gone from the page for four commits. Reducer tests cannot see markup, so
+  // this reads the client and asserts each action is still dispatched
+  // somewhere.
+  const client = readFileSync(
+    join(process.cwd(), "src", "app", "studio", "studio-client.tsx"),
+    "utf8",
+  );
+
+  const actions = [
+    "SET_MODE",
+    "SET_PROMPT",
+    "SET_VOICE_STYLE",
+    "SET_IMAGE_SIZE",
+    "SET_IMAGE_COUNT",
+    "SET_MODEL3D_QUALITY",
+    "SET_RESOLUTION",
+    "SET_RATIO",
+    "SET_DURATION",
+    "SET_FIRST_FRAME",
+    "SET_LAST_FRAME",
+    "TOGGLE_SOURCE_VIDEO",
+    "TOGGLE_CAMERA_PRESET",
+    "SET_LENS_PRESET",
+    "SET_LOOK_PRESET",
+    "TOGGLE_REFERENCE",
+    "SET_REFERENCES",
+  ];
+
+  // Matched with its quotes: a bare substring check passes for a renamed
+  // action, since "SET_IMAGE_COUNT" is inside "SET_IMAGE_COUNT_BROKEN".
+  const missing = actions.filter(
+    (action) => !client.includes(`type: "${action}"`),
+  );
+  assert.deepEqual(missing, [], `actions with no dispatch site: ${missing.join(", ")}`);
 });

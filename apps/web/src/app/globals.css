@@ -259,7 +259,11 @@ time {
     grid-template-areas:
       "setup viewer"
       "setup notes";
-    height: calc(100dvh - 8.5rem);
+    /* Fills whatever the header above it left, rather than subtracting a
+       guessed nav height. The composer was falling below the fold because that
+       guess was four rem short. */
+    flex: 1 1 auto;
+    min-height: 0;
     gap: 1rem;
   }
 

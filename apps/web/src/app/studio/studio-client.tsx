@@ -21,6 +21,15 @@ import {
   composeShotPrompt,
 } from "@creative-ai/prompt-library";
 import { AttachButton, type Attachment } from "../attach-button";
+import {
+  ClockIcon,
+  FrameIcon,
+  LensIcon,
+  LookIcon,
+  MoveIcon,
+  QualityIcon,
+  StackIcon,
+} from "./chip-icons";
 import { ReferencePicker } from "./reference-picker";
 import {
   INITIAL_STUDIO_STATE,
@@ -431,7 +440,7 @@ export function StudioClient({
           : voiceModelLabel;
 
   return (
-    <div className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6">
+    <div className="mx-auto flex h-full max-w-[1400px] flex-col px-4 py-5 sm:px-6">
       <header className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-xl font-semibold tracking-tight">Studio</h1>
         <span className="opt" data-active="false" style={{ cursor: "default" }}>
@@ -521,8 +530,46 @@ export function StudioClient({
             onSaveCharacter={handleSaveCharacter}
           />
 
-          <p className="field-label mb-1.5 mt-3 block">
-            Size
+          {/* Restored: this control was cut out by a block replacement in
+              faf14fb, which removed the inlined reference picker and took the
+              batch slider sitting inside that range with it. The reducer and its
+              tests never noticed, because only the markup was lost. */}
+          <label htmlFor="image-count" className="rule-cap mb-2 mt-4">
+            <StackIcon />
+            <span>How many</span>
+            <span className="val ml-auto text-[var(--text)]">
+              {state.imageCount}
+            </span>
+          </label>
+          <input
+            id="image-count"
+            type="range"
+            min={1}
+            // References and generated images share one ceiling of 15, so the
+            // slider shrinks as references are added rather than offering a
+            // number the server would reject.
+            max={Math.max(1, MAX_BATCH_IMAGES - state.referenceAssetIds.length)}
+            step={1}
+            value={state.imageCount}
+            disabled={isBusy}
+            onChange={(event) =>
+              dispatch({
+                type: "SET_IMAGE_COUNT",
+                imageCount: Number(event.target.value),
+              })
+            }
+            className="w-full accent-[var(--signal)] disabled:opacity-50"
+          />
+          {state.imageCount > 1 && (
+            <p className="mt-1 text-[11px] text-[var(--text-muted)]">
+              Generated together, so the set holds a consistent style. The model
+              may return fewer — you are only charged for what arrives.
+            </p>
+          )}
+
+          <p className="rule-cap mb-2 mt-4">
+            <QualityIcon />
+            <span>Size</span>
           </p>
           <div className="flex gap-2" role="radiogroup" aria-label="Image size">
             {IMAGE_SIZES.map((size) => (
@@ -536,6 +583,7 @@ export function StudioClient({
                 onClick={() => dispatch({ type: "SET_IMAGE_SIZE", imageSize: size })}
                 className="opt"
               >
+                <QualityIcon />
                 {size}
               </button>
             ))}
@@ -752,7 +800,7 @@ export function StudioClient({
         <div className="mt-3 space-y-3">
           <div>
             <p className="rule-cap mb-2">
-              Resolution
+              <QualityIcon /><span>Resolution</span>
             </p>
             <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Resolution">
               {videoResolutions.map((resolution) => (
@@ -766,6 +814,7 @@ export function StudioClient({
                   onClick={() => dispatch({ type: "SET_RESOLUTION", resolution })}
                   className="opt"
                 >
+                  <QualityIcon />
                   {resolution}
                 </button>
               ))}
@@ -774,7 +823,7 @@ export function StudioClient({
 
           <div>
             <p className="rule-cap mb-2">
-              Aspect ratio
+              <FrameIcon /><span>Aspect ratio</span>
             </p>
             <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Aspect ratio">
               {ratioOptions.map((ratio) => (
@@ -788,6 +837,7 @@ export function StudioClient({
                   onClick={() => dispatch({ type: "SET_RATIO", ratio })}
                   className="opt"
                 >
+                  <FrameIcon />
                   {ratio}
                 </button>
               ))}
@@ -799,8 +849,11 @@ export function StudioClient({
               htmlFor="duration"
               className="rule-cap mb-2"
             >
+              <ClockIcon />
               <span>Duration</span>
-              <span className="text-[var(--text)]">{state.durationSeconds}s</span>
+              <span className="val ml-auto text-[var(--text)]">
+                {state.durationSeconds}s
+              </span>
             </label>
             <input
               id="duration"
@@ -831,7 +884,7 @@ export function StudioClient({
           {state.mode === "video" && (
             <div>
               <p className="rule-cap mb-2">
-                <span>Camera move <span className="normal-case tracking-normal">(stackable)</span></span>
+                <MoveIcon /><span>Camera move</span>
               </p>
               <div className="move-list flex flex-wrap gap-1.5">
                 {CAMERA_PRESETS.map((preset) => {
@@ -866,7 +919,7 @@ export function StudioClient({
 
           <div>
             <p className="rule-cap mb-2">
-              Lens <span className="normal-case tracking-normal">(optional)</span>
+              <LensIcon /><span>Lens</span>
             </p>
             <div className="flex flex-wrap gap-1.5">
               {LENS_PRESETS.map((preset) => {
@@ -903,7 +956,7 @@ export function StudioClient({
 
           <div>
             <p className="rule-cap mb-2">
-              Look <span className="normal-case tracking-normal">(optional)</span>
+              <LookIcon /><span>Look</span>
             </p>
             <div className="flex flex-wrap gap-1.5">
               {LOOK_PRESETS.map((preset) => {
@@ -941,7 +994,7 @@ export function StudioClient({
       {state.mode === "model3d" && (
         <div className="mt-3">
           <p className="rule-cap mb-2">
-            Detail
+            <QualityIcon /><span>Detail</span>
           </p>
           <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Mesh detail">
             {MODEL3D_QUALITIES.map((quality) => (
@@ -955,6 +1008,7 @@ export function StudioClient({
                 onClick={() => dispatch({ type: "SET_MODEL3D_QUALITY", quality })}
                 className="opt capitalize"
               >
+                <QualityIcon />
                 {quality}
               </button>
             ))}

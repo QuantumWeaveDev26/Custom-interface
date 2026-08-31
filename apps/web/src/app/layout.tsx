@@ -20,7 +20,9 @@ export default async function RootLayout({
 
   return (
     <html lang="en" className={inter.variable}>
-      <body className="font-sans">
+      {/* The shell is a column so a page can ask to fill what is left below the
+          nav, rather than guessing the nav's height in a calc. */}
+      <body className="flex h-full flex-col font-sans">
         {session?.user && (
           <NavBar
             signOutAction={async () => {
@@ -29,7 +31,9 @@ export default async function RootLayout({
             }}
           />
         )}
-        {children}
+        {/* Pages that are taller than the shell scroll here. Studio asks for
+            h-full instead and scrolls inside its own columns. */}
+        <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
       </body>
     </html>
   );
