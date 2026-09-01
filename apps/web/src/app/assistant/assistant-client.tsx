@@ -4,7 +4,7 @@ import type { AssistantAction, AssistantReply } from "@creative-ai/agents";
 import Link from "next/link";
 
 import { KnowledgePanel, type KnowledgeDocument } from "./knowledge-panel";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface Turn {
   role: "user" | "assistant";
@@ -23,8 +23,13 @@ interface Turn {
  */
 export function AssistantClient({
   documents,
+  costs,
+  creditBalance,
 }: {
   documents: readonly KnowledgeDocument[];
+  /** What one default take costs in each department. */
+  costs: Record<"image" | "video" | "voice" | "model3d", number>;
+  creditBalance: number;
 }) {
   const [turns, setTurns] = useState<Turn[]>([]);
   const [question, setQuestion] = useState("");
@@ -126,7 +131,13 @@ export function AssistantClient({
               }
             >
               <p className="whitespace-pre-wrap leading-relaxed">{turn.content}</p>
-              {turn.action !== undefined && <ActionCard action={turn.action} />}
+              {turn.action !== undefined && (
+                <ActionCard
+                  action={turn.action}
+                  costs={costs}
+                  creditBalance={creditBalance}
+                />
+              )}
             </div>
           </div>
         ))}
@@ -178,35 +189,219 @@ export function AssistantClient({
 /**
  * The offered action, as a control rather than a claim.
  *
- * Everything here is a link that pre-fills a page: nothing is submitted, and
- * nothing is charged, until the user acts on the page they land on. That is
- * deliberate — the assistant's reading of "make me a video of the harbour" is
- * a guess until a person agrees with it.
+ * Two shapes. A single take can be made from here, because making it *is* the
+ * request and sending someone to another page to press a second button is
+ * ceremony. Everything else is a link that pre-fills a page, since planning a
+ * film or searching a library is work that belongs in the tool built for it.
+ *
+ * What runs from here states its price first and never reports success before
+ * the server says so — the assistant proposes, the person approves, the system
+ * executes, and only then is anything called done.
  */
-function ActionCard({ action }: { action: AssistantAction }) {
+function ActionCard({
+  action,
+  costs,
+  creditBalance,
+}: {
+  action: AssistantAction;
+  costs: Record<"image" | "video" | "voice" | "model3d", number>;
+  creditBalance: number;
+}) {
   if (action.type === "none") return null;
+
+  if (action.type === "generate" && action.mode !== undefined) {
+    return (
+      <RunAction
+        mode={action.mode}
+        prompt={action.text ?? ""}
+        cost={costs[action.mode]}
+        creditBalance={creditBalance}
+      />
+    );
+  }
 
   const href =
     action.type === "open"
       ? (action.route ?? "/studio")
       : action.type === "plan_film"
         ? `/director?brief=${encodeURIComponent(action.text ?? "")}`
-        : action.type === "search_library"
-          ? `/gallery?q=${encodeURIComponent(action.text ?? "")}`
-          : `/studio?mode=${action.mode ?? "image"}&prompt=${encodeURIComponent(action.text ?? "")}`;
+        : `/gallery?q=${encodeURIComponent(action.text ?? "")}`;
 
   const label =
     action.type === "open"
       ? `Open ${action.route}`
       : action.type === "plan_film"
         ? "Plan this in Director"
-        : action.type === "search_library"
-          ? "Search the library"
-          : `Set this up in Studio`;
+        : "Search the library";
 
   return (
     <Link href={href} className="btn-secondary mt-3 !px-4 !py-2 text-xs">
       {label}
     </Link>
+  );
+}
+
+interface GeneratedAsset {
+  id: string;
+  type: "image" | "video" | "audio" | "model3d";
+  url: string;
+}
+
+type RunPhase = "idle" | "submitting" | "working" | "complete" | "failed";
+
+/**
+ * One take, run from the conversation.
+ *
+ * The price is on the button because a confirmation without a number is not a
+ * confirmation, and the result is the real asset streamed back from the worker
+ * rather than a sentence claiming it exists.
+ */
+function RunAction({
+  mode,
+  prompt,
+  cost,
+  creditBalance,
+}: {
+  mode: "image" | "video" | "voice" | "model3d";
+  prompt: string;
+  cost: number;
+  creditBalance: number;
+}) {
+  const [phase, setPhase] = useState<RunPhase>("idle");
+  const [message, setMessage] = useState<string | null>(null);
+  const [assets, setAssets] = useState<GeneratedAsset[]>([]);
+  const stream = useRef<EventSource | null>(null);
+
+  useEffect(() => () => stream.current?.close(), []);
+
+  const affordable = creditBalance >= cost;
+
+  const run = useCallback(async () => {
+    setPhase("submitting");
+    setMessage(null);
+    try {
+      const response = await fetch("/api/jobs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: mode, prompt }),
+      });
+      if (!response.ok) {
+        const body = (await response.json().catch(() => ({}))) as { error?: string };
+        setPhase("failed");
+        setMessage(body.error ?? "The job was refused.");
+        return;
+      }
+
+      const { jobId } = (await response.json()) as { jobId: string };
+      setPhase("working");
+
+      const events = new EventSource(`/api/jobs/${jobId}/stream`);
+      stream.current = events;
+      events.onmessage = (event) => {
+        let parsed: {
+          status: string;
+          errorMessage?: string;
+          assets?: GeneratedAsset[];
+        };
+        try {
+          parsed = JSON.parse(event.data as string) as typeof parsed;
+        } catch {
+          return;
+        }
+        if (parsed.status === "complete") {
+          setPhase("complete");
+          setAssets(parsed.assets ?? []);
+          events.close();
+        } else if (parsed.status === "failed") {
+          setPhase("failed");
+          setMessage(parsed.errorMessage ?? "Generation failed.");
+          events.close();
+        }
+      };
+      events.onerror = () => events.close();
+    } catch {
+      setPhase("failed");
+      setMessage("Could not reach the server.");
+    }
+  }, [mode, prompt]);
+
+  const heading =
+    mode === "image"
+      ? "Make this image"
+      : mode === "video"
+        ? "Make this video"
+        : mode === "voice"
+          ? "Speak this"
+          : "Make this mesh";
+
+  return (
+    <div className="mt-3 rounded-[12px] p-3" style={{ background: "var(--bg-elevated)" }}>
+      <p className="rule-cap">{heading}</p>
+      <p className="mt-1.5 text-[13px] leading-relaxed text-[var(--text)]">{prompt}</p>
+
+      {phase === "idle" && (
+        <>
+          <div className="composer-footer mt-3">
+            {/* The other door: anyone who wants to change the settings first
+                goes to the composer, where every control lives. */}
+            <Link
+              href={`/studio?mode=${mode}&prompt=${encodeURIComponent(prompt)}`}
+              className="btn-secondary !px-3 !py-1.5 text-xs"
+            >
+              Adjust in Studio
+            </Link>
+            <button
+              type="button"
+              onClick={() => void run()}
+              disabled={!affordable}
+              className="btn-primary gap-2 !px-4 !py-2 text-xs"
+            >
+              <span>Generate</span>
+              <span className="val text-[11px] opacity-70">{cost} cr</span>
+            </button>
+          </div>
+          {!affordable && (
+            <p className="mt-2 text-[11px] text-[var(--danger)]">
+              Not enough credits — this costs {cost}, you have {creditBalance}.
+            </p>
+          )}
+        </>
+      )}
+
+      {(phase === "submitting" || phase === "working") && (
+        <p className="mt-3 flex items-center gap-2 text-xs text-[var(--text-muted)]">
+          <span className="spinner h-3 w-3" aria-hidden="true" />
+          {phase === "submitting"
+            ? "Submitting"
+            : "Generating — this takes a few minutes"}
+        </p>
+      )}
+
+      {phase === "failed" && <p className="mt-3 text-xs text-[var(--danger)]">{message}</p>}
+
+      {phase === "complete" && (
+        <div className="mt-3 space-y-2">
+          {assets.map((asset) =>
+            asset.type === "image" ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img key={asset.id} src={asset.url} alt="" className="w-full rounded-[10px]" />
+            ) : asset.type === "video" ? (
+              <video
+                key={asset.id}
+                src={asset.url}
+                controls
+                preload="metadata"
+                className="w-full rounded-[10px]"
+              />
+            ) : (
+              <audio key={asset.id} src={asset.url} controls className="w-full" />
+            ),
+          )}
+          <Link href="/gallery" className="btn-secondary !px-3 !py-1.5 text-xs">
+            See it in the Gallery
+          </Link>
+        </div>
+      )}
+    </div>
   );
 }
