@@ -2,17 +2,13 @@
 
 import { useCallback, useState } from "react";
 
+import { AssetTile } from "./asset-tile";
+
 export interface SearchResult {
   id: string;
   type: string;
   score: number;
 }
-
-const TYPE_LABELS: Record<string, string> = {
-  image: "Image",
-  video: "Video",
-  audio: "Voice",
-};
 
 export function GallerySearch({
   unindexedCount,
@@ -192,33 +188,18 @@ export function GallerySearch({
           <p className="rule-cap mb-2">
             {results.length} result{results.length === 1 ? "" : "s"}
           </p>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {/* The same tile the library uses. These were hand-built duplicates:
+              their own type pill, their own media rules, their own frame — so a
+              result and the identical asset one scroll away did not look like
+              the same thing. The score rides in the tile's badge slot, shown so
+              a weak match reads as weak rather than as the best there is. */}
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
             {results.map((result) => (
-              <div key={result.id} className="card group overflow-hidden">
-                <div className="relative">
-                  <span className="absolute left-2 top-2 z-10 rounded-[10px] bg-black/75 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-white">
-                    {TYPE_LABELS[result.type] ?? result.type}
-                  </span>
-                  <span className="absolute right-2 top-2 z-10 rounded-[10px] tabular bg-black/75 px-2 py-1 font-mono text-[10px] font-semibold text-white">
-                    {/* Cosine similarity, shown so a weak match reads as weak
-                        rather than as the best the library has. */}
-                    {(result.score * 100).toFixed(0)}%
-                  </span>
-                  {result.type === "image" ? (
-                    <img
-                      src={`/api/assets/${result.id}`}
-                      alt=""
-                      className="aspect-square w-full object-cover"
-                    />
-                  ) : (
-                    <video
-                      src={`/api/assets/${result.id}`}
-                      controls
-                      preload="metadata"
-                      className="aspect-square w-full object-cover"
-                    />
-                  )}
-                </div>
+              <div key={result.id}>
+                <AssetTile
+                  asset={{ id: result.id, type: result.type }}
+                  badge={`${(result.score * 100).toFixed(0)}%`}
+                />
                 <button
                   type="button"
                   onClick={() =>
@@ -228,7 +209,7 @@ export function GallerySearch({
                     )
                   }
                   disabled={searching}
-                  className="w-full px-3 py-2 text-left text-[11px] text-[var(--text-muted)] hover:text-[var(--text)] disabled:opacity-50"
+                  className="w-full px-1 pt-1.5 text-left text-[11px] text-[var(--text-muted)] hover:text-[var(--text)] disabled:opacity-50"
                 >
                   More like this →
                 </button>
