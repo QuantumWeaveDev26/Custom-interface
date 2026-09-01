@@ -31,7 +31,7 @@ import {
   StackIcon,
 } from "./chip-icons";
 import { ComposerSettings } from "./composer-settings";
-import { ReferencePicker } from "./reference-picker";
+import { ReferencePicker, type SavedCharacter } from "./reference-picker";
 import {
   INITIAL_STUDIO_STATE,
   studioReducer,
@@ -58,7 +58,7 @@ export interface StudioClientProps {
   /** Recent clips the user owns, offered as source videos for extend/edit. */
   recentVideoIds: readonly string[];
   /** Saved named characters — reusable reference sets. */
-  characters: readonly { id: string; name: string; assetIds: string[] }[];
+  characters: readonly SavedCharacter[];
 }
 
 interface JobStatusMessage {
@@ -226,7 +226,7 @@ export function StudioClient({
         return;
       }
       const { character } = (await response.json()) as {
-        character: { id: string; name: string; assetIds: string[] };
+        character: SavedCharacter;
       };
       setSavedCharacters((previous) => [character, ...previous]);
       setCharacterName("");

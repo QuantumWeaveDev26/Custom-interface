@@ -1,5 +1,7 @@
 import { prisma } from "@creative-ai/db";
 
+import { characterTrust, type CharacterTrust } from "./character-trust.js";
+
 export const MAX_CHARACTER_NAME_LENGTH = 60;
 // Matches MAX_INPUT_ASSETS_PER_JOB — a character is loaded straight into the
 // reference slots, so it can never hold more than a job accepts.
@@ -23,6 +25,12 @@ export interface CharacterSummary {
   id: string;
   name: string;
   assetIds: string[];
+  /**
+   * Whether the provider will still accept this character as input.
+   * See character-trust.ts — a face the model made expires after 30 days, and
+   * an uploaded photograph is never accepted at all.
+   */
+  trust: CharacterTrust;
 }
 
 export function parseCharacterName(raw: unknown): string {
@@ -66,12 +74,28 @@ export async function listCharacters(userId: string): Promise<CharacterSummary[]
   const characters = await prisma.character.findMany({
     where: { userId },
     orderBy: { createdAt: "desc" },
-    include: { references: { orderBy: { position: "asc" } } },
+    include: {
+      references: {
+        orderBy: { position: "asc" },
+        // Provenance and age are what decide whether the provider will take
+        // this character at all, so they are loaded with it rather than
+        // discovered when a job fails.
+        include: { asset: { select: { jobId: true, createdAt: true } } },
+      },
+    },
   });
+  const now = new Date();
   return characters.map((character) => ({
     id: character.id,
     name: character.name,
     assetIds: character.references.map((reference) => reference.assetId),
+    trust: characterTrust(
+      character.references.map((reference) => ({
+        jobId: reference.asset.jobId,
+        createdAt: reference.asset.createdAt,
+      })),
+      now,
+    ),
   }));
 }
 
@@ -90,7 +114,7 @@ export async function createCharacter(
   return prisma.$transaction(async (tx) => {
     const owned = await tx.asset.findMany({
       where: { id: { in: assetIds }, userId, type: "image" },
-      select: { id: true },
+      select: { id: true, jobId: true, createdAt: true },
     });
     if (owned.length !== assetIds.length) {
       throw new InvalidCharacterError("Reference image not found");
@@ -116,7 +140,12 @@ export async function createCharacter(
       },
     });
 
-    return { id: character.id, name: character.name, assetIds };
+    return {
+      id: character.id,
+      name: character.name,
+      assetIds,
+      trust: characterTrust(owned, new Date()),
+    };
   });
 }
 

@@ -4,7 +4,26 @@ export interface SavedCharacter {
   id: string;
   name: string;
   assetIds: string[];
+  /**
+   * Whether the provider will still take this character as input. Shown on the
+   * chip because the alternative is finding out after a paid job fails: real
+   * photographs are rejected outright, and a face the model made stops being
+   * trusted 30 days after it was generated.
+   */
+  trust:
+    | { state: "usable"; daysLeft: number }
+    | { state: "expiring"; daysLeft: number }
+    | { state: "expired" }
+    | { state: "untrusted" };
 }
+
+const TRUST_NOTE: Record<SavedCharacter["trust"]["state"], string | null> = {
+  usable: null,
+  expiring: "Expires soon — regenerate this face to keep using it",
+  expired: "Past 30 days: the provider no longer accepts this face as input",
+  untrusted:
+    "Contains an uploaded image. The provider rejects photographs of real people — build a character from images generated here",
+};
 
 export interface ReferencePickerProps {
   /** Distinguishes the file input across modes; ids must be unique per page. */
@@ -154,9 +173,32 @@ export function ReferencePicker({
                   disabled={disabled}
                   onClick={() => onLoadCharacter(character.assetIds)}
                   className="rounded-[10px] px-2 py-0.5 text-[var(--text)] disabled:opacity-50"
-                  title={`Load ${character.assetIds.length} reference image(s)`}
+                  title={
+                    TRUST_NOTE[character.trust.state] ??
+                    `Load ${character.assetIds.length} reference image(s)`
+                  }
                 >
                   {character.name}
+                  {/* Still loadable when untrusted: the rule is the provider's
+                      and may change, and a blocked control with no explanation
+                      is worse than a warned one. */}
+                  {character.trust.state !== "usable" && (
+                    <span
+                      className="ml-1.5 text-[10px]"
+                      style={{
+                        color:
+                          character.trust.state === "expiring"
+                            ? "var(--text-faint)"
+                            : "var(--danger)",
+                      }}
+                    >
+                      {character.trust.state === "expiring"
+                        ? `${character.trust.daysLeft}d left`
+                        : character.trust.state === "expired"
+                          ? "expired"
+                          : "not accepted"}
+                    </span>
+                  )}
                 </button>
                 <button
                   type="button"

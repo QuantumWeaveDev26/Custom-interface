@@ -22,6 +22,8 @@
     "src/server/assets.ts",
     "src/server/assets.test.ts",
     "src/server/characters.ts",
+    "src/server/character-trust.ts",
+    "src/server/character-trust.test.ts",
     "src/server/characters.test.ts",
     "src/app/gallery/group-assets.ts",
     "src/app/gallery/group-assets.test.ts",

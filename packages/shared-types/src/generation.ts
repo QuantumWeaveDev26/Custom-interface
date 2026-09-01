@@ -142,6 +142,17 @@ export type GenerationParams =
  * minutes a round, sixteen rounds is most of an hour with no way to parallelise,
  * because each round needs the clip before it.
  */
+/**
+ * How long the provider keeps trusting its own face-bearing output as input.
+ *
+ * BytePlus rejects input images that may show a real person (R8), with one
+ * exception: media this account generated is trusted as input for 30 days, in
+ * its original unedited form. That single rule is what makes a persistent
+ * character possible here at all — a character is a face the model made, reused
+ * before the clock runs out, not a photograph of anybody.
+ */
+export const TRUSTED_INPUT_DAYS = 30;
+
 export const MAX_CHAIN_ROUNDS = 16;
 
 // --- Model capabilities -----------------------------------------------------
