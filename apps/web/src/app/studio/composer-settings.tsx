@@ -11,6 +11,7 @@ import {
 
 import {
   ClockIcon,
+  SoundIcon,
   FrameIcon,
   QualityIcon,
   StackIcon,
@@ -108,6 +109,19 @@ export function ComposerSettings({
             )}
             disabled={disabled}
             onPick={(ratio) => dispatch({ type: "SET_RATIO", ratio })}
+          />
+          {/* Sound is a two-state chip rather than a checkbox so it sits in
+              the same row as the other per-take settings and reads at a
+              glance. Off by default — see withAudio in shared-types. */}
+          <Cycle
+            label="Sound"
+            icon={<SoundIcon />}
+            value={state.withAudio ? "sound" : "silent"}
+            options={["silent", "sound"] as const}
+            disabled={disabled}
+            onPick={(choice) =>
+              dispatch({ type: "SET_AUDIO", withAudio: choice === "sound" })
+            }
           />
           <Stepper
             label="Duration"

@@ -93,6 +93,7 @@ function videoJob(
         resolution: "720p",
         ratio: "21:9",
         durationSeconds: 5,
+      withAudio: false,
       },
     },
     externalTaskId,
@@ -584,6 +585,7 @@ test("a newly claimed video persists its task ID before polling and completes", 
       resolution: "720p",
       ratio: "21:9",
       duration: 5,
+      generate_audio: false,
     },
   ]);
   assert.deepEqual(harness.polledTaskIds, ["modelark-task-1"]);
@@ -1614,4 +1616,29 @@ test("an indexer that throws does not fail an already completed job", async () =
   // and a missing search vector is not a failed generation.
   assert.deepEqual(harness.refunds, []);
   assert.equal(harness.events.at(-1)?.status, JobStatus.Complete);
+});
+
+test("a video job asks the provider for sound only when the take did", async () => {
+  const silent = createVideoHarness(videoJob());
+  await createGenerationProcessor(silent.dependencies)("video-job");
+  assert.equal(silent.createRequests[0]?.generate_audio, false);
+
+  const loud = createVideoHarness({
+    ...videoJob(),
+    inputParams: {
+      prompt: "orbital sunrise",
+      params: {
+        type: "video",
+        resolution: "720p",
+        ratio: "21:9",
+        durationSeconds: 5,
+        withAudio: true,
+      },
+    },
+  });
+  await createGenerationProcessor(loud.dependencies)("video-job");
+
+  // The whole point of the field: silent video is what this project shipped for
+  // months, and the flag is the only thing that changes it.
+  assert.equal(loud.createRequests[0]?.generate_audio, true);
 });

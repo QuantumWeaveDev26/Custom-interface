@@ -31,6 +31,7 @@ test("omitting params yields the previous hardcoded profile values", () => {
     resolution: "720p",
     ratio: "21:9",
     durationSeconds: 5,
+      withAudio: false,
   });
 
   const voice = parseSubmitJobRequest({ type: "voice", prompt: "hello" });
@@ -115,6 +116,7 @@ test("accepts valid video params and preserves them", () => {
     resolution: "1080p",
     ratio: "16:9",
     durationSeconds: 12,
+      withAudio: false,
   });
 });
 
@@ -129,6 +131,7 @@ test("video params fill only the omitted fields from defaults", () => {
     resolution: "720p",
     ratio: "21:9",
     durationSeconds: 9,
+      withAudio: false,
   });
 });
 
@@ -310,7 +313,7 @@ test("rejects video-only input asset roles on non-video jobs", () => {
 test("accepts params within the configured model's documented limits", () => {
   assert.doesNotThrow(() =>
     assertParamsSupportedByModel(
-      { type: "video", resolution: "1080p", ratio: "16:9", durationSeconds: 30 },
+      { type: "video", resolution: "1080p", ratio: "16:9", durationSeconds: 30, withAudio: false },
       "dreamina-seedance-2-5-260628",
     ),
   );
@@ -321,7 +324,7 @@ test("rejects a resolution the configured model does not support", () => {
   assert.throws(
     () =>
       assertParamsSupportedByModel(
-        { type: "video", resolution: "1080p", ratio: "16:9", durationSeconds: 5 },
+        { type: "video", resolution: "1080p", ratio: "16:9", durationSeconds: 5, withAudio: false },
         "dreamina-seedance-2-0-fast-260128",
       ),
     InvalidJobRequest,
@@ -333,7 +336,7 @@ test("rejects a duration outside the configured model's range", () => {
   assert.throws(
     () =>
       assertParamsSupportedByModel(
-        { type: "video", resolution: "720p", ratio: "16:9", durationSeconds: 31 },
+        { type: "video", resolution: "720p", ratio: "16:9", durationSeconds: 31, withAudio: false },
         "dreamina-seedance-2-5-260628",
       ),
     InvalidJobRequest,
@@ -341,7 +344,7 @@ test("rejects a duration outside the configured model's range", () => {
   assert.throws(
     () =>
       assertParamsSupportedByModel(
-        { type: "video", resolution: "720p", ratio: "16:9", durationSeconds: 3 },
+        { type: "video", resolution: "720p", ratio: "16:9", durationSeconds: 3, withAudio: false },
         "dreamina-seedance-2-5-260628",
       ),
     InvalidJobRequest,
@@ -353,14 +356,14 @@ test("an unknown model validates against the conservative capability set", () =>
   assert.throws(
     () =>
       assertParamsSupportedByModel(
-        { type: "video", resolution: "4K", ratio: "16:9", durationSeconds: 5 },
+        { type: "video", resolution: "4K", ratio: "16:9", durationSeconds: 5, withAudio: false },
         "some-future-model-nobody-registered",
       ),
     InvalidJobRequest,
   );
   assert.doesNotThrow(() =>
     assertParamsSupportedByModel(
-      { type: "video", resolution: "720p", ratio: "16:9", durationSeconds: 5 },
+      { type: "video", resolution: "720p", ratio: "16:9", durationSeconds: 5, withAudio: false },
       "some-future-model-nobody-registered",
     ),
   );
@@ -431,6 +434,7 @@ test("accepts ratio adaptive when a keyframe is supplied", () => {
     resolution: "720p",
     ratio: "adaptive",
     durationSeconds: 5,
+      withAudio: false,
   });
 });
 

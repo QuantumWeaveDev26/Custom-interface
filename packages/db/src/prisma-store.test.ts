@@ -71,6 +71,7 @@ test("Prisma adapter submits with serializable isolation and conditional debit",
       resolution: "720p",
       ratio: "21:9",
       durationSeconds: 5,
+    withAudio: false,
     },
     model: "dreamina-seedance-2-0-fast-260128",
     creditsCost: 14,
@@ -177,6 +178,7 @@ test("a legacy video row without params reads back as the old fixed profile", as
     resolution: "720p",
     ratio: "21:9",
     durationSeconds: 5,
+    withAudio: false,
   });
 });
 
@@ -228,6 +230,7 @@ test("a row that already has params is passed through untouched", async () => {
         resolution: "1080p",
         ratio: "16:9",
         durationSeconds: 12,
+    withAudio: false,
       },
     },
   });
@@ -238,5 +241,6 @@ test("a row that already has params is passed through untouched", async () => {
     resolution: "1080p",
     ratio: "16:9",
     durationSeconds: 12,
+    withAudio: false,
   });
 });

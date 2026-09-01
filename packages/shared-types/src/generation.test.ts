@@ -33,7 +33,7 @@ const PRICING: CreditPricing = {
 // second. 5.77 x 5 x 1.0 = 28.85, rounded up.
 test("5s 720p video costs 29 credits on seedance-2-5", () => {
   const cost = creditCostFor(
-    { type: "video", resolution: "720p", ratio: "21:9", durationSeconds: 5 },
+    { type: "video", resolution: "720p", ratio: "21:9", durationSeconds: 5, withAudio: false },
     PRICING,
   );
   assert.equal(cost, 29);
@@ -41,14 +41,14 @@ test("5s 720p video costs 29 credits on seedance-2-5", () => {
 
 test("video cost scales linearly with duration", () => {
   const ten = creditCostFor(
-    { type: "video", resolution: "720p", ratio: "16:9", durationSeconds: 10 },
+    { type: "video", resolution: "720p", ratio: "16:9", durationSeconds: 10, withAudio: false },
     PRICING,
   );
   assert.equal(ten, 58);
 
   // 30s is now reachable — it is exactly what the model change bought.
   const thirty = creditCostFor(
-    { type: "video", resolution: "720p", ratio: "16:9", durationSeconds: 30 },
+    { type: "video", resolution: "720p", ratio: "16:9", durationSeconds: 30, withAudio: false },
     PRICING,
   );
   assert.equal(thirty, 174);
@@ -57,7 +57,7 @@ test("video cost scales linearly with duration", () => {
 test("video cost scales with resolution", () => {
   const at = (resolution: "480p" | "720p" | "1080p" | "4K") =>
     creditCostFor(
-      { type: "video", resolution, ratio: "16:9", durationSeconds: 5 },
+      { type: "video", resolution, ratio: "16:9", durationSeconds: 5, withAudio: false },
       PRICING,
     );
 
@@ -73,7 +73,7 @@ test("video cost scales with resolution", () => {
 test("cost always rounds up, never down", () => {
   // 5.77 * 4 * 0.5 = 11.54 -> must not round to 11
   const cost = creditCostFor(
-    { type: "video", resolution: "480p", ratio: "16:9", durationSeconds: 4 },
+    { type: "video", resolution: "480p", ratio: "16:9", durationSeconds: 4, withAudio: false },
     PRICING,
   );
   assert.equal(cost, 12);
@@ -93,7 +93,7 @@ test("cost is never zero even at the smallest settings", () => {
   assert.equal(creditCostFor({ type: "voice", style: "standard" }, nearlyFree), 1);
   assert.equal(
     creditCostFor(
-      { type: "video", resolution: "480p", ratio: "16:9", durationSeconds: 4 },
+      { type: "video", resolution: "480p", ratio: "16:9", durationSeconds: 4, withAudio: false },
       nearlyFree,
     ),
     1,
@@ -117,7 +117,7 @@ test("the fallback rate applies when no model claims the resolution", () => {
     videoModels: [],
   };
   const cost = creditCostFor(
-    { type: "video", resolution: "720p", ratio: "21:9", durationSeconds: 5 },
+    { type: "video", resolution: "720p", ratio: "21:9", durationSeconds: 5, withAudio: false },
     pricier,
   );
   assert.equal(cost, 28);
@@ -204,7 +204,7 @@ test("a resolution no configured model claims routes nowhere", () => {
 
 test("4K is priced from its own model, not the default rate", () => {
   const cost = creditCostFor(
-    { type: "video", resolution: "4K", ratio: "16:9", durationSeconds: 5 },
+    { type: "video", resolution: "4K", ratio: "16:9", durationSeconds: 5, withAudio: false },
     PRICING,
   );
   // 2.0's rate (5.77) x 5s x the 9x 4K multiplier. That multiplier is still

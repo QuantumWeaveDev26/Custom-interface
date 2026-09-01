@@ -73,6 +73,7 @@ function jobFixture(
         resolution: "720p",
         ratio: "21:9",
         durationSeconds: 5,
+    withAudio: false,
       },
     },
     externalTaskId: null,
@@ -333,6 +334,7 @@ const VIDEO_COMMAND: SubmitJobCommand = {
     resolution: "720p",
     ratio: "21:9",
     durationSeconds: 5,
+    withAudio: false,
   },
   model: "dreamina-seedance-2-0-fast-260128",
   creditsCost: 14,
@@ -356,6 +358,7 @@ test("submission stores the server-resolved model and immutable cost", async () 
       resolution: "720p",
       ratio: "21:9",
       durationSeconds: 5,
+    withAudio: false,
     },
   });
   assert.equal(result.ledger.reason, `generation:${result.job.id}`);

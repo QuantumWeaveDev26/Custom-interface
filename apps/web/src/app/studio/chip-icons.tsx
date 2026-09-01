@@ -89,3 +89,13 @@ export function StackIcon() {
     </svg>
   );
 }
+
+/** Sound on the take. */
+export function SoundIcon() {
+  return (
+    <svg {...base}>
+      <path d="M5 9v6h3l4 3V6L8 9H5Z" />
+      <path d="M15.5 9.5a4 4 0 0 1 0 5" />
+    </svg>
+  );
+}

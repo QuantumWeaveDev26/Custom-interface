@@ -160,7 +160,7 @@ function parseVideoParams(raw: unknown): GenerationParams {
   }
   assertNoUnknownFields(
     raw,
-    ["resolution", "ratio", "durationSeconds"],
+    ["resolution", "ratio", "durationSeconds", "withAudio"],
     "video params",
   );
 
@@ -194,7 +194,13 @@ function parseVideoParams(raw: unknown): GenerationParams {
     throw new InvalidJobRequest("durationSeconds must be a positive integer");
   }
 
-  return { type: "video", resolution, ratio, durationSeconds };
+  const withAudio =
+    raw.withAudio === undefined ? DEFAULT_VIDEO_PARAMS.withAudio : raw.withAudio;
+  if (typeof withAudio !== "boolean") {
+    throw new InvalidJobRequest("withAudio must be true or false");
+  }
+
+  return { type: "video", resolution, ratio, durationSeconds, withAudio };
 }
 
 function parseVoiceParams(raw: unknown): GenerationParams {

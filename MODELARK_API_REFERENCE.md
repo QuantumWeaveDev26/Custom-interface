@@ -195,6 +195,27 @@ Console → ModelArk → Model list and look for an "Access"/"API" tab or code s
 it usually shows the literal model ID string used in the `model` field. Confirm rather
 than trust the derived pattern.
 
+## Sound on generated video (`generate_audio`) — built 2026-09-01
+
+The video endpoint takes `generate_audio: boolean`. Every video this project
+produced before today was silent because the field was never sent.
+
+It is now wired end to end: a `Sound` chip in the Studio composer, `withAudio` on
+the video params, `generate_audio` on the create-task request.
+
+**UNCONFIRMED: what sound costs.** The docs list the field but no surcharge, and
+credits are still charged per second of video with no audio component. That is
+why the default is silent — turning it on by default would have changed the
+price of an existing take without anyone asking for it. Confirm the real cost
+against a live job, then decide whether the default flips and whether the credit
+formula needs an audio term.
+
+**UNCONFIRMED: whether `dreamina-seedance-2-5-260628` supports it.** The support
+matrix on record is for `dreamina-seedance-2-0-fast-260128`. 2.5 is today's
+default model.
+
+---
+
 ## Task status constants (exact strings, confirmed)
 
 ```

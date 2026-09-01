@@ -38,6 +38,8 @@ export interface StudioState {
   voiceStyle: VoiceStyle;
   imageSize: ImageSize;
   resolution: VideoResolution;
+  /** Ask the model for sound as well as pictures. Off by default. */
+  withAudio: boolean;
   ratio: VideoRatio;
   durationSeconds: number;
   /** Asset id used as the video's first frame (image-to-video), if any. */
@@ -92,6 +94,7 @@ export const INITIAL_STUDIO_STATE: StudioState = {
   imageCount: 1,
   model3dQuality: "standard",
   resolution: "720p",
+  withAudio: false,
   ratio: "21:9",
   durationSeconds: 5,
   firstFrameAssetId: null,
@@ -116,6 +119,7 @@ export type StudioAction =
   | { type: "SET_IMAGE_COUNT"; imageCount: number }
   | { type: "SET_MODEL3D_QUALITY"; quality: Model3dQuality }
   | { type: "SET_RESOLUTION"; resolution: VideoResolution }
+  | { type: "SET_AUDIO"; withAudio: boolean }
   | { type: "SET_RATIO"; ratio: VideoRatio }
   | { type: "SET_DURATION"; durationSeconds: number }
   | { type: "SET_FIRST_FRAME"; assetId: string | null }
@@ -189,6 +193,8 @@ export function studioReducer(
       return { ...state, model3dQuality: action.quality };
     case "SET_RESOLUTION":
       return { ...state, resolution: action.resolution };
+    case "SET_AUDIO":
+      return { ...state, withAudio: action.withAudio };
     case "SET_RATIO":
       return { ...state, ratio: action.ratio };
     case "SET_DURATION":

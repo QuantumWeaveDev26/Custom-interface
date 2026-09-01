@@ -94,6 +94,15 @@ export type GenerationParams =
       resolution: VideoResolution;
       ratio: VideoRatio;
       durationSeconds: number;
+      /**
+       * Ask the model for a soundtrack as well as pictures.
+       *
+       * Off by default. The endpoint documents `generate_audio` but not what it
+       * costs, and every video this project has produced so far has been
+       * silent, so defaulting it on would change what an existing take costs
+       * without anyone asking for sound. Confirm the surcharge, then revisit.
+       */
+      withAudio: boolean;
     }
   | { type: "voice"; style: VoiceStyle }
   | { type: "model3d"; quality: Model3dQuality };
@@ -226,6 +235,7 @@ export const DEFAULT_VIDEO_PARAMS: Extract<GenerationParams, { type: "video" }> 
     resolution: "720p",
     ratio: "21:9",
     durationSeconds: 5,
+    withAudio: false,
   });
 
 export const DEFAULT_VOICE_PARAMS: Extract<GenerationParams, { type: "voice" }> =

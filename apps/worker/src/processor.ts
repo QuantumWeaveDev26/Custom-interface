@@ -444,6 +444,7 @@ async function processVideo(
       resolution: params.resolution,
       ratio: params.ratio,
       duration: params.durationSeconds,
+      generate_audio: params.withAudio,
     });
     if (createdTask.id.trim().length === 0) {
       throw new Error("Video creation returned an empty task ID");
