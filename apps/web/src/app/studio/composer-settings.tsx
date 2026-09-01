@@ -3,6 +3,7 @@
 import {
   IMAGE_SIZES,
   MAX_BATCH_IMAGES,
+  MAX_CHAIN_ROUNDS,
   MODEL3D_QUALITIES,
   VIDEO_RATIOS,
   type VideoResolution,
@@ -123,6 +124,19 @@ export function ComposerSettings({
             onPick={(choice) =>
               dispatch({ type: "SET_AUDIO", withAudio: choice === "sound" })
             }
+          />
+          {/* Chained clips. Each one extends the last, so this is the control
+              that turns a take into a sequence — and the one that multiplies
+              both the price and the wait, since the rounds cannot run in
+              parallel. The composer's cost readout already reflects it. */}
+          <Stepper
+            label="Clips"
+            icon={<StackIcon />}
+            value={state.rounds}
+            min={1}
+            max={MAX_CHAIN_ROUNDS}
+            disabled={disabled}
+            onChange={(rounds) => dispatch({ type: "SET_ROUNDS", rounds })}
           />
           <Stepper
             label="Duration"

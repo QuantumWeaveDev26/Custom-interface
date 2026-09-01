@@ -11,6 +11,7 @@ import {
 
 import type {
   AssetType,
+  ChainProgress,
   DatabaseStore,
   DatabaseTransaction,
   JobInputParams,
@@ -29,6 +30,35 @@ type PrismaDelegateClient = Prisma.TransactionClient | PrismaClient;
  * Without this, a legacy job still sitting in the queue would fail on
  * `params.type` and get refunded rather than run.
  */
+/**
+ * Reads the chain-progress column back into its typed shape.
+ *
+ * Anything that is not the shape we write is treated as no progress: a job that
+ * cannot say where it got to must start over, which costs money but is at least
+ * correct. Silently trusting a malformed value would resume a chain from a
+ * clip that may not exist.
+ */
+function chainProgressOf(value: unknown): ChainProgress | null {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+  const candidate = value as {
+    completedRounds?: unknown;
+    clipStorageUrls?: unknown;
+  };
+  if (
+    typeof candidate.completedRounds !== "number" ||
+    !Array.isArray(candidate.clipStorageUrls) ||
+    candidate.clipStorageUrls.some((url) => typeof url !== "string")
+  ) {
+    return null;
+  }
+  return {
+    completedRounds: candidate.completedRounds,
+    clipStorageUrls: candidate.clipStorageUrls as string[],
+  };
+}
+
 function normalizeInputParams(
   raw: unknown,
   jobType: PhaseOneJobType,
@@ -119,6 +149,7 @@ function toDatabaseTransaction(
           ...job,
           type: job.type as PhaseOneJobType,
           status: job.status as JobStatus,
+          chainProgress: chainProgressOf(job.chainProgress),
           inputParams: normalizeInputParams(job.inputParams, job.type as PhaseOneJobType),
         };
       },
@@ -130,6 +161,12 @@ function toDatabaseTransaction(
         }
         if (data.externalTaskId !== undefined) {
           updateData.externalTaskId = data.externalTaskId;
+        }
+        if (data.chainProgress !== undefined) {
+          updateData.chainProgress =
+            data.chainProgress === null
+              ? Prisma.DbNull
+              : (data.chainProgress as unknown as Prisma.InputJsonValue);
         }
         return client.job.updateMany({
           where: {
@@ -154,6 +191,7 @@ function toDatabaseTransaction(
               ...job,
               type: job.type as PhaseOneJobType,
               status: job.status as JobStatus,
+              chainProgress: chainProgressOf(job.chainProgress),
               inputParams: normalizeInputParams(job.inputParams, job.type as PhaseOneJobType),
             };
       },
@@ -163,6 +201,7 @@ function toDatabaseTransaction(
           ...job,
           type: job.type as PhaseOneJobType,
           status: job.status as JobStatus,
+          chainProgress: chainProgressOf(job.chainProgress),
           inputParams: normalizeInputParams(job.inputParams, job.type as PhaseOneJobType),
         }));
       },

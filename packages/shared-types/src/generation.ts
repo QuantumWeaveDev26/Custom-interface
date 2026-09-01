@@ -106,9 +106,32 @@ export type GenerationParams =
        * The chip therefore turns sound *off*, for a take that does not want it.
        */
       withAudio: boolean;
+      /**
+       * How many clips to chain into one continuous piece.
+       *
+       * 1 is an ordinary take. Above 1, each round extends the previous clip
+       * through the provider's video-extend path, so the continuation is
+       * conditioned on the clip's motion rather than on a single still — which
+       * is what makes minutes of footage hold together.
+       *
+       * Sequential by nature: round N+1 cannot start until round N exists. At
+       * roughly three minutes a round, the ceiling is as much about wall clock
+       * as it is about spend.
+       */
+      rounds: number;
     }
   | { type: "voice"; style: VoiceStyle }
   | { type: "model3d"; quality: Model3dQuality };
+
+/**
+ * The longest chain a single job may ask for.
+ *
+ * Sixteen 30s rounds is eight minutes, which is the length this ceiling was
+ * chosen to reach. It is a wall-clock limit as much as a spend one: at ~3
+ * minutes a round, sixteen rounds is most of an hour with no way to parallelise,
+ * because each round needs the clip before it.
+ */
+export const MAX_CHAIN_ROUNDS = 16;
 
 // --- Model capabilities -----------------------------------------------------
 
@@ -239,6 +262,7 @@ export const DEFAULT_VIDEO_PARAMS: Extract<GenerationParams, { type: "video" }> 
     ratio: "21:9",
     durationSeconds: 5,
     withAudio: true,
+    rounds: 1,
   });
 
 export const DEFAULT_VOICE_PARAMS: Extract<GenerationParams, { type: "voice" }> =
@@ -376,6 +400,8 @@ export function creditCostFor(
       : videoCapabilitiesFor(model).creditsPerSecond720p;
 
   const multiplier = RESOLUTION_COST_MULTIPLIER[params.resolution];
-  const raw = perSecond * params.durationSeconds * multiplier;
+  // Every round is a full generation of its own — the provider charges for the
+  // new footage each time, so a 16-round chain costs sixteen clips, not one.
+  const raw = perSecond * params.durationSeconds * multiplier * params.rounds;
   return Math.max(1, Math.ceil(raw));
 }

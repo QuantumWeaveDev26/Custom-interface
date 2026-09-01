@@ -86,6 +86,12 @@ model Job {
   // a later config change never retroactively alters what a job actually ran.
   inputParams    Json
   externalTaskId String?
+  // Progress through a chained video job: { completedRounds, assetIds }.
+  // Null for every single-round job. It exists because a sixteen-round chain is
+  // most of an hour of paid work, and a worker restart at round twelve must
+  // resume there rather than regenerate — and recharge — the eleven clips that
+  // already exist.
+  chainProgress  Json?
   errorMessage   String?
   creditsCost    Int
   createdAt      DateTime @default(now())

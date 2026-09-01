@@ -14,6 +14,7 @@ const JOB_ROW = {
   status: "queued",
   inputParams: { prompt: "orbital sunrise" },
   externalTaskId: null,
+  chainProgress: null,
   errorMessage: null,
   creditsCost: 14,
   createdAt: new Date("2026-08-27T00:00:00.000Z"),
@@ -71,7 +72,8 @@ test("Prisma adapter submits with serializable isolation and conditional debit",
       resolution: "720p",
       ratio: "21:9",
       durationSeconds: 5,
-    withAudio: false,
+    withAudio: true,
+      rounds: 1,
     },
     model: "dreamina-seedance-2-0-fast-260128",
     creditsCost: 14,
@@ -178,7 +180,8 @@ test("a legacy video row without params reads back as the old fixed profile", as
     resolution: "720p",
     ratio: "21:9",
     durationSeconds: 5,
-    withAudio: false,
+    withAudio: true,
+      rounds: 1,
   });
 });
 
@@ -230,7 +233,8 @@ test("a row that already has params is passed through untouched", async () => {
         resolution: "1080p",
         ratio: "16:9",
         durationSeconds: 12,
-    withAudio: false,
+    withAudio: true,
+      rounds: 1,
       },
     },
   });
@@ -241,6 +245,7 @@ test("a row that already has params is passed through untouched", async () => {
     resolution: "1080p",
     ratio: "16:9",
     durationSeconds: 12,
-    withAudio: false,
+    withAudio: true,
+      rounds: 1,
   });
 });

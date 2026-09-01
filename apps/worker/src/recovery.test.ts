@@ -20,6 +20,7 @@ function queuedJob(id: string, createdAt: Date): JobRecord {
       params: { type: "image", size: "4K", count: 1 },
     },
     externalTaskId: null,
+    chainProgress: null,
     errorMessage: null,
     creditsCost: 1,
     createdAt,

@@ -132,6 +132,8 @@ a bug.
 - [ ] **Gallery (3D):** Click "Preview in 3D" on a mesh; the viewer loads only on that click.
 - [ ] **Accessibility:** Press Tab key through all controls; verify 2px signal focus ring on every element.
 - [ ] **Studio (Video):** Set the Sound chip to `silent`, generate, and confirm the result really has no audio track — the provider returns sound by default, so this chip is the only thing that turns it off.
+- [ ] **Studio (Video):** Set Clips to 3 at 5s/720p, check the cost readout is 3x a single take (~87 cr), generate, and watch the three clips for drift across the two joins. This is the long-form proof — if continuity holds here it holds at sixteen.
+- [ ] **Studio (Video):** While a 3-clip chain is running, restart the worker. It must resume at the round it reached, not regenerate the finished clips.
 - [ ] **Gallery:** Click Similar on a library tile; results load from the URL and the back button returns to the library.
 - [ ] **Accessibility:** Press Tab on a fresh page load; the first stop is "Skip to content".
 - [ ] **Accessibility (Studio):** Tab to the results column and scroll it with the arrow keys — it is a focus stop of its own because a column of images has nothing tabbable in it.

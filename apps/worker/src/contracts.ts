@@ -1,4 +1,5 @@
 import type {
+  ChainProgress,
   CompleteJobResult,
   CreateAssetInput,
   JobRecord,
@@ -51,6 +52,12 @@ export interface GenerationProcessorDependencies {
    * private bucket.
    */
   signAssetUrl(storageUrl: string): Promise<string>;
+  /**
+   * Records a finished round of a chained video job, and clears the task id of
+   * the round it completed. Called once per round so a restart resumes rather
+   * than re-renders.
+   */
+  saveChainProgress(jobId: string, progress: ChainProgress): Promise<void>;
   /**
    * Embeds the assets a finished job produced, if the owner has asked for it.
    *

@@ -435,61 +435,115 @@ async function processVideo(
     throw new Error(`Video job ${job.id} has ${params.type} params`);
   }
 
+  // One round per clip. A single-round job walks this loop exactly once and
+  // behaves as it always has; a chain walks it `rounds` times, each round
+  // extending the clip before it.
+  //
+  // Progress is read from the job rather than started fresh, so a worker that
+  // died at round twelve resumes at twelve. Sixteen rounds is most of an hour
+  // of paid rendering — starting over would charge the user twice for the same
+  // footage.
+  const progress = job.chainProgress ?? {
+    completedRounds: 0,
+    clipStorageUrls: [],
+  };
+  const clipStorageUrls = [...progress.clipStorageUrls];
   let externalTaskId = resumedTaskId;
-  if (externalTaskId === null) {
-    const content = await buildVideoContent(dependencies, job);
-    const createdTask = await dependencies.modelArk.createVideoTask({
-      model: job.model,
-      content,
-      resolution: params.resolution,
-      ratio: params.ratio,
-      duration: params.durationSeconds,
-      generate_audio: params.withAudio,
-      // Always asked for, because it is what makes a second clip able to
-      // continue the first: the frame this one ends on becomes the frame the
-      // next one starts from. It is a still, not a second render.
-      return_last_frame: true,
-    });
-    if (createdTask.id.trim().length === 0) {
-      throw new Error("Video creation returned an empty task ID");
-    }
-    externalTaskId = createdTask.id;
-    await dependencies.saveExternalTaskId(job.id, externalTaskId);
-  }
-
-  const task = await dependencies.modelArk.pollVideoTaskUntilDone(
-    externalTaskId,
-  );
-  const videoUrl = assertSucceededVideo(task);
-  const media = await dependencies.download(videoUrl);
-  const storageUrl = await dependencies.storage.upload({
-    userId: job.userId,
-    jobId: job.id,
-    type: "video",
-    ...media,
-  });
-  // Stored as an ordinary image so it lands in the gallery and can be picked as
-  // the next clip's first frame with the picker that already exists. Best
-  // effort: a clip that arrived is a finished job, and losing the still costs a
-  // continuation, not the take. Failing here would refund a video the user has.
   let lastFrameStorageUrl: string | null = null;
-  const lastFrameUrl = task.content.last_frame_url;
-  if (lastFrameUrl !== undefined && lastFrameUrl.length > 0) {
-    try {
-      const frame = await dependencies.download(lastFrameUrl);
-      lastFrameStorageUrl = await dependencies.storage.upload({
+
+  for (let round = progress.completedRounds; round < params.rounds; round += 1) {
+    if (externalTaskId === null) {
+      const previousClip = clipStorageUrls.at(-1);
+      const content =
+        previousClip === undefined
+          ? await buildVideoContent(dependencies, job)
+          : // Extend, not first-frame chaining: the continuation is conditioned
+            // on the previous clip's motion rather than on a single still,
+            // which is what keeps a long piece coherent. Confirmed live on
+            // seedance-2.5 (MODELARK_API_REFERENCE.md, live probe 2026-09-01).
+            ([
+              {
+                type: "text",
+                text: `Continue seamlessly from [Video 1]. ${job.inputParams.prompt}`,
+              },
+              {
+                type: "video_url",
+                video_url: { url: await dependencies.signAssetUrl(previousClip) },
+                role: "reference_video",
+              },
+            ] as CreateContentGenerationContentItem[]);
+
+      const createdTask = await dependencies.modelArk.createVideoTask({
+        model: job.model,
+        content,
+        resolution: params.resolution,
+        ratio: params.ratio,
+        duration: params.durationSeconds,
+        generate_audio: params.withAudio,
+        // The still this clip ends on. Useful on its own, and the fallback if a
+        // later round ever has to be restarted from a frame rather than a clip.
+        return_last_frame: true,
+      });
+      if (createdTask.id.trim().length === 0) {
+        throw new Error("Video creation returned an empty task ID");
+      }
+      externalTaskId = createdTask.id;
+      // Persisted before polling so a crash mid-generation resumes the existing
+      // task instead of paying for a second one.
+      await dependencies.saveExternalTaskId(job.id, externalTaskId);
+    }
+
+    const task = await dependencies.modelArk.pollVideoTaskUntilDone(
+      externalTaskId,
+    );
+    const videoUrl = assertSucceededVideo(task);
+    const media = await dependencies.download(videoUrl);
+    clipStorageUrls.push(
+      await dependencies.storage.upload({
         userId: job.userId,
         jobId: job.id,
-        type: "image",
-        ...frame,
+        type: "video",
+        ...media,
+      }),
+    );
+    externalTaskId = null;
+
+    // Only the final still is kept. One frame per round would put fifteen
+    // near-identical images in the gallery for an eight-minute piece.
+    const isFinalRound = round === params.rounds - 1;
+    const lastFrameUrl = task.content.last_frame_url;
+    if (isFinalRound && lastFrameUrl !== undefined && lastFrameUrl.length > 0) {
+      // Best effort: a clip that arrived is finished work, and losing the still
+      // costs a continuation, not the take. Failing here would refund video the
+      // user already has.
+      try {
+        const frame = await dependencies.download(lastFrameUrl);
+        lastFrameStorageUrl = await dependencies.storage.upload({
+          userId: job.userId,
+          jobId: job.id,
+          type: "image",
+          ...frame,
+        });
+      } catch (error) {
+        console.error(`Failed to store last frame for job ${job.id}:`, error);
+      }
+    }
+
+    // Single-round jobs skip this: there is nothing to resume to, and it would
+    // be a database write on the hot path of every ordinary take.
+    if (params.rounds > 1) {
+      await dependencies.saveChainProgress(job.id, {
+        completedRounds: round + 1,
+        clipStorageUrls,
       });
-    } catch (error) {
-      console.error(`Failed to store last frame for job ${job.id}:`, error);
     }
   }
 
   const completed = await dependencies.completeJobWithAssets(job.id, [
-    { type: "video", storageUrl },
+    ...clipStorageUrls.map((storageUrl) => ({
+      type: "video" as const,
+      storageUrl,
+    })),
     ...(lastFrameStorageUrl === null
       ? []
       : [{ type: "image" as const, storageUrl: lastFrameStorageUrl }]),

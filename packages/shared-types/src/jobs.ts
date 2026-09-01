@@ -6,6 +6,7 @@ import {
   INPUT_ASSET_ROLES,
   DEFAULT_MODEL3D_PARAMS,
   MAX_BATCH_IMAGES,
+  MAX_CHAIN_ROUNDS,
   MODEL3D_QUALITIES,
   type Model3dQuality,
   MAX_INPUT_ASSETS_PER_JOB,
@@ -160,7 +161,7 @@ function parseVideoParams(raw: unknown): GenerationParams {
   }
   assertNoUnknownFields(
     raw,
-    ["resolution", "ratio", "durationSeconds", "withAudio"],
+    ["resolution", "ratio", "durationSeconds", "withAudio", "rounds"],
     "video params",
   );
 
@@ -200,7 +201,20 @@ function parseVideoParams(raw: unknown): GenerationParams {
     throw new InvalidJobRequest("withAudio must be true or false");
   }
 
-  return { type: "video", resolution, ratio, durationSeconds, withAudio };
+  const rounds =
+    raw.rounds === undefined ? DEFAULT_VIDEO_PARAMS.rounds : raw.rounds;
+  if (
+    typeof rounds !== "number" ||
+    !Number.isInteger(rounds) ||
+    rounds < 1 ||
+    rounds > MAX_CHAIN_ROUNDS
+  ) {
+    throw new InvalidJobRequest(
+      `rounds must be a whole number between 1 and ${MAX_CHAIN_ROUNDS}`,
+    );
+  }
+
+  return { type: "video", resolution, ratio, durationSeconds, withAudio, rounds };
 }
 
 function parseVoiceParams(raw: unknown): GenerationParams {

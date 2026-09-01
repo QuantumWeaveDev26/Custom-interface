@@ -74,9 +74,11 @@ function jobFixture(
         ratio: "21:9",
         durationSeconds: 5,
     withAudio: false,
+      rounds: 1,
       },
     },
     externalTaskId: null,
+    chainProgress: null,
     errorMessage: null,
     creditsCost: 14,
     createdAt: FIXED_TIME,
@@ -335,6 +337,7 @@ const VIDEO_COMMAND: SubmitJobCommand = {
     ratio: "21:9",
     durationSeconds: 5,
     withAudio: false,
+      rounds: 1,
   },
   model: "dreamina-seedance-2-0-fast-260128",
   creditsCost: 14,
@@ -359,6 +362,7 @@ test("submission stores the server-resolved model and immutable cost", async () 
       ratio: "21:9",
       durationSeconds: 5,
     withAudio: false,
+      rounds: 1,
     },
   });
   assert.equal(result.ledger.reason, `generation:${result.job.id}`);
@@ -702,6 +706,7 @@ test("stale queued query applies cutoff, oldest-first order, and batch limit", a
         id: "middle",
         status: "queued",
         externalTaskId: "unexpected-but-preserved",
+        chainProgress: null,
         createdAt: new Date("2026-08-27T00:00:30.000Z"),
       }),
       jobFixture({

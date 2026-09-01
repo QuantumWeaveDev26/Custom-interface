@@ -40,6 +40,8 @@ export interface StudioState {
   resolution: VideoResolution;
   /** Whether the take comes back with sound. On, matching the provider. */
   withAudio: boolean;
+  /** Clips chained into one continuous piece. 1 is an ordinary take. */
+  rounds: number;
   ratio: VideoRatio;
   durationSeconds: number;
   /** Asset id used as the video's first frame (image-to-video), if any. */
@@ -95,6 +97,7 @@ export const INITIAL_STUDIO_STATE: StudioState = {
   model3dQuality: "standard",
   resolution: "720p",
   withAudio: true,
+  rounds: 1,
   ratio: "21:9",
   durationSeconds: 5,
   firstFrameAssetId: null,
@@ -120,6 +123,7 @@ export type StudioAction =
   | { type: "SET_MODEL3D_QUALITY"; quality: Model3dQuality }
   | { type: "SET_RESOLUTION"; resolution: VideoResolution }
   | { type: "SET_AUDIO"; withAudio: boolean }
+  | { type: "SET_ROUNDS"; rounds: number }
   | { type: "SET_RATIO"; ratio: VideoRatio }
   | { type: "SET_DURATION"; durationSeconds: number }
   | { type: "SET_FIRST_FRAME"; assetId: string | null }
@@ -195,6 +199,8 @@ export function studioReducer(
       return { ...state, resolution: action.resolution };
     case "SET_AUDIO":
       return { ...state, withAudio: action.withAudio };
+    case "SET_ROUNDS":
+      return { ...state, rounds: action.rounds };
     case "SET_RATIO":
       return { ...state, ratio: action.ratio };
     case "SET_DURATION":

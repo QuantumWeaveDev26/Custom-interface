@@ -4,6 +4,8 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 
+import { creditCostFor, type CreditPricing } from "@creative-ai/shared-types";
+
 import {
   INITIAL_STUDIO_STATE,
   MAX_SESSION_HISTORY,
@@ -603,4 +605,42 @@ test("every studio action has a dispatch site in the client", () => {
     (action) => !client.includes(`type: "${action}"`),
   );
   assert.deepEqual(missing, [], `actions with no dispatch site: ${missing.join(", ")}`);
+});
+
+const TEST_PRICING: CreditPricing = {
+  imageCredits: 1,
+  voiceCredits: 1,
+  videoCreditsPerSecond720p: 5.77,
+  videoModels: ["dreamina-seedance-2-5-260628"],
+  model3dCredits: 20,
+};
+
+test("a chain of clips costs what all of its rounds cost", () => {
+  // The failure this guards is a chain priced as one clip. Sixteen rounds is
+  // sixteen generations the provider bills for, and a cost readout that says
+  // otherwise is how a user spends $110 expecting $7.
+  const single = creditCostFor(
+    {
+      type: "video",
+      resolution: "720p",
+      ratio: "21:9",
+      durationSeconds: 5,
+      withAudio: true,
+      rounds: 1,
+    },
+    TEST_PRICING,
+  );
+  const chained = creditCostFor(
+    {
+      type: "video",
+      resolution: "720p",
+      ratio: "21:9",
+      durationSeconds: 5,
+      withAudio: true,
+      rounds: 4,
+    },
+    TEST_PRICING,
+  );
+
+  assert.equal(chained, single * 4);
 });

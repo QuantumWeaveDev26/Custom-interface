@@ -37,6 +37,7 @@ function imageJob(status: JobRecord["status"] = "queued"): JobRecord {
       params: { type: "image", size: "4K", count: 1 },
     },
     externalTaskId: null,
+    chainProgress: null,
     errorMessage: null,
     creditsCost: 1,
     createdAt: FIXED_TIME,
@@ -69,6 +70,7 @@ function voiceJob(style: "standard" | "expressive" = "standard"): JobRecord {
       params: { type: "voice", style },
     },
     externalTaskId: null,
+    chainProgress: null,
     errorMessage: null,
     creditsCost: 1,
     createdAt: FIXED_TIME,
@@ -83,6 +85,7 @@ function videoJob(
   return {
     id: "video-job",
     userId: "user-1",
+    chainProgress: null,
     type: "video",
     model: "dreamina-seedance-2-0-fast-260128",
     status,
@@ -94,6 +97,7 @@ function videoJob(
         ratio: "21:9",
         durationSeconds: 5,
       withAudio: false,
+      rounds: 1,
       },
     },
     externalTaskId,
@@ -232,6 +236,10 @@ function createVideoHarness(
     },
     loadInputAssets: async () => [],
     signAssetUrl: async (storageUrl) => `https://signed.example/${storageUrl}`,
+    saveChainProgress: async (_jobId, progress) => {
+      operations.push(`db:chain:${progress.completedRounds}`);
+      currentJob = { ...currentJob, chainProgress: progress };
+    },
   };
   return {
     dependencies,
@@ -354,6 +362,10 @@ function createImageFailureHarness(options: ImageFailureHarnessOptions): {
     },
     loadInputAssets: async () => [],
     signAssetUrl: async (storageUrl) => `https://signed.example/${storageUrl}`,
+    saveChainProgress: async (_jobId, progress) => {
+      operations.push(`db:chain:${progress.completedRounds}`);
+      currentJob = { ...currentJob, chainProgress: progress };
+    },
   };
   return {
     dependencies,
@@ -461,6 +473,10 @@ test("claims an image job, creates once without polling, and publishes after dur
     },
     loadInputAssets: async () => [],
     signAssetUrl: async (storageUrl) => `https://signed.example/${storageUrl}`,
+    saveChainProgress: async (_jobId, progress) => {
+      operations.push(`db:chain:${progress.completedRounds}`);
+      currentJob = { ...currentJob, chainProgress: progress };
+    },
   };
 
   await createGenerationProcessor(dependencies)("image-job");
@@ -561,6 +577,7 @@ test("an already-processing image fails and refunds without replaying createImag
     },
     loadInputAssets: async () => [],
     signAssetUrl: async (storageUrl) => `https://signed.example/${storageUrl}`,
+    saveChainProgress: async () => {},
   };
 
   await createGenerationProcessor(dependencies)(job.id);
@@ -905,6 +922,10 @@ test("a standard voice job calls createSpeech, not createAudioGeneration", async
     },
     loadInputAssets: async () => [],
     signAssetUrl: async (storageUrl) => `https://signed.example/${storageUrl}`,
+    saveChainProgress: async (_jobId, progress) => {
+      operations.push(`db:chain:${progress.completedRounds}`);
+      currentJob = { ...currentJob, chainProgress: progress };
+    },
   };
 
   await createGenerationProcessor(dependencies)("voice-job");
@@ -987,6 +1008,10 @@ test("an expressive voice job calls createAudioGeneration, not createSpeech", as
     },
     loadInputAssets: async () => [],
     signAssetUrl: async (storageUrl) => `https://signed.example/${storageUrl}`,
+    saveChainProgress: async (_jobId, progress) => {
+      operations.push(`db:chain:${progress.completedRounds}`);
+      currentJob = { ...currentJob, chainProgress: progress };
+    },
   };
 
   await createGenerationProcessor(dependencies)("voice-job");
@@ -1291,6 +1316,7 @@ function createImageHarness({
     },
     loadInputAssets: async () => [],
     signAssetUrl: async (storageUrl) => `https://signed.example/${storageUrl}`,
+    saveChainProgress: async () => {},
   };
 
   return { dependencies, createRequests, uploads, events };
@@ -1357,6 +1383,7 @@ function model3dJob(status: JobRecord["status"] = "queued"): JobRecord {
       params: { type: "model3d", quality: "high" },
     },
     externalTaskId: null,
+    chainProgress: null,
     errorMessage: null,
     creditsCost: 40,
     createdAt: FIXED_TIME,
@@ -1439,6 +1466,7 @@ function create3dHarness(fileUrl = "https://provider.example/mesh.glb") {
     },
     loadInputAssets: async () => [],
     signAssetUrl: async (storageUrl) => `https://signed.example/${storageUrl}`,
+    saveChainProgress: async () => {},
   };
 
   return { dependencies, createRequests, uploads, events, savedTaskIds };
@@ -1641,6 +1669,7 @@ test("a video job asks the provider for sound only when the take did", async () 
         ratio: "21:9",
         durationSeconds: 5,
         withAudio: true,
+      rounds: 1,
       },
     },
   });
@@ -1684,4 +1713,105 @@ test("a video still completes when its last frame cannot be stored", async () =>
   assert.deepEqual(harness.refunds, []);
   assert.equal(harness.events.at(-1)?.status, JobStatus.Complete);
   assert.equal(harness.events.at(-1)?.assets?.length, 1);
+});
+
+function chainJob(rounds: number, chainProgress: JobRecord["chainProgress"] = null): JobRecord {
+  const base = videoJob();
+  return {
+    ...base,
+    chainProgress,
+    inputParams: {
+      prompt: "orbital sunrise",
+      params: {
+        type: "video",
+        resolution: "720p",
+        ratio: "21:9",
+        durationSeconds: 5,
+        withAudio: true,
+        rounds,
+      },
+    },
+  };
+}
+
+test("a three-round job extends each clip from the one before it", async () => {
+  const harness = createVideoHarness(chainJob(3));
+
+  await createGenerationProcessor(harness.dependencies)("video-job");
+
+  assert.equal(harness.createRequests.length, 3);
+
+  // Round one is an ordinary text-to-video request.
+  assert.ok(
+    harness.createRequests[0]?.content.every((item) => item.type !== "video_url"),
+    "the first round must not reference a video that does not exist yet",
+  );
+
+  // Rounds two and three extend, and each references the clip the round before
+  // it produced — not the original, and not a still.
+  for (const index of [1, 2]) {
+    const videoItems = harness.createRequests[index]?.content.filter(
+      (item) => item.type === "video_url",
+    );
+    assert.equal(videoItems?.length, 1, `round ${index + 1} must extend one clip`);
+    assert.equal(
+      (videoItems?.[0] as { role?: string }).role,
+      "reference_video",
+    );
+  }
+
+  // Every clip is kept, in order, as one job's worth of assets.
+  assert.equal(
+    harness.operations.filter((op) => op === "storage:upload:video").length,
+    3,
+  );
+});
+
+test("a chain resumes at the round it died on rather than re-rendering", async () => {
+  const harness = createVideoHarness(
+    chainJob(3, {
+      completedRounds: 2,
+      clipStorageUrls: ["tos://bucket/clip-1.mp4", "tos://bucket/clip-2.mp4"],
+    }),
+  );
+
+  await createGenerationProcessor(harness.dependencies)("video-job");
+
+  // Only the missing round is generated. Sixteen rounds is most of an hour of
+  // paid rendering; re-running the finished ones would charge twice for footage
+  // the user already has.
+  assert.equal(harness.createRequests.length, 1);
+  assert.equal(
+    harness.operations.filter((op) => op === "storage:upload:video").length,
+    1,
+  );
+
+  // The resumed round extends the last stored clip.
+  const videoItem = harness.createRequests[0]?.content.find(
+    (item) => item.type === "video_url",
+  ) as { video_url?: { url: string } } | undefined;
+  assert.match(videoItem?.video_url?.url ?? "", /clip-2\.mp4/);
+});
+
+test("progress is recorded after every round of a chain", async () => {
+  const harness = createVideoHarness(chainJob(3));
+
+  await createGenerationProcessor(harness.dependencies)("video-job");
+
+  assert.deepEqual(
+    harness.operations.filter((op) => op.startsWith("db:chain")),
+    ["db:chain:1", "db:chain:2", "db:chain:3"],
+  );
+});
+
+test("an ordinary single-round take writes no chain progress", async () => {
+  const harness = createVideoHarness(videoJob());
+
+  await createGenerationProcessor(harness.dependencies)("video-job");
+
+  // A database write on the hot path of every take, for state nothing reads.
+  assert.deepEqual(
+    harness.operations.filter((op) => op.startsWith("db:chain")),
+    [],
+  );
 });

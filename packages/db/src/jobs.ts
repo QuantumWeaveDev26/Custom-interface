@@ -1,6 +1,7 @@
 import {
   InputAssetNotOwnedError,
   type AssetRecord,
+  type ChainProgress,
   type CreateAssetInput,
   type CreditLedgerRecord,
   type DatabaseStore,
@@ -204,6 +205,32 @@ export async function claimQueuedJob(
     data: { status: "processing" },
   });
   return claimed.count === 1 ? true : null;
+}
+
+/**
+ * Records one finished round of a chain.
+ *
+ * Written in the same shape the worker reads back on resume. Deliberately a
+ * plain overwrite rather than an append in SQL: the worker holds the full list
+ * in memory for the round it just finished, and two workers never share a job.
+ *
+ * It also clears externalTaskId in the same statement. That task belonged to
+ * the round now recorded as complete; leaving it set would make a resuming
+ * worker poll a finished task and store its clip a second time — the same
+ * footage, twice, in the middle of the chain.
+ */
+export async function saveChainProgress(
+  store: DatabaseStore,
+  jobId: string,
+  progress: ChainProgress,
+): Promise<void> {
+  const updated = await store.job.updateMany({
+    where: { id: jobId },
+    data: { chainProgress: progress, externalTaskId: null },
+  });
+  if (updated.count !== 1) {
+    throw new InvalidJobStateError(jobId, "available to save chain progress");
+  }
 }
 
 export async function saveExternalTaskId(

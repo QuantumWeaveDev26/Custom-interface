@@ -8,6 +8,7 @@ import {
   findStaleQueuedJobs,
   prismaStore,
   loadJobInputAssets,
+  saveChainProgress,
   saveExternalTaskId,
   storeAssetEmbedding,
 } from "@creative-ai/db";
@@ -193,6 +194,8 @@ export async function createWorkerRuntime(
     loadInputAssets: async (jobId, userId) =>
       loadJobInputAssets(prismaStore, jobId, userId),
     signAssetUrl,
+    saveChainProgress: async (jobId, progress) =>
+      saveChainProgress(prismaStore, jobId, progress),
     indexCompletedAssets: async (jobId, assets) => {
       // Only images and video carry a vector; audio and meshes are not
       // embeddable by this model, and asking would spend tokens on a rejection.

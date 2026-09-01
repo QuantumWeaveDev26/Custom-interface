@@ -272,6 +272,7 @@ export function StudioClient({
       ratio: state.ratio,
       durationSeconds: state.durationSeconds,
       withAudio: state.withAudio,
+      rounds: state.rounds,
     };
   }, [
     state.mode,
@@ -283,6 +284,7 @@ export function StudioClient({
     state.ratio,
     state.durationSeconds,
     state.withAudio,
+    state.rounds,
   ]);
 
   const videoInputAssets = useMemo(

@@ -10,6 +10,7 @@ export {
   failAndRefund,
   findStaleQueuedJobs,
   loadJobInputAssets,
+  saveChainProgress,
   saveExternalTaskId,
   submitJob,
   type CompleteJobResult,

@@ -70,10 +70,33 @@ export interface JobRecord {
   status: JobStatus;
   inputParams: JobInputParams;
   externalTaskId: string | null;
+  /** Progress through a chained video job; null for single-round jobs. */
+  chainProgress: ChainProgress | null;
   errorMessage: string | null;
   creditsCost: number;
   createdAt: Date;
   updatedAt: Date;
+}
+
+/**
+ * What a chained video job has finished so far.
+ *
+ * Persisted after every round, because the rounds are the expensive part: a
+ * crash at round twelve must resume at twelve, not regenerate eleven clips the
+ * user has already paid for.
+ */
+export interface ChainProgress {
+  completedRounds: number;
+  /**
+   * Storage URLs of the clips already rendered, in order. The last one is what
+   * the next round extends.
+   *
+   * Storage URLs rather than asset ids because the clips only become assets
+   * when the whole job completes: a half-finished chain should not litter the
+   * gallery with fragments, and the worker can sign a storage URL to feed the
+   * next round without a database row existing yet.
+   */
+  clipStorageUrls: string[];
 }
 
 export interface AssetRecord {
@@ -178,6 +201,7 @@ export interface DatabaseTransaction extends WelcomeGrantTransaction {
         status?: JobStatus;
         errorMessage?: string | null;
         externalTaskId?: string | null;
+        chainProgress?: ChainProgress | null;
       };
     }): Promise<CountResult>;
     findUnique(args: { where: { id: string } }): Promise<JobRecord | null>;

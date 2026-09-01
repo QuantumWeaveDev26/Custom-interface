@@ -94,6 +94,7 @@ function harness(options: HarnessOptions = {}) {
           status: "queued",
           inputParams: data.inputParams,
           externalTaskId: null,
+      chainProgress: null,
           errorMessage: null,
           creditsCost: data.creditsCost,
           createdAt: FIXED_TIME,
