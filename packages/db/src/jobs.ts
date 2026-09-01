@@ -251,6 +251,17 @@ export async function completeJobWithAssets(
   store: DatabaseStore,
   jobId: string,
   assetInputs: readonly CreateAssetInput[],
+  /**
+   * Clips a chained video job actually delivered, when that is fewer than it
+   * was priced for. Absent for everything else.
+   *
+   * A chain that dies at round twelve has rendered eleven clips the provider
+   * charged us for. Failing the job would refund all sixteen — money we spent
+   * and cannot recover — and delivering it silently would charge for five clips
+   * that do not exist. Neither is honest, so the job completes with what it has
+   * and the rounds that never ran are credited back.
+   */
+  roundsDelivered?: number,
 ): Promise<CompleteJobResult> {
   if (assetInputs.length === 0) {
     throw new Error(`Cannot complete job ${jobId} with no assets`);
@@ -291,10 +302,17 @@ export async function completeJobWithAssets(
     // fewer images than were asked for and paid for. Charging for images that
     // were never produced is a real overcharge, so the shortfall is credited
     // back inside the same transaction that completes the job.
-    const requested = requestedAssetCount(job);
-    if (requested > assets.length) {
-      const perAsset = job.creditsCost / requested;
-      const refund = Math.round(perAsset * (requested - assets.length));
+    // Two ways a job can be priced for more than it delivered: a batch image
+    // job whose model returned fewer images, and a chain that stopped early.
+    // Both are the same overcharge and are settled the same way.
+    const requested =
+      roundsDelivered === undefined
+        ? requestedAssetCount(job)
+        : requestedRoundCount(job);
+    const delivered = roundsDelivered ?? assets.length;
+    if (requested > delivered) {
+      const perUnit = job.creditsCost / requested;
+      const refund = Math.round(perUnit * (requested - delivered));
       if (refund > 0) {
         await tx.creditLedgerEntry.create({
           data: {
@@ -326,6 +344,12 @@ export async function completeJobWithAssets(
 function requestedAssetCount(job: JobRecord): number {
   const params = job.inputParams.params;
   return params.type === "image" ? params.count : 1;
+}
+
+/** How many clips a chained video job was priced for. */
+function requestedRoundCount(job: JobRecord): number {
+  const params = job.inputParams.params;
+  return params.type === "video" ? params.rounds : 1;
 }
 
 /**

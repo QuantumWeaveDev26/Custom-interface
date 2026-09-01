@@ -744,3 +744,85 @@ test("stale queued query applies cutoff, oldest-first order, and batch limit", a
     ],
   );
 });
+
+test("a chain that stopped short refunds only the clips it never made", async () => {
+  // Priced for four clips at 200 credits; the provider rendered and charged for
+  // two before failing. Refunding all 200 gives back money we cannot recover
+  // from the provider; refunding nothing charges for two clips that do not
+  // exist. Half is the only honest answer.
+  const harness = fakeStore({
+    balance: 0,
+    jobs: [
+      jobFixture({
+        id: "job-chain",
+        status: "processing",
+        creditsCost: 200,
+        inputParams: {
+          prompt: "a chase",
+          params: {
+            type: "video",
+            resolution: "720p",
+            ratio: "21:9",
+            durationSeconds: 5,
+            withAudio: true,
+            rounds: 4,
+          },
+        },
+      }),
+    ],
+  });
+
+  await completeJobWithAssets(
+    harness.store,
+    "job-chain",
+    [
+      { type: "video", storageUrl: "tos://assets/user-1/job-chain/cut.mp4" },
+      { type: "video", storageUrl: "tos://assets/user-1/job-chain/1.mp4" },
+      { type: "video", storageUrl: "tos://assets/user-1/job-chain/2.mp4" },
+    ],
+    2,
+  );
+
+  assert.equal(harness.state().balance, 100);
+  assert.deepEqual(
+    harness.state().ledgers.map((entry) => entry.delta),
+    [100],
+  );
+});
+
+test("a chain that delivered every clip refunds nothing", async () => {
+  const harness = fakeStore({
+    balance: 0,
+    jobs: [
+      jobFixture({
+        id: "job-chain-full",
+        status: "processing",
+        creditsCost: 200,
+        inputParams: {
+          prompt: "a chase",
+          params: {
+            type: "video",
+            resolution: "720p",
+            ratio: "21:9",
+            durationSeconds: 5,
+            withAudio: true,
+            rounds: 4,
+          },
+        },
+      }),
+    ],
+  });
+
+  await completeJobWithAssets(
+    harness.store,
+    "job-chain-full",
+    [{ type: "video", storageUrl: "tos://assets/user-1/job-chain-full/cut.mp4" }],
+    4,
+  );
+
+  // The asset count is deliberately not the measure here: a finished chain
+  // stores a cut and a closing still as well as its clips, so counting assets
+  // would refund a completed job.
+  assert.equal(harness.state().balance, 0);
+  assert.deepEqual(harness.state().ledgers, []);
+});

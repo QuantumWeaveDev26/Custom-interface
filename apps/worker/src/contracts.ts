@@ -32,6 +32,8 @@ export interface GenerationProcessorDependencies {
   completeJobWithAssets(
     jobId: string,
     assets: readonly CreateAssetInput[],
+    /** Clips delivered, when a chain stopped short of what it was priced for. */
+    roundsDelivered?: number,
   ): Promise<CompleteJobResult>;
   modelArk: Pick<
     ModelArkClient,

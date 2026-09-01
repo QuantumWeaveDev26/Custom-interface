@@ -1988,7 +1988,10 @@ test("a chain announces each clip as it lands", async () => {
   // unchanging spinner throughout, which reads as a dead worker.
   assert.deepEqual(
     harness.events
-      .filter((event) => event.progress !== undefined)
+      .filter(
+        (event) =>
+          event.progress !== undefined && event.status === JobStatus.Processing,
+      )
       .map((event) => event.progress),
     [
       { completedRounds: 1, totalRounds: 3 },
@@ -1996,6 +1999,13 @@ test("a chain announces each clip as it lands", async () => {
       { completedRounds: 3, totalRounds: 3 },
     ],
   );
+
+  // The completion repeats the count, so a piece that stopped short can say so
+  // rather than presenting itself as whole.
+  assert.deepEqual(harness.events.at(-1)?.progress, {
+    completedRounds: 3,
+    totalRounds: 3,
+  });
 });
 
 test("a single take announces no clip count", async () => {
@@ -2007,4 +2017,45 @@ test("a single take announces no clip count", async () => {
     harness.events.some((event) => event.progress !== undefined),
     false,
   );
+});
+
+test("a chain that breaks partway delivers what it rendered", async () => {
+  const harness = createVideoHarness(chainJob(4));
+  let created = 0;
+  const realCreate = harness.dependencies.modelArk.createVideoTask;
+  harness.dependencies.modelArk.createVideoTask = async (request) => {
+    created += 1;
+    if (created === 3) throw new Error("provider fell over on round three");
+    return realCreate(request);
+  };
+  const delivered: (number | undefined)[] = [];
+  const realComplete = harness.dependencies.completeJobWithAssets;
+  harness.dependencies.completeJobWithAssets = async (jobId, assets, rounds) => {
+    delivered.push(rounds);
+    return realComplete(jobId, assets, rounds);
+  };
+
+  await createGenerationProcessor(harness.dependencies)("video-job");
+
+  // Two clips were rendered and charged for by the provider. Failing the job
+  // would refund all four rounds — money already spent — and completing it
+  // silently would charge for two clips that do not exist.
+  assert.deepEqual(delivered, [2]);
+  assert.deepEqual(harness.refunds, []);
+  const event = harness.events.at(-1);
+  assert.equal(event?.status, JobStatus.Complete);
+  assert.deepEqual(event?.progress, { completedRounds: 2, totalRounds: 4 });
+});
+
+test("a chain that fails on its first clip is refunded in full", async () => {
+  const harness = createVideoHarness(chainJob(4));
+  harness.dependencies.modelArk.createVideoTask = async () => {
+    throw new Error("provider refused the opening shot");
+  };
+
+  await createGenerationProcessor(harness.dependencies)("video-job");
+
+  // Nothing rendered, nothing to deliver, nothing spent on the user's behalf.
+  assert.equal(harness.refunds.length, 1);
+  assert.equal(harness.events.at(-1)?.status, JobStatus.Failed);
 });

@@ -176,8 +176,13 @@ export async function createWorkerRuntime(
     saveExternalTaskId: async (jobId, externalTaskId) => {
       return await saveExternalTaskId(prismaStore, jobId, externalTaskId);
     },
-    completeJobWithAssets: async (jobId, asset) => {
-      return await completeJobWithAssets(prismaStore, jobId, asset);
+    completeJobWithAssets: async (jobId, asset, roundsDelivered) => {
+      return await completeJobWithAssets(
+        prismaStore,
+        jobId,
+        asset,
+        roundsDelivered,
+      );
     },
     modelArk: {
       createImage: modelArk.createImage.bind(modelArk),

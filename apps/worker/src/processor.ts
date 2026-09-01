@@ -306,7 +306,9 @@ async function processModel3d(
     type: "model3d",
     ...media,
   });
-  const completed = await dependencies.completeJobWithAssets(job.id, [
+  const completed = await dependencies.completeJobWithAssets(
+    job.id,
+    [
     { type: "model3d", storageUrl },
   ]);
   return completeEvent(job.id, "model3d", [completed.assets[0]!.id]);
@@ -499,6 +501,16 @@ async function processVideo(
   let externalTaskId = resumedTaskId;
   let lastFrameStorageUrl: string | null = null;
 
+  // A chain that breaks partway has still rendered — and been charged for —
+  // every clip up to that point. Throwing here would fail the job and refund all
+  // of it, money that is already spent and cannot be recovered. So the failure
+  // stops the chain rather than discarding it: what exists is delivered, and the
+  // rounds that never ran are credited back at completion.
+  //
+  // A first round that fails has produced nothing, so it still throws and takes
+  // the ordinary refund path.
+  let stoppedEarly: unknown = null;
+  try {
   for (let round = progress.completedRounds; round < params.rounds; round += 1) {
     if (externalTaskId === null) {
       const previousClip = clipStorageUrls.at(-1);
@@ -613,6 +625,14 @@ async function processVideo(
       });
     }
   }
+  } catch (error) {
+    if (clipStorageUrls.length === 0) throw error;
+    stoppedEarly = error;
+    console.error(
+      `Chain for job ${job.id} stopped after ${clipStorageUrls.length} of ${params.rounds} clips:`,
+      error,
+    );
+  }
 
   // The cut. Eight minutes delivered as sixteen files is not what anyone asked
   // for, so the clips are joined into one video and that is what leads.
@@ -656,7 +676,9 @@ async function processVideo(
     ...(lastFrameStorageUrl === null
       ? []
       : [{ type: "image" as const, storageUrl: lastFrameStorageUrl }]),
-  ]);
+    ],
+    clipStorageUrls.length,
+  );
 
   return {
     jobId: job.id,
@@ -666,6 +688,16 @@ async function processVideo(
       type: asset.type as "image" | "video",
       url: `/api/assets/${asset.id}`,
     })),
+    // Carried on the completion so the interface can say the piece is short and
+    // why, rather than presenting eleven clips as if sixteen had been asked for.
+    ...(stoppedEarly === null && params.rounds === 1
+      ? {}
+      : {
+          progress: {
+            completedRounds: clipStorageUrls.length,
+            totalRounds: params.rounds,
+          },
+        }),
   };
 }
 

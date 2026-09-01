@@ -303,10 +303,13 @@ export function studioReducer(
       }
       if (action.status === "complete") {
         const assets = action.assets ?? [];
+        // Kept on completion, not cleared: a chain that stopped short needs to
+        // say so, and the count is the only thing that knows.
         return {
           ...state,
           phase: "complete",
           assets,
+          ...(action.progress === undefined ? {} : { progress: action.progress }),
           // Newest first, and capped: an unbounded strip of 4K images would
           // hold every result of a long session in memory at once.
           history: [...assets, ...state.history].slice(0, MAX_SESSION_HISTORY),

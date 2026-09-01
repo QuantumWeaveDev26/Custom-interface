@@ -137,6 +137,7 @@ a bug.
 - [ ] **Studio:** Save a character from generated images — the chip shows no warning. Save one that includes an uploaded photo — the chip reads "not accepted", because the provider rejects real faces (R8).
 - [ ] **Studio (Video):** Attach a character to a 3-clip chain and confirm the same face survives both joins.
 - [ ] **Studio (Video):** After a 3-clip chain finishes, confirm the gallery shows one joined video first, the three clips behind it, and the closing still — and that the joined file actually plays end to end with sound.
+- [ ] **Studio (Video):** Confirm a chain reports "Clip N of M" with a bar while it runs, and that a second chain does not start at the previous count.
 - [ ] **Studio (Video):** While a 3-clip chain is running, restart the worker. It must resume at the round it reached, not regenerate the finished clips.
 - [ ] **Gallery:** Click Similar on a library tile; results load from the URL and the back button returns to the library.
 - [ ] **Accessibility:** Press Tab on a fresh page load; the first stop is "Skip to content".
@@ -175,8 +176,10 @@ all work end to end.
    images are PNG, but a video's last frame is **JPEG**. Storage accepted only
    PNG. Fixed and tested.
 2. **The refund leak is real, not theoretical.** Run 1 refunded all 87 credits
-   while the provider had already rendered and charged for round 1. Still open —
-   it needs a policy decision, see below.
+   while the provider had already rendered and charged for round 1. **Fixed
+   2026-09-01:** a chain that breaks partway now delivers the clips it rendered,
+   joined, and refunds only the rounds that never ran. A chain that fails on its
+   first clip has produced nothing and is still refunded in full.
 
 **Prepared for the 16 x 30s demo (2026-09-01, built not tested):**
 

@@ -1079,6 +1079,22 @@ export function StudioClient({
             </div>
           </div>
         )}
+        {/* A chain that stopped short says so where the result appears. The
+            credits for the clips that never rendered are already back — the
+            refund happens in the same transaction that completes the job — and
+            saying nothing would present a short piece as the whole thing. */}
+        {state.phase === "complete" &&
+          state.progress !== null &&
+          state.progress.completedRounds < state.progress.totalRounds && (
+            <div className="card border-[var(--danger)]/30 mb-3 p-4">
+              <p className="text-sm text-[var(--text-muted)]">
+                This piece stopped after {state.progress.completedRounds} of{" "}
+                {state.progress.totalRounds} clips. The clips that were made are
+                below, joined; the credits for the rest have been refunded.
+              </p>
+            </div>
+          )}
+
         {state.phase === "failed" && (
           <div className="card border-[var(--danger)]/30 p-4">
             <span className="stamp text-[var(--danger)]">No good</span>
