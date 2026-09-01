@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { AssetTile } from "./asset-tile";
 
@@ -13,9 +13,12 @@ export interface SearchResult {
 export function GallerySearch({
   unindexedCount,
   autoIndex,
+  similarTo,
 }: {
   unindexedCount: number;
   autoIndex: boolean;
+  /** From ?similarTo= in the URL, set by the "Similar" control on a tile. */
+  similarTo?: string;
 }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[] | null>(null);
@@ -26,6 +29,12 @@ export function GallerySearch({
   // a reload.
   const [remaining, setRemaining] = useState(unindexedCount);
   const [auto, setAuto] = useState(autoIndex);
+
+  // Runs once for the id the URL arrived with. A ref rather than a dependency
+  // list, because runSearch changes identity whenever the unindexed count does,
+  // and re-running a paid search every time that number moves is not a
+  // refinement — it is a second charge for the same question.
+  const ranFor = useRef<string | null>(null);
 
   const runSearch = useCallback(
     async (params: string, label: string) => {
@@ -91,6 +100,12 @@ export function GallerySearch({
       setIndexing(false);
     }
   }, []);
+
+  useEffect(() => {
+    if (similarTo === undefined || ranFor.current === similarTo) return;
+    ranFor.current = similarTo;
+    void runSearch(`similarTo=${encodeURIComponent(similarTo)}`, "that asset");
+  }, [similarTo, runSearch]);
 
   // Optimistic, then reverted if the server refuses: the checkbox is a
   // preference, and a control that lags a round trip behind the click reads as

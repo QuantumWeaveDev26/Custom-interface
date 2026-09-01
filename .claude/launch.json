@@ -1,0 +1,14 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "dev",
+      "comment": "node, not pnpm: the pnpm shim is not on PATH for every spawner here, and .bin shims hang under Git Bash. cwd must be apps/web — Prisma resolves its query engine relative to the working directory, and running next from the repo root with the app as an argument makes it search D:\node_modules and fail at request time, not at startup.",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["node_modules/next/dist/bin/next", "dev"],
+      "cwd": "apps/web",
+      "port": 3000,
+      "autoPort": false
+    }
+  ]
+}

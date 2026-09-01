@@ -23,7 +23,7 @@ const FILTER_LABELS: Record<GalleryFilter, string> = {
 export default async function GalleryPage({
   searchParams,
 }: {
-  searchParams: Promise<{ type?: string }>;
+  searchParams: Promise<{ type?: string; similarTo?: string }>;
 }) {
   const session = await auth();
 
@@ -33,7 +33,8 @@ export default async function GalleryPage({
 
   // The filter lives in the URL rather than component state, so it survives a
   // reload, can be linked, and works before any JavaScript has run.
-  const filter = parseGalleryFilter((await searchParams).type);
+  const params = await searchParams;
+  const filter = parseGalleryFilter(params.type);
 
   const assets = await prisma.asset.findMany({
     where: {
@@ -161,6 +162,7 @@ export default async function GalleryPage({
                       key={asset.id}
                       asset={asset}
                       badge={String(index + 1)}
+                      similar
                     />
                   ))}
                 </div>
@@ -174,7 +176,7 @@ export default async function GalleryPage({
                 className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4"
               >
                 {row.assets.map((asset) => (
-                  <AssetTile key={asset.id} asset={asset} />
+                  <AssetTile key={asset.id} asset={asset} similar />
                 ))}
               </div>
             ),

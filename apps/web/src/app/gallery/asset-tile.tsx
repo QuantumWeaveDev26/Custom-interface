@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { MeshViewer } from "./mesh-viewer";
 import { PublishToggle } from "./publish-toggle";
 
@@ -18,8 +20,15 @@ const TYPE_LABELS: Record<string, string> = {
 export function AssetTile({
   asset,
   badge,
+  similar = false,
 }: {
   asset: { id: string; type: string; published?: boolean };
+  /**
+   * Offers "Similar" on this tile. Only for embeddable kinds, and only in the
+   * library — a feed tile is somebody else's asset, and searching your own
+   * library for something like it would return nothing of theirs.
+   */
+  similar?: boolean;
   /** Position within a set, when the asset came from a batch. */
   badge?: string;
 }) {
@@ -75,9 +84,22 @@ export function AssetTile({
           decision, and one buried behind a menu is one nobody makes. Absent
           when the caller did not load the flag — a feed tile is not a place to
           publish from. */}
-      {asset.published !== undefined && (
-        <div className="tile-chrome absolute bottom-2 right-2 z-20">
-          <PublishToggle assetId={asset.id} published={asset.published} />
+      {(asset.published !== undefined || similar) && (
+        <div className="tile-chrome absolute bottom-2 right-2 z-20 flex items-center gap-1.5">
+          {similar && (asset.type === "image" || asset.type === "video") && (
+            // A link, not a fetch: the search it runs is the same one the
+            // search box runs, and putting the id in the URL means the result
+            // can be reloaded, shared, and reached with the back button.
+            <Link
+              href={`/gallery?similarTo=${encodeURIComponent(asset.id)}`}
+              className="opt !py-1 text-[11px]"
+            >
+              Similar
+            </Link>
+          )}
+          {asset.published !== undefined && (
+            <PublishToggle assetId={asset.id} published={asset.published} />
+          )}
         </div>
       )}
 
