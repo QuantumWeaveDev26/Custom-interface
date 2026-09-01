@@ -24,7 +24,7 @@ const FILTER_LABELS: Record<GalleryFilter, string> = {
 export default async function GalleryPage({
   searchParams,
 }: {
-  searchParams: Promise<{ type?: string; similarTo?: string }>;
+  searchParams: Promise<{ type?: string; similarTo?: string; q?: string }>;
 }) {
   const session = await auth();
 

@@ -1,4 +1,19 @@
 export {
+  ASSISTANT_ROUTES,
+  AssistantError,
+  DEFAULT_ASSISTANT_MODEL,
+  askAssistant,
+  buildAssistantSystemPrompt,
+  validateAssistantReply,
+} from "./assistant.js";
+export type {
+  AskAssistantOptions,
+  AssistantAction,
+  AssistantActionType,
+  AssistantReply,
+} from "./assistant.js";
+
+export {
   buildShotPrompt,
   DirectorPlanError,
   planShots,

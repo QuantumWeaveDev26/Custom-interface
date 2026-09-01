@@ -59,6 +59,9 @@ export interface StudioClientProps {
   recentVideoIds: readonly string[];
   /** Saved named characters — reusable reference sets. */
   characters: readonly SavedCharacter[];
+  /** Handed over by the assistant, via the URL. */
+  initialPrompt?: string;
+  initialMode?: StudioMode;
 }
 
 interface JobStatusMessage {
@@ -103,8 +106,17 @@ export function StudioClient({
   recentImageIds,
   recentVideoIds,
   characters,
+  initialPrompt,
+  initialMode,
 }: StudioClientProps) {
-  const [state, dispatch] = useReducer(studioReducer, INITIAL_STUDIO_STATE);
+  // Seeded from the URL so the assistant can hand a request over: it proposes
+  // a prompt, the user lands here with it already typed, and nothing has been
+  // spent until they press the button themselves.
+  const [state, dispatch] = useReducer(studioReducer, INITIAL_STUDIO_STATE, (initial) => ({
+    ...initial,
+    ...(initialPrompt === undefined ? {} : { prompt: initialPrompt }),
+    ...(initialMode === undefined ? {} : { mode: initialMode }),
+  }));
   const eventSourceRef = useRef<EventSource | null>(null);
 
   // Images uploaded during this session, newest first. Kept in component state

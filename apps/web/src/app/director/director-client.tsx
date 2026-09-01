@@ -41,10 +41,13 @@ export function DirectorClient({
   characters,
   filmLimits,
   creditsPerSecond,
+  initialBrief,
 }: {
   characters: readonly { id: string; name: string; assetIds: string[] }[];
   filmLimits: FilmLimits;
   creditsPerSecond: number;
+  /** Handed over by the assistant, via the URL. */
+  initialBrief?: string;
 }) {
   /**
    * One cast character for the whole plan, for the same reason the look is
@@ -56,7 +59,12 @@ export function DirectorClient({
   // "use this photo" where the user has not saved a character and should not
   // have to first.
   const [attachments, setAttachments] = useState<Attachment[]>([]);
-  const [state, dispatch] = useReducer(directorReducer, INITIAL_DIRECTOR_STATE);
+  // Seeded from the URL, so the assistant can hand a brief over ready to plan.
+  const [state, dispatch] = useReducer(
+    directorReducer,
+    INITIAL_DIRECTOR_STATE,
+    (initial) => (initialBrief === undefined ? initial : { ...initial, brief: initialBrief }),
+  );
   const [generation, setGeneration] = useState<Record<number, ShotGenerationState>>({});
   const [filming, setFilming] = useState(false);
   const [filmJobId, setFilmJobId] = useState<string | null>(null);

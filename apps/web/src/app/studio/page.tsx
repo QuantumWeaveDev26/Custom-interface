@@ -15,8 +15,35 @@ import {
 } from "@creative-ai/shared-types";
 import { listCharacters } from "@/server/characters";
 import { StudioClient } from "./studio-client";
+import type { StudioMode } from "./studio-state";
 
-export default async function StudioPage() {
+/**
+ * A prompt and department handed over from the assistant.
+ *
+ * Validated rather than trusted: mode arrives in a URL anyone can edit, and an
+ * unknown department would put the composer in a state with no controls.
+ */
+async function assistantHandover(
+  searchParams: Promise<{ prompt?: string; mode?: string }>,
+): Promise<{ initialPrompt?: string; initialMode?: StudioMode }> {
+  const params = await searchParams;
+  const mode = params.mode;
+  return {
+    ...(params.prompt === undefined || params.prompt.trim().length === 0
+      ? {}
+      : { initialPrompt: params.prompt.slice(0, 2000) }),
+    ...(mode === "image" || mode === "video" || mode === "voice" || mode === "model3d"
+      ? { initialMode: mode }
+      : {}),
+  };
+}
+
+export default async function StudioPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ prompt?: string; mode?: string }>;
+}) {
+  const handover = await assistantHandover(searchParams);
   const session = await auth();
 
   if (!session?.user?.id) {
@@ -71,6 +98,7 @@ export default async function StudioPage() {
   return (
     <StudioClient
       characters={characters}
+      {...handover}
       creditBalance={user?.creditBalance ?? 0}
       recentImageIds={recentImages.map((asset) => asset.id)}
       recentVideoIds={recentVideos.map((asset) => asset.id)}

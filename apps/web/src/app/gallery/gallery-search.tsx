@@ -14,13 +14,16 @@ export function GallerySearch({
   unindexedCount,
   autoIndex,
   similarTo,
+  initialQuery,
 }: {
   unindexedCount: number;
   autoIndex: boolean;
   /** From ?similarTo= in the URL, set by the "Similar" control on a tile. */
   similarTo?: string;
+  /** From ?q= in the URL, handed over by the assistant. */
+  initialQuery?: string;
 }) {
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(initialQuery ?? "");
   const [results, setResults] = useState<SearchResult[] | null>(null);
   const [searching, setSearching] = useState(false);
   const [indexing, setIndexing] = useState(false);
@@ -106,6 +109,14 @@ export function GallerySearch({
     ranFor.current = similarTo;
     void runSearch(`similarTo=${encodeURIComponent(similarTo)}`, "that asset");
   }, [similarTo, runSearch]);
+
+  // Same one-shot guard as similarTo: a search is paid work, and re-running it
+  // whenever an unrelated number moves would charge twice for one question.
+  useEffect(() => {
+    if (initialQuery === undefined || ranFor.current === initialQuery) return;
+    ranFor.current = initialQuery;
+    void runSearch(`q=${encodeURIComponent(initialQuery)}`, `“${initialQuery}”`);
+  }, [initialQuery, runSearch]);
 
   // Optimistic, then reverted if the server refuses: the checkbox is a
   // preference, and a control that lags a round trip behind the click reads as
