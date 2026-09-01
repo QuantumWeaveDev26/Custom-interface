@@ -108,3 +108,25 @@ test("parseTosUrl rejects malformed or unsafe private URLs", () => {
   }
 });
 
+
+test("a video's closing still is stored, and it is a JPEG", async () => {
+  // The provider returns generated images as PNG but the last frame of a video
+  // as JPEG. Only PNG was accepted, so a real chain stored its three clips and
+  // then dropped the still that makes a fourth clip possible — the failure was
+  // caught and logged, which is exactly why nothing looked broken.
+  const storage = createTosStorage({
+    bucket: "phase-one-assets",
+    client: { putObject: async () => ({}) },
+    randomId: () => "abc123",
+  });
+
+  const url = await storage.upload({
+    userId: "u1",
+    jobId: "j1",
+    type: "image",
+    body: new Uint8Array([1, 2, 3]),
+    contentType: "image/jpeg",
+  });
+
+  assert.equal(url, "tos://phase-one-assets/u1/j1/image-abc123.jpg");
+});

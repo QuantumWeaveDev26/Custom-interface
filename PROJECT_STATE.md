@@ -148,6 +148,40 @@ a bug.
 
 Nothing else can proceed without one of these being settled - see section 3.
 
+## 2b-i. Long-form chain — RUN LIVE 2026-09-01
+
+First real chained job. Two runs, 87 credits each, both worth what they cost.
+
+**Run 1 failed at round 2** and found a bug 72 unit tests could not:
+`InvalidParameter.TaskTypeConstraint` — an extension takes its ratio from the
+clip it continues, so `ratio` must be `adaptive` on every round after the first.
+Fixed.
+
+**Run 2 completed.** Verified by probing the actual files, not the row count:
+
+| Asset | Duration | Streams |
+|---|---|---|
+| the cut | **15.07s** | video 1470x630 + audio |
+| clip 1 | 5.04s | video + audio |
+| clip 2 | 5.00s | video + audio |
+| clip 3 | 5.00s | video + audio |
+
+15.07 = 5.04 + 5.00 + 5.00. Chain, resume state, extend, stitch and asset order
+all work end to end.
+
+**Two defects the run exposed:**
+
+1. The closing still was dropped — "Unsupported image content type". Generated
+   images are PNG, but a video's last frame is **JPEG**. Storage accepted only
+   PNG. Fixed and tested.
+2. **The refund leak is real, not theoretical.** Run 1 refunded all 87 credits
+   while the provider had already rendered and charged for round 1. Still open —
+   it needs a policy decision, see below.
+
+**Still unmeasured: drift.** Three clips exist; whether the piece holds together
+across the two joins is a human judgement nobody has made yet. Watch
+`asset-0.mp4` before promising eight minutes to anyone.
+
 ## 2c. Video model — switched 2026-08-31
 
 Default is now **`dreamina-seedance-2-5-260628`**, up from

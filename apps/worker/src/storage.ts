@@ -37,8 +37,14 @@ function requireKeySegment(value: string, name: string): string {
 // A glb file begins with the ASCII magic "glTF" (glTF binary container).
 const GLB_MAGIC = "glTF";
 
-function extensionFor(input: StorageUploadInput): "png" | "mp4" | "mp3" | "glb" {
+function extensionFor(
+  input: StorageUploadInput,
+): "png" | "jpg" | "mp4" | "mp3" | "glb" {
   if (input.type === "image" && input.contentType === "image/png") return "png";
+  // Generated images come back as PNG, but the last frame of a video comes back
+  // as JPEG — measured 2026-09-01, after a real chain stored its clips and then
+  // dropped its closing still with "Unsupported image content type".
+  if (input.type === "image" && input.contentType === "image/jpeg") return "jpg";
   if (input.type === "video" && input.contentType === "video/mp4") return "mp4";
   if (input.type === "audio" && input.contentType === "audio/mpeg") return "mp3";
   if (input.type === "model3d") {
