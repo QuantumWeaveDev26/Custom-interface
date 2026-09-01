@@ -195,6 +195,52 @@ Console → ModelArk → Model list and look for an "Access"/"API" tab or code s
 it usually shows the literal model ID string used in the `model` field. Confirm rather
 than trust the derived pattern.
 
+## Long-form by chaining clips — proof in progress, 2026-09-01
+
+**The question:** can 8 minutes be assembled from 30s clips (16 of them), and
+the 4K equivalent from 15s clips (32)? Raised by the owner's HR.
+
+**Mechanically, yes.** Every piece is confirmed: `return_last_frame: true` on the
+request, `content.last_frame_url` on the response, and `role: "first_frame"` to
+start the next clip from that still. ffmpeg is installed on the build machine, so
+concatenating same-codec clips is cheap.
+
+**Built so far:** every finished video now stores the frame it ends on as an
+ordinary image asset. It appears in the gallery and can be picked as the next
+clip's first frame with the existing picker, so a chain can be run by hand today
+with no orchestrator.
+
+**Cost, at the rates in `generation.ts` and $0.04 a credit:**
+
+| Target | Clips | Credits | ≈ USD |
+|---|---|---|---|
+| 8 min 720p | 16 x 30s | 2,770 | $111 |
+| 8 min 1080p | 16 x 30s | 6,232 | $249 |
+| 8 min 4K | 32 x 15s | 24,926 | $997 |
+
+The 4K row rests on two UNCONFIRMED numbers — the 2.0-standard per-second rate
+and the 9x 4K multiplier, both derived from pixel counts, never checked against a
+bill. Settle them with one 15s 4K job before committing to 4K long-form.
+
+**The open question is drift, not plumbing.** Each hop re-imagines from a single
+still, so face, lighting and grade wander over 16 hops (32 for 4K). No amount of
+engineering fixes that if it is bad; it has to be measured.
+
+**How to run the proof** (~$21 at 720p):
+
+1. Studio, video mode, 720p, 30s. Generate clip 1.
+2. In the gallery the job produces two assets: the clip, and its last frame.
+3. New take: same prompt, same look/lens/camera, same references. Set that frame
+   as First Frame. Generate clip 2.
+4. Repeat once more for clip 3.
+5. Watch the three back to back. Judge identity, lighting and grade continuity
+   across the two joins.
+
+If continuity holds, the orchestrator and the ffmpeg stitcher are worth building.
+If it does not, say so before anyone promises 8 minutes.
+
+---
+
 ## Sound on generated video (`generate_audio`) — built 2026-09-01
 
 The video endpoint takes `generate_audio: boolean`. Every video this project

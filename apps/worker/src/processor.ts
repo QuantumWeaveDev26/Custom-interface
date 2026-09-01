@@ -445,6 +445,10 @@ async function processVideo(
       ratio: params.ratio,
       duration: params.durationSeconds,
       generate_audio: params.withAudio,
+      // Always asked for, because it is what makes a second clip able to
+      // continue the first: the frame this one ends on becomes the frame the
+      // next one starts from. It is a still, not a second render.
+      return_last_frame: true,
     });
     if (createdTask.id.trim().length === 0) {
       throw new Error("Video creation returned an empty task ID");
@@ -464,10 +468,42 @@ async function processVideo(
     type: "video",
     ...media,
   });
+  // Stored as an ordinary image so it lands in the gallery and can be picked as
+  // the next clip's first frame with the picker that already exists. Best
+  // effort: a clip that arrived is a finished job, and losing the still costs a
+  // continuation, not the take. Failing here would refund a video the user has.
+  let lastFrameStorageUrl: string | null = null;
+  const lastFrameUrl = task.content.last_frame_url;
+  if (lastFrameUrl !== undefined && lastFrameUrl.length > 0) {
+    try {
+      const frame = await dependencies.download(lastFrameUrl);
+      lastFrameStorageUrl = await dependencies.storage.upload({
+        userId: job.userId,
+        jobId: job.id,
+        type: "image",
+        ...frame,
+      });
+    } catch (error) {
+      console.error(`Failed to store last frame for job ${job.id}:`, error);
+    }
+  }
+
   const completed = await dependencies.completeJobWithAssets(job.id, [
     { type: "video", storageUrl },
+    ...(lastFrameStorageUrl === null
+      ? []
+      : [{ type: "image" as const, storageUrl: lastFrameStorageUrl }]),
   ]);
-  return completeEvent(job.id, "video", [completed.assets[0]!.id]);
+
+  return {
+    jobId: job.id,
+    status: JobStatus.Complete,
+    assets: completed.assets.map((asset) => ({
+      id: asset.id,
+      type: asset.type as "image" | "video",
+      url: `/api/assets/${asset.id}`,
+    })),
+  };
 }
 
 

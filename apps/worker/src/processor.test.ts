@@ -586,6 +586,7 @@ test("a newly claimed video persists its task ID before polling and completes", 
       ratio: "21:9",
       duration: 5,
       generate_audio: false,
+      return_last_frame: true,
     },
   ]);
   assert.deepEqual(harness.polledTaskIds, ["modelark-task-1"]);
@@ -597,6 +598,9 @@ test("a newly claimed video persists its task ID before polling and completes", 
     "modelark:poll:modelark-task-1",
     "download:https://modelark.example/video.mp4",
     "storage:upload:video",
+    // The still the clip ends on, stored so a next clip can continue from it.
+    "download:https://modelark.example/frame.png",
+    "storage:upload:image",
     "db:complete",
     "publish:complete",
   ]);
@@ -1598,7 +1602,11 @@ test("a completed job's assets are handed to the indexer after the result is pub
 
   await createGenerationProcessor(harness.dependencies)("video-job");
 
-  assert.deepEqual(indexed, [{ jobId: "video-job", assetIds: ["video-asset-1"] }]);
+  // Two assets now: the clip, and the still it ends on, which is stored so the
+  // next clip can start from it.
+  assert.deepEqual(indexed, [
+    { jobId: "video-job", assetIds: ["video-asset-1", "video-asset-1-2"] },
+  ]);
   // Order matters: indexing costs a provider round trip, and doing it before
   // the publish would hold the finished video back from the user.
   assert.deepEqual(harness.operations.slice(-2), ["publish:complete", "index"]);
@@ -1641,4 +1649,39 @@ test("a video job asks the provider for sound only when the take did", async () 
   // The whole point of the field: silent video is what this project shipped for
   // months, and the flag is the only thing that changes it.
   assert.equal(loud.createRequests[0]?.generate_audio, true);
+});
+
+test("a finished clip keeps the frame it ends on, as a chainable image", async () => {
+  const harness = createVideoHarness(videoJob());
+
+  await createGenerationProcessor(harness.dependencies)("video-job");
+
+  // The still is fetched and stored like any other asset, so it appears in the
+  // gallery and can be picked as the next clip's first frame. Without it, an
+  // 8-minute cut assembled from 30s clips has nothing to continue from.
+  assert.ok(
+    harness.operations.includes("download:https://modelark.example/frame.png"),
+    `last frame was never downloaded: ${harness.operations.join(", ")}`,
+  );
+  assert.equal(
+    harness.operations.filter((op) => op === "storage:upload:image").length,
+    1,
+  );
+});
+
+test("a video still completes when its last frame cannot be stored", async () => {
+  const harness = createVideoHarness(videoJob());
+  const download = harness.dependencies.download;
+  harness.dependencies.download = async (url) => {
+    if (url.endsWith("frame.png")) throw new Error("frame fetch failed");
+    return download(url);
+  };
+
+  await createGenerationProcessor(harness.dependencies)("video-job");
+
+  // The clip is what the user paid for. Losing the still costs a continuation,
+  // not the take, so it must not refund a video that arrived.
+  assert.deepEqual(harness.refunds, []);
+  assert.equal(harness.events.at(-1)?.status, JobStatus.Complete);
+  assert.equal(harness.events.at(-1)?.assets?.length, 1);
 });
