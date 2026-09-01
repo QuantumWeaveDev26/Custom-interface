@@ -1960,3 +1960,16 @@ test("the cast reaches every clip of a chain, not just the first", async () => {
   );
   assert.equal(keyframed.length, 1);
 });
+
+test("an extension asks for the ratio of the clip it continues, not the job's", async () => {
+  const harness = createVideoHarness(chainJob(3));
+
+  await createGenerationProcessor(harness.dependencies)("video-job");
+
+  // The provider decides the shape of an extension from its source clip and
+  // rejects the whole request if told otherwise — a real chain died at round two
+  // with InvalidParameter.TaskTypeConstraint before this was fixed.
+  assert.equal(harness.createRequests[0]?.ratio, "21:9");
+  assert.equal(harness.createRequests[1]?.ratio, "adaptive");
+  assert.equal(harness.createRequests[2]?.ratio, "adaptive");
+});

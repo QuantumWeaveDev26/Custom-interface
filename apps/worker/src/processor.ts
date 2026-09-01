@@ -520,7 +520,15 @@ async function processVideo(
         model: job.model,
         content,
         resolution: params.resolution,
-        ratio: params.ratio,
+        // An extension inherits its shape from the clip it continues, and the
+        // provider rejects the request outright if it is told otherwise:
+        //
+        //   InvalidParameter.TaskTypeConstraint — "the output ratio follows the
+        //   input video selected by the model for extension. Issues: [0]
+        //   `ratio` must be `adaptive`."
+        //
+        // Learned from a real chain failing at round two (2026-09-01).
+        ratio: previousClip === undefined ? params.ratio : "adaptive",
         duration: params.durationSeconds,
         generate_audio: params.withAudio,
         // The still this clip ends on. Useful on its own, and the fallback if a

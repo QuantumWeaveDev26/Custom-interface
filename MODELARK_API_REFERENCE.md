@@ -195,6 +195,33 @@ Console → ModelArk → Model list and look for an "Access"/"API" tab or code s
 it usually shows the literal model ID string used in the `model` field. Confirm rather
 than trust the derived pattern.
 
+## Extend requires `ratio: "adaptive"` — learned the expensive way, 2026-09-01
+
+First real chain run died at round two. Verbatim:
+
+```
+InvalidParameter.TaskTypeConstraint
+The parameter `ratio` specified in the request is not valid. Seedance identified
+your task as video extension based on your prompt. For this task type, the output
+ratio follows the input video selected by the model for extension.
+Issues: [0] `ratio` must be `adaptive`.
+```
+
+An extension inherits its shape from the clip it continues. Passing the job's
+ratio — the same value that is correct for round one — is rejected outright.
+The worker now sends the chosen ratio on the first round and `adaptive` on every
+extension.
+
+Two things worth keeping from how this was found:
+
+- The task type is inferred **from the request content**, not declared. Attaching
+  a `reference_video` makes it an extension, and extension rules then apply to
+  parameters that were valid a moment earlier.
+- Seventy-two unit tests passed on a request shape the provider refuses. Only a
+  real job found it, and it cost one rendered clip to learn.
+
+---
+
 ## Model inventory endpoint, found 2026-09-01
 
 `GET {ARK_BASE_URL}/models` with the normal Bearer key returns 200 and a JSON
