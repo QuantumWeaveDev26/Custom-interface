@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { DIRECTOR_MODEL } from "@/server/config";
+import { retrieveKnowledge } from "@/server/knowledge";
 import { AssistantError, askAssistant } from "@creative-ai/agents";
 import { createModelArkClient } from "@creative-ai/modelark-client";
 import { NextResponse } from "next/server";
@@ -55,10 +56,15 @@ export async function POST(request: Request) {
   });
 
   try {
+    // Retrieval before the answer, and only when there is something stored —
+    // see retrieveKnowledge. A house with no documents pays nothing for this.
+    const knowledge = await retrieveKnowledge(session.user.id, question);
+
     return NextResponse.json(
       await askAssistant(client, question, {
         model: DIRECTOR_MODEL,
         history,
+        knowledge,
       }),
     );
   } catch (error) {

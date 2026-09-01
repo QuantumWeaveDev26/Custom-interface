@@ -143,6 +143,9 @@ a bug.
 - [ ] **Studio (Video):** While a 3-clip chain is running, restart the worker. It must resume at the round it reached, not regenerate the finished clips.
 - [ ] **Gallery:** After filming a plan, the job shows as one film at full width with its clips small underneath — not seventeen equal tiles.
 - [ ] **Gallery:** Click Similar on a library tile; results load from the URL and the back button returns to the library.
+- [ ] **Assistant:** Ask "how do I make an eight-minute film?" — the answer should state the 16-clip limit and the hours it takes, not promise it in minutes.
+- [ ] **Assistant:** Ask for something specific ("a slow dolly across a harbour at dawn") — an action appears, and pressing it lands in Studio with the prompt already typed and the department selected. Nothing is charged until Generate is pressed there.
+- [ ] **Assistant:** Add a document under "What the house knows", then ask a question it answers. The reply should use it. (HR's ask, 2026-09-01: the agent must know our own film knowledge, gathered from their GPTs.)
 - [ ] **Accessibility:** Press Tab on a fresh page load; the first stop is "Skip to content".
 - [ ] **Accessibility (Studio):** Tab to the results column and scroll it with the arrow keys — it is a focus stop of its own because a column of images has nothing tabbable in it.
 - [ ] **Studio:** Read the credit cost on the Generate button. It was invisible until 2026-08-31 (white on the acid signal, 1.26:1).

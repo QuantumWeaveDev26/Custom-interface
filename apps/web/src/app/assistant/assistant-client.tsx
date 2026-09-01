@@ -2,6 +2,8 @@
 
 import type { AssistantAction, AssistantReply } from "@creative-ai/agents";
 import Link from "next/link";
+
+import { KnowledgePanel, type KnowledgeDocument } from "./knowledge-panel";
 import { useCallback, useRef, useState } from "react";
 
 interface Turn {
@@ -19,7 +21,11 @@ interface Turn {
  * proposal is a control the user presses — which also means a misread request
  * costs nothing but a glance.
  */
-export function AssistantClient() {
+export function AssistantClient({
+  documents,
+}: {
+  documents: readonly KnowledgeDocument[];
+}) {
   const [turns, setTurns] = useState<Turn[]>([]);
   const [question, setQuestion] = useState("");
   const [thinking, setThinking] = useState(false);
@@ -161,6 +167,10 @@ export function AssistantClient() {
           </button>
         </div>
       </form>
+
+      {/* Beneath the composer rather than beside it: knowledge is set up once
+          and then forgotten, while the conversation is the reason to be here. */}
+      <KnowledgePanel initialDocuments={documents} />
     </div>
   );
 }

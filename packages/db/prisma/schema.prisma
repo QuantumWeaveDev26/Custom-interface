@@ -136,6 +136,37 @@ model Asset {
 // computed in application code. That is fine for a per-user library of this
 // size and avoids making the whole feature wait on a database extension; see
 // PROJECT_STATE.md for when it stops being fine.
+/// A document the house knows: a note on grading, a style guide, anything the
+/// assistant should answer from rather than invent.
+model KnowledgeDoc {
+  id        String            @id @default(cuid())
+  userId    String
+  title     String
+  createdAt DateTime          @default(now())
+  chunks    KnowledgeChunk[]
+
+  @@index([userId])
+}
+
+/// One retrievable passage. Documents are split because a whole guide is too
+/// much to put in a prompt and too coarse to match a question against; a
+/// paragraph is both answerable and affordable.
+model KnowledgeChunk {
+  id         String       @id @default(cuid())
+  docId      String
+  doc        KnowledgeDoc @relation(fields: [docId], references: [id], onDelete: Cascade)
+  userId     String
+  ordinal    Int
+  text       String
+  // Same reasoning as AssetEmbedding: a vector is only comparable to vectors of
+  // the same model and width, so both travel with it.
+  model      String
+  dimensions Int
+  vector     Float[]
+
+  @@index([userId])
+}
+
 model AssetEmbedding {
   assetId    String   @id
   asset      Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
