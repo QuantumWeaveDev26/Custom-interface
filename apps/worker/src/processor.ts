@@ -512,6 +512,9 @@ async function processVideo(
   let stoppedEarly: unknown = null;
   try {
   for (let round = progress.completedRounds; round < params.rounds; round += 1) {
+    // A planned film gives each shot its own length; a plain chain uses one.
+    // Read once per round because both the request and the poll window need it.
+    const roundDuration = params.shotDurations?.[round] ?? params.durationSeconds;
     if (externalTaskId === null) {
       const previousClip = clipStorageUrls.at(-1);
       // What this particular clip is about. A shot list directs each round
@@ -554,7 +557,7 @@ async function processVideo(
         //
         // Learned from a real chain failing at round two (2026-09-01).
         ratio: previousClip === undefined ? params.ratio : "adaptive",
-        duration: params.durationSeconds,
+        duration: roundDuration,
         generate_audio: params.withAudio,
         // The still this clip ends on. Useful on its own, and the fallback if a
         // later round ever has to be restarted from a frame rather than a clip.
@@ -576,7 +579,7 @@ async function processVideo(
       // throws — failing a chain, and refunding rounds the provider has already
       // charged for. Scaled off the duration with a floor, so short takes keep
       // giving up quickly and long ones are given room.
-      { timeoutMs: pollTimeoutMsFor(params.durationSeconds) },
+      { timeoutMs: pollTimeoutMsFor(roundDuration) },
     );
     const videoUrl = assertSucceededVideo(task);
     const media = await dependencies.download(videoUrl);

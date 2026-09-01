@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import type { LookPresetId } from "@creative-ai/prompt-library";
 
 import { AttachButton, type Attachment } from "../attach-button";
@@ -29,10 +31,20 @@ interface JobStatusMessage {
   assets?: { id: string; type: "image" | "video"; url: string }[];
 }
 
+export interface FilmLimits {
+  minDurationSeconds: number;
+  maxDurationSeconds: number;
+  maxShots: number;
+}
+
 export function DirectorClient({
   characters,
+  filmLimits,
+  creditsPerSecond,
 }: {
   characters: readonly { id: string; name: string; assetIds: string[] }[];
+  filmLimits: FilmLimits;
+  creditsPerSecond: number;
 }) {
   /**
    * One cast character for the whole plan, for the same reason the look is
@@ -46,6 +58,9 @@ export function DirectorClient({
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [state, dispatch] = useReducer(directorReducer, INITIAL_DIRECTOR_STATE);
   const [generation, setGeneration] = useState<Record<number, ShotGenerationState>>({});
+  const [filming, setFilming] = useState(false);
+  const [filmJobId, setFilmJobId] = useState<string | null>(null);
+  const [filmError, setFilmError] = useState<string | null>(null);
   const eventSources = useRef<Record<number, EventSource>>({});
 
   useEffect(() => {
@@ -55,6 +70,14 @@ export function DirectorClient({
       }
     };
   }, []);
+
+  // Cast and attachments are additive: a saved identity plus a one-off
+  // reference is a reasonable thing to ask for. Shared by a single shot and by
+  // the whole film, so both carry the same people.
+  const referenceIdsForCast = () => [
+    ...(characters.find((character) => character.id === castId)?.assetIds ?? []),
+    ...attachments.map((attachment) => attachment.assetId),
+  ];
 
   const handlePlan = useCallback(
     async (event: React.FormEvent<HTMLFormElement>) => {
@@ -92,13 +115,78 @@ export function DirectorClient({
     [state.brief, state.phase],
   );
 
+  /**
+   * Films the whole plan as one continuous piece.
+   *
+   * The shots are already a shot list, and a chain already takes one — this is
+   * the join between them. Each clip extends the one before it, so what comes
+   * back is a single cut rather than N unrelated clips the user has to
+   * assemble.
+   *
+   * Durations are clamped to what the model will actually make. A plan happily
+   * asks for a three-second insert and the model's floor is four; clamping is
+   * the only way to film it, and the button says so rather than letting the
+   * server reject the job at submission.
+   */
+  const filmable = state.shots.slice(0, filmLimits.maxShots);
+  const filmDurations = filmable.map((shot) =>
+    Math.min(
+      filmLimits.maxDurationSeconds,
+      Math.max(filmLimits.minDurationSeconds, shot.durationSeconds),
+    ),
+  );
+  const filmSeconds = filmDurations.reduce((total, each) => total + each, 0);
+  const clamped = filmable.filter(
+    (shot, index) => shot.durationSeconds !== filmDurations[index],
+  ).length;
+
+  const filmPlan = useCallback(async () => {
+    setFilmError(null);
+    setFilming(true);
+    try {
+      const response = await fetch("/api/jobs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "video",
+          prompt: state.brief,
+          params: {
+            resolution: "720p",
+            // An extension takes its shape from the clip before it, so only the
+            // opening shot's ratio is ours to choose.
+            ratio: "21:9",
+            durationSeconds: filmDurations[0] ?? filmLimits.minDurationSeconds,
+            withAudio: true,
+            rounds: filmable.length,
+            shotPrompts: filmable.map((shot) => shot.prompt),
+            shotDurations: filmDurations,
+          },
+          ...(referenceIdsForCast().length === 0
+            ? {}
+            : {
+                inputAssets: referenceIdsForCast().map((assetId) => ({
+                  assetId,
+                  role: "reference",
+                })),
+              }),
+        }),
+      });
+      if (!response.ok) {
+        const body = (await response.json().catch(() => ({}))) as { error?: string };
+        setFilmError(body.error ?? "Could not start the film.");
+        return;
+      }
+      const { jobId } = (await response.json()) as { jobId: string };
+      setFilmJobId(jobId);
+    } catch {
+      setFilmError("Could not reach the server.");
+    } finally {
+      setFilming(false);
+    }
+  }, [state.brief, filmable, filmDurations, filmLimits.minDurationSeconds]);
+
   const generateShot = useCallback((index: number, shot: DirectorShot) => {
-    // Cast and attachments are additive: a saved identity plus a one-off
-    // reference is a reasonable thing to ask for.
-    const referenceIds = [
-      ...(characters.find((character) => character.id === castId)?.assetIds ?? []),
-      ...attachments.map((attachment) => attachment.assetId),
-    ];
+    const referenceIds = referenceIdsForCast();
     setGeneration((prev) => ({
       ...prev,
       [index]: { phase: "submitting", errorMessage: null, assetUrl: null },
@@ -288,6 +376,56 @@ export function DirectorClient({
       {state.phase === "failed" && (
         <div className="card border-[var(--danger)]/30 mt-4 p-4">
           <p className="text-sm text-[var(--danger)]">{state.errorMessage}</p>
+        </div>
+      )}
+
+      {/* Filming the plan is the point of planning it. One continuous piece,
+          each clip extending the last, rather than N clips the user stitches
+          themselves. It sits above the shot list because it acts on all of
+          them, and the per-shot buttons remain for anyone who only wants one. */}
+      {state.phase === "planned" && filmable.length > 1 && (
+        <div className="panel mt-6 p-4">
+          <div className="composer-footer">
+            <div>
+              <p className="text-sm text-[var(--text)]">
+                Film all {filmable.length} shots as one continuous piece
+              </p>
+              <p className="mt-1 text-[11px] text-[var(--text-muted)]">
+                {filmSeconds}s in total. Each clip continues the one before it,
+                and they cannot run in parallel — expect minutes per clip.
+                {clamped > 0 &&
+                  ` ${clamped} shot${clamped === 1 ? "" : "s"} shorter than ${filmLimits.minDurationSeconds}s will be filmed at ${filmLimits.minDurationSeconds}s, the model's floor.`}
+                {state.shots.length > filmLimits.maxShots &&
+                  ` Only the first ${filmLimits.maxShots} shots are filmed — that is the chain limit.`}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => void filmPlan()}
+              disabled={filming || filmJobId !== null}
+              className="btn-primary gap-2.5"
+            >
+              {filming && <span className="spinner" aria-hidden="true" />}
+              <span>{filmJobId === null ? "Film the plan" : "Filming"}</span>
+              <span className="val text-[11px] opacity-70">
+                {filmSeconds * creditsPerSecond} cr
+              </span>
+            </button>
+          </div>
+
+          {filmError !== null && (
+            <p className="mt-2 text-xs text-[var(--danger)]">{filmError}</p>
+          )}
+          {filmJobId !== null && (
+            <p className="mt-2 text-xs text-[var(--text-muted)]">
+              Filming started. It runs in the background — the finished piece and
+              its clips appear in the{" "}
+              <Link href="/gallery" className="underline">
+                Gallery
+              </Link>{" "}
+              when it is done.
+            </p>
+          )}
         </div>
       )}
 

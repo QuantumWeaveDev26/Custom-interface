@@ -130,6 +130,18 @@ export type GenerationParams =
        * clip count silently drops or repeats a shot.
        */
       shotPrompts?: readonly string[];
+      /**
+       * How long each clip runs, when they differ.
+       *
+       * Absent means every round uses `durationSeconds`. A planned film does not
+       * work that way — a macro insert wants three seconds and an establishing
+       * aerial wants seven — so filming a shot list flat would throw away half
+       * of what the plan decided.
+       *
+       * Length must equal `rounds`, and every entry is charged for: a chain with
+       * per-clip durations costs the sum, not the count times one length.
+       */
+      shotDurations?: readonly number[];
     }
   | { type: "voice"; style: VoiceStyle }
   | { type: "model3d"; quality: Model3dQuality };
@@ -424,6 +436,14 @@ export function creditCostFor(
   const multiplier = RESOLUTION_COST_MULTIPLIER[params.resolution];
   // Every round is a full generation of its own — the provider charges for the
   // new footage each time, so a 16-round chain costs sixteen clips, not one.
-  const raw = perSecond * params.durationSeconds * multiplier * params.rounds;
+  // When the clips have their own lengths, the bill is their sum: a film of one
+  // three-second insert and one seven-second aerial is ten seconds of footage,
+  // and pricing it as two of either length is wrong in one direction or the
+  // other.
+  const seconds =
+    params.shotDurations === undefined
+      ? params.durationSeconds * params.rounds
+      : params.shotDurations.reduce((total, each) => total + each, 0);
+  const raw = perSecond * seconds * multiplier;
   return Math.max(1, Math.ceil(raw));
 }

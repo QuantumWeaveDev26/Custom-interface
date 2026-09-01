@@ -2059,3 +2059,29 @@ test("a chain that fails on its first clip is refunded in full", async () => {
   assert.equal(harness.refunds.length, 1);
   assert.equal(harness.events.at(-1)?.status, JobStatus.Failed);
 });
+
+test("each clip of a film is generated at its own length", async () => {
+  const job = chainJob(3);
+  const harness = createVideoHarness({
+    ...job,
+    inputParams: {
+      prompt: "a street at night",
+      params: {
+        ...(job.inputParams.params as Extract<
+          typeof job.inputParams.params,
+          { type: "video" }
+        >),
+        shotDurations: [7, 4, 5],
+      },
+    },
+  });
+
+  await createGenerationProcessor(harness.dependencies)("video-job");
+
+  // A macro insert wants three seconds and an establishing aerial wants seven.
+  // Filming a plan flat throws away half of what the plan decided.
+  assert.deepEqual(
+    harness.createRequests.map((request) => request.duration),
+    [7, 4, 5],
+  );
+});

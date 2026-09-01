@@ -170,7 +170,15 @@ function parseVideoParams(raw: unknown): GenerationParams {
   }
   assertNoUnknownFields(
     raw,
-    ["resolution", "ratio", "durationSeconds", "withAudio", "rounds", "shotPrompts"],
+    [
+      "resolution",
+      "ratio",
+      "durationSeconds",
+      "withAudio",
+      "rounds",
+      "shotPrompts",
+      "shotDurations",
+    ],
     "video params",
   );
 
@@ -224,6 +232,7 @@ function parseVideoParams(raw: unknown): GenerationParams {
   }
 
   const shotPrompts = parseShotPrompts(raw.shotPrompts, rounds);
+  const shotDurations = parseShotDurations(raw.shotDurations, rounds);
 
   return {
     type: "video",
@@ -233,6 +242,7 @@ function parseVideoParams(raw: unknown): GenerationParams {
     withAudio,
     rounds,
     ...(shotPrompts === null ? {} : { shotPrompts }),
+    ...(shotDurations === null ? {} : { shotDurations }),
   };
 }
 
@@ -264,6 +274,26 @@ function parseShotPrompts(raw: unknown, rounds: number): string[] | null {
       throw new InvalidJobRequest("Each shot prompt must be 1-2000 characters");
     }
     return trimmed;
+  });
+}
+
+/** One length per clip, or none at all. Same arity rule as the shot list. */
+function parseShotDurations(raw: unknown, rounds: number): number[] | null {
+  if (raw === undefined) return null;
+  if (!Array.isArray(raw)) {
+    throw new InvalidJobRequest("shotDurations must be an array of numbers");
+  }
+  if (raw.length !== rounds) {
+    throw new InvalidJobRequest(
+      `shotDurations must have exactly ${rounds} entr${rounds === 1 ? "y" : "ies"}, one per clip`,
+    );
+  }
+
+  return raw.map((entry) => {
+    if (typeof entry !== "number" || !Number.isInteger(entry) || entry < 1) {
+      throw new InvalidJobRequest("Each shot duration must be a positive integer");
+    }
+    return entry;
   });
 }
 
@@ -437,12 +467,18 @@ export function assertParamsSupportedByModel(
     );
   }
 
-  if (
-    params.durationSeconds < capabilities.minDurationSeconds ||
-    params.durationSeconds > capabilities.maxDurationSeconds
-  ) {
-    throw new InvalidJobRequest(
-      `Model ${model} supports durations of ${capabilities.minDurationSeconds}-${capabilities.maxDurationSeconds}s`,
-    );
+  // Every clip is checked, not just the job's default: a film whose shots have
+  // their own lengths can carry a three-second insert the model cannot make, and
+  // discovering that at round nine wastes eight rounds of real spend.
+  const durations = params.shotDurations ?? [params.durationSeconds];
+  for (const duration of durations) {
+    if (
+      duration < capabilities.minDurationSeconds ||
+      duration > capabilities.maxDurationSeconds
+    ) {
+      throw new InvalidJobRequest(
+        `Model ${model} supports durations of ${capabilities.minDurationSeconds}-${capabilities.maxDurationSeconds}s`,
+      );
+    }
   }
 }

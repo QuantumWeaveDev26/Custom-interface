@@ -14,7 +14,17 @@ import {
   DEFAULT_IMAGE_PARAMS,
   DEFAULT_VIDEO_PARAMS,
   DEFAULT_VOICE_PARAMS,
+  creditCostFor,
+  type CreditPricing,
 } from "./generation.js";
+
+const PRICING: CreditPricing = {
+  imageCredits: 1,
+  voiceCredits: 1,
+  videoCreditsPerSecond720p: 5.77,
+  videoModels: ["dreamina-seedance-2-5-260628"],
+  model3dCredits: 20,
+};
 
 // --- Backward compatibility -------------------------------------------------
 // A request with no params must behave exactly as it did when the profiles were
@@ -586,6 +596,81 @@ test("an empty shot is rejected rather than filmed as nothing", () => {
         prompt: "a chase",
         params: { rounds: 2, shotPrompts: ["he runs", "   "] },
       }),
+    InvalidJobRequest,
+  );
+});
+
+test("a film's clips may each have their own length", () => {
+  const parsed = parseSubmitJobRequest({
+    type: "video",
+    prompt: "a street at night",
+    params: { rounds: 3, shotDurations: [7, 4, 5] },
+  });
+
+  assert.deepEqual(
+    parsed.params.type === "video" ? parsed.params.shotDurations : null,
+    [7, 4, 5],
+  );
+
+  // Same arity rule as the shot list, for the same reason.
+  assert.throws(
+    () =>
+      parseSubmitJobRequest({
+        type: "video",
+        prompt: "a street",
+        params: { rounds: 3, shotDurations: [7, 4] },
+      }),
+    InvalidJobRequest,
+  );
+});
+
+test("a film is priced on the seconds it actually contains", () => {
+  // 7 + 4 + 5 = 16 seconds. Pricing three clips at the job's default length
+  // would over- or under-charge depending on which shot set the default.
+  const film = creditCostFor(
+    {
+      type: "video",
+      resolution: "720p",
+      ratio: "21:9",
+      durationSeconds: 7,
+      withAudio: true,
+      rounds: 3,
+      shotDurations: [7, 4, 5],
+    },
+    PRICING,
+  );
+  const flat = creditCostFor(
+    {
+      type: "video",
+      resolution: "720p",
+      ratio: "21:9",
+      durationSeconds: 16,
+      withAudio: true,
+      rounds: 1,
+    },
+    PRICING,
+  );
+
+  assert.equal(film, flat);
+});
+
+test("a clip the model cannot make is rejected before any of the film runs", () => {
+  // Discovering an impossible three-second insert at round nine would waste
+  // eight rounds of real spend.
+  assert.throws(
+    () =>
+      assertParamsSupportedByModel(
+        {
+          type: "video",
+          resolution: "720p",
+          ratio: "16:9",
+          durationSeconds: 5,
+          withAudio: true,
+          rounds: 3,
+          shotDurations: [5, 3, 5],
+        },
+        "dreamina-seedance-2-5-260628",
+      ),
     InvalidJobRequest,
   );
 });
