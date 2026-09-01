@@ -147,6 +147,7 @@ a bug.
 - [ ] **Assistant:** Ask for one specific image — the reply carries a Generate button with the price on it. Press it: the take runs from the conversation and the finished asset appears there, not a sentence claiming it does.
 - [ ] **Assistant:** Ask for something specific ("a slow dolly across a harbour at dawn") — an action appears, and pressing it lands in Studio with the prompt already typed and the department selected. Nothing is charged until Generate is pressed there.
 - [ ] **Assistant:** Ask "what lens for a close-up on hands?" — the answer should reflect the loaded knowledge base (100mm macro), not generic advice.
+- [ ] **This film:** Add a character with a wardrobe field, then ask the Assistant what they are wearing. The answer must come from the record, not from what a model imagines. (Verified server-side 2026-09-01: the project passage outranked the craft passage 0.509 to 0.331 before weighting; a sample "Arjun" record is already in the database and can be deleted from the page.)
 - [ ] **Assistant:** Add a document under "What the house knows", then ask a question it answers. The reply should use it. (HR's ask, 2026-09-01: the agent must know our own film knowledge, gathered from their GPTs.)
 - [ ] **Accessibility:** Press Tab on a fresh page load; the first stop is "Skip to content".
 - [ ] **Accessibility (Studio):** Tab to the results column and scroll it with the arrow keys — it is a focus stop of its own because a column of images has nothing tabbable in it.

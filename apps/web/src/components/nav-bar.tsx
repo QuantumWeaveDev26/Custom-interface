@@ -10,6 +10,7 @@ const LINKS = [
   { href: "/marketing", label: "Marketing" },
   { href: "/transcribe", label: "Transcribe" },
   { href: "/voice-clone", label: "Voice Clone" },
+  { href: "/project", label: "This film" },
   { href: "/gallery", label: "Gallery" },
   { href: "/feed", label: "Feed" },
 ] as const;

@@ -136,6 +136,32 @@ model Asset {
 // computed in application code. That is fine for a per-user library of this
 // size and avoids making the whole feature wait on a database extension; see
 // PROJECT_STATE.md for when it stops being fine.
+/// A written record of something in the film: a character, a location, a prop.
+///
+/// Separate from Character, which is the generation-time identity — the
+/// reference images the model is given. This is the narrative truth about the
+/// same thing: what he wears, what the market looks like, which phone has the
+/// cracked case. A record can point at a Character so the two stay connected
+/// without either owning the other.
+model ProjectRecord {
+  id             String   @id @default(cuid())
+  userId         String
+  kind           String // "character" | "location" | "prop"
+  name           String
+  /// One line, for the assistant to recognise it by.
+  summary        String
+  /// The bible itself: whatever fields this kind of thing needs.
+  fields         Json
+  characterId    String?
+  /// The knowledge document holding this record's text, so retrieval finds it
+  /// like anything else the house knows. Deleted with the record.
+  knowledgeDocId String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([userId, kind])
+}
+
 /// A document the house knows: a note on grading, a style guide, anything the
 /// assistant should answer from rather than invent.
 model KnowledgeDoc {
