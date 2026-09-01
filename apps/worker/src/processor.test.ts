@@ -1815,3 +1815,48 @@ test("an ordinary single-round take writes no chain progress", async () => {
     [],
   );
 });
+
+test("each round of a chain is directed by its own shot", async () => {
+  const job = chainJob(3);
+  const harness = createVideoHarness({
+    ...job,
+    inputParams: {
+      prompt: "unused when a shot list is present",
+      params: {
+        ...(job.inputParams.params as Extract<
+          typeof job.inputParams.params,
+          { type: "video" }
+        >),
+        shotPrompts: ["the door opens", "he crosses the room", "he sits down"],
+      },
+    },
+  });
+
+  await createGenerationProcessor(harness.dependencies)("video-job");
+
+  const texts = harness.createRequests.map(
+    (request) =>
+      (request.content.find((item) => item.type === "text") as { text: string })
+        .text,
+  );
+
+  // Round one is directed plainly; later rounds carry the same direction with
+  // the continuation instruction, because they extend the clip before them.
+  assert.equal(texts[0], "the door opens");
+  assert.match(texts[1] ?? "", /^Continue seamlessly from \[Video 1\]\. he crosses the room$/);
+  assert.match(texts[2] ?? "", /^Continue seamlessly from \[Video 1\]\. he sits down$/);
+});
+
+test("a chain with no shot list repeats the one prompt it was given", async () => {
+  const harness = createVideoHarness(chainJob(2));
+
+  await createGenerationProcessor(harness.dependencies)("video-job");
+
+  const texts = harness.createRequests.map(
+    (request) =>
+      (request.content.find((item) => item.type === "text") as { text: string })
+        .text,
+  );
+  assert.equal(texts[0], "orbital sunrise");
+  assert.equal(texts[1], "Continue seamlessly from [Video 1]. orbital sunrise");
+});

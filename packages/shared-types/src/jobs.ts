@@ -161,7 +161,7 @@ function parseVideoParams(raw: unknown): GenerationParams {
   }
   assertNoUnknownFields(
     raw,
-    ["resolution", "ratio", "durationSeconds", "withAudio", "rounds"],
+    ["resolution", "ratio", "durationSeconds", "withAudio", "rounds", "shotPrompts"],
     "video params",
   );
 
@@ -214,7 +214,48 @@ function parseVideoParams(raw: unknown): GenerationParams {
     );
   }
 
-  return { type: "video", resolution, ratio, durationSeconds, withAudio, rounds };
+  const shotPrompts = parseShotPrompts(raw.shotPrompts, rounds);
+
+  return {
+    type: "video",
+    resolution,
+    ratio,
+    durationSeconds,
+    withAudio,
+    rounds,
+    ...(shotPrompts === null ? {} : { shotPrompts }),
+  };
+}
+
+/**
+ * One prompt per clip, or none at all.
+ *
+ * The length check is the point: a four-entry shot list on a three-round chain
+ * means the user wrote a shot that would never be filmed, and a two-entry list
+ * means a round would silently reuse someone else's line. Both are worth a
+ * rejection rather than a quiet reinterpretation.
+ */
+function parseShotPrompts(raw: unknown, rounds: number): string[] | null {
+  if (raw === undefined) return null;
+  if (!Array.isArray(raw)) {
+    throw new InvalidJobRequest("shotPrompts must be an array of strings");
+  }
+  if (raw.length !== rounds) {
+    throw new InvalidJobRequest(
+      `shotPrompts must have exactly ${rounds} entr${rounds === 1 ? "y" : "ies"}, one per clip`,
+    );
+  }
+
+  return raw.map((entry) => {
+    if (typeof entry !== "string") {
+      throw new InvalidJobRequest("Each shot prompt must be a string");
+    }
+    const trimmed = entry.trim();
+    if (trimmed.length < 1 || trimmed.length > 2000) {
+      throw new InvalidJobRequest("Each shot prompt must be 1-2000 characters");
+    }
+    return trimmed;
+  });
 }
 
 function parseVoiceParams(raw: unknown): GenerationParams {

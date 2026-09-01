@@ -543,3 +543,49 @@ test("a 3D job rejects video-only input roles", () => {
     InvalidJobRequest,
   );
 });
+
+test("a shot list directs one clip each and must match the clip count", () => {
+  const parsed = parseSubmitJobRequest({
+    type: "video",
+    prompt: "a chase through a market",
+    params: {
+      rounds: 3,
+      shotPrompts: ["he ducks under an awning", "  a crate topples  ", "he reaches the street"],
+    },
+  });
+
+  assert.deepEqual(
+    parsed.params.type === "video" ? parsed.params.shotPrompts : null,
+    ["he ducks under an awning", "a crate topples", "he reaches the street"],
+  );
+
+  // Four shots for three clips means the user wrote a shot that would never be
+  // filmed; two means a clip would silently borrow another's line. Both are
+  // rejections rather than quiet reinterpretations.
+  for (const shotPrompts of [
+    ["one", "two"],
+    ["one", "two", "three", "four"],
+  ]) {
+    assert.throws(
+      () =>
+        parseSubmitJobRequest({
+          type: "video",
+          prompt: "a chase",
+          params: { rounds: 3, shotPrompts },
+        }),
+      InvalidJobRequest,
+    );
+  }
+});
+
+test("an empty shot is rejected rather than filmed as nothing", () => {
+  assert.throws(
+    () =>
+      parseSubmitJobRequest({
+        type: "video",
+        prompt: "a chase",
+        params: { rounds: 2, shotPrompts: ["he runs", "   "] },
+      }),
+    InvalidJobRequest,
+  );
+});

@@ -42,6 +42,12 @@ export interface StudioState {
   withAudio: boolean;
   /** Clips chained into one continuous piece. 1 is an ordinary take. */
   rounds: number;
+  /**
+   * What happens in each clip. Grows and shrinks with `rounds`, so the list and
+   * the clip count cannot disagree — the server rejects a shot list that does.
+   * Entries left blank fall back to the main prompt for that clip.
+   */
+  shotPrompts: string[];
   ratio: VideoRatio;
   durationSeconds: number;
   /** Asset id used as the video's first frame (image-to-video), if any. */
@@ -98,6 +104,7 @@ export const INITIAL_STUDIO_STATE: StudioState = {
   resolution: "720p",
   withAudio: true,
   rounds: 1,
+  shotPrompts: [],
   ratio: "21:9",
   durationSeconds: 5,
   firstFrameAssetId: null,
@@ -124,6 +131,7 @@ export type StudioAction =
   | { type: "SET_RESOLUTION"; resolution: VideoResolution }
   | { type: "SET_AUDIO"; withAudio: boolean }
   | { type: "SET_ROUNDS"; rounds: number }
+  | { type: "SET_SHOT_PROMPT"; index: number; prompt: string }
   | { type: "SET_RATIO"; ratio: VideoRatio }
   | { type: "SET_DURATION"; durationSeconds: number }
   | { type: "SET_FIRST_FRAME"; assetId: string | null }
@@ -199,8 +207,20 @@ export function studioReducer(
       return { ...state, resolution: action.resolution };
     case "SET_AUDIO":
       return { ...state, withAudio: action.withAudio };
-    case "SET_ROUNDS":
-      return { ...state, rounds: action.rounds };
+    case "SET_ROUNDS": {
+      // The shot list is resized here rather than in the view, so it can never
+      // hold a shot for a clip that is not going to be filmed.
+      const shotPrompts = Array.from(
+        { length: action.rounds },
+        (_, index) => state.shotPrompts[index] ?? "",
+      );
+      return { ...state, rounds: action.rounds, shotPrompts };
+    }
+    case "SET_SHOT_PROMPT": {
+      const shotPrompts = [...state.shotPrompts];
+      shotPrompts[action.index] = action.prompt;
+      return { ...state, shotPrompts };
+    }
     case "SET_RATIO":
       return { ...state, ratio: action.ratio };
     case "SET_DURATION":

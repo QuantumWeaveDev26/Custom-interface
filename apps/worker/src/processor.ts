@@ -402,9 +402,13 @@ const WIRE_ROLE: Readonly<Record<InputAssetRole, string>> = Object.freeze({
 async function buildVideoContent(
   dependencies: GenerationProcessorDependencies,
   job: JobRecord,
+  // The first clip of a chain is directed by the first entry of the shot list,
+  // not by the job prompt, so the caller passes the text rather than the job
+  // deciding it here.
+  prompt: string = job.inputParams.prompt,
 ): Promise<CreateContentGenerationContentItem[]> {
   const content: CreateContentGenerationContentItem[] = [
-    { type: "text", text: job.inputParams.prompt },
+    { type: "text", text: prompt },
   ];
 
   const inputAssets = await dependencies.loadInputAssets(job.id, job.userId);
@@ -454,9 +458,13 @@ async function processVideo(
   for (let round = progress.completedRounds; round < params.rounds; round += 1) {
     if (externalTaskId === null) {
       const previousClip = clipStorageUrls.at(-1);
+      // What this particular clip is about. A shot list directs each round
+      // separately; without one every round repeats the job's single prompt,
+      // which yields one continuous motion rather than a story.
+      const roundPrompt = params.shotPrompts?.[round] ?? job.inputParams.prompt;
       const content =
         previousClip === undefined
-          ? await buildVideoContent(dependencies, job)
+          ? await buildVideoContent(dependencies, job, roundPrompt)
           : // Extend, not first-frame chaining: the continuation is conditioned
             // on the previous clip's motion rather than on a single still,
             // which is what keeps a long piece coherent. Confirmed live on
@@ -464,7 +472,7 @@ async function processVideo(
             ([
               {
                 type: "text",
-                text: `Continue seamlessly from [Video 1]. ${job.inputParams.prompt}`,
+                text: `Continue seamlessly from [Video 1]. ${roundPrompt}`,
               },
               {
                 type: "video_url",

@@ -133,6 +133,7 @@ a bug.
 - [ ] **Accessibility:** Press Tab key through all controls; verify 2px signal focus ring on every element.
 - [ ] **Studio (Video):** Set the Sound chip to `silent`, generate, and confirm the result really has no audio track — the provider returns sound by default, so this chip is the only thing that turns it off.
 - [ ] **Studio (Video):** Set Clips to 3 at 5s/720p, check the cost readout is 3x a single take (~87 cr), generate, and watch the three clips for drift across the two joins. This is the long-form proof — if continuity holds here it holds at sixteen.
+- [ ] **Studio (Video):** With Clips at 3, fill the shot list with three different actions and confirm each clip does its own thing while still continuing the last. Leave it blank and confirm every clip repeats the main prompt instead.
 - [ ] **Studio (Video):** While a 3-clip chain is running, restart the worker. It must resume at the round it reached, not regenerate the finished clips.
 - [ ] **Gallery:** Click Similar on a library tile; results load from the URL and the back button returns to the library.
 - [ ] **Accessibility:** Press Tab on a fresh page load; the first stop is "Skip to content".

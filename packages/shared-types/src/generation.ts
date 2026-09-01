@@ -119,6 +119,17 @@ export type GenerationParams =
        * as it is about spend.
        */
       rounds: number;
+      /**
+       * What happens in each clip, one entry per round.
+       *
+       * Optional, and absent means every round reuses the job's single prompt —
+       * which produces one continuous motion rather than a story. With it, round
+       * N is directed by entry N while still extending the clip round N-1
+       * produced, so the piece stays visually continuous while the action moves
+       * on. Length must equal `rounds`; a shot list that disagrees with the
+       * clip count silently drops or repeats a shot.
+       */
+      shotPrompts?: readonly string[];
     }
   | { type: "voice"; style: VoiceStyle }
   | { type: "model3d"; quality: Model3dQuality };

@@ -273,6 +273,12 @@ export function StudioClient({
       durationSeconds: state.durationSeconds,
       withAudio: state.withAudio,
       rounds: state.rounds,
+      // Only sent when the user actually directed the clips. A list of blanks
+      // would be rejected — the server requires every entry to say something —
+      // and it would mean the same thing as sending nothing at all.
+      ...(state.rounds > 1 && state.shotPrompts.every((shot) => shot.trim().length > 0)
+        ? { shotPrompts: state.shotPrompts.map((shot) => shot.trim()) }
+        : {}),
     };
   }, [
     state.mode,
@@ -285,6 +291,7 @@ export function StudioClient({
     state.durationSeconds,
     state.withAudio,
     state.rounds,
+    state.shotPrompts,
   ]);
 
   const videoInputAssets = useMemo(
@@ -899,6 +906,42 @@ export function StudioClient({
             onAttached={handleAttached}
             onRemove={handleRemoveAttachment}
           />
+        )}
+
+        {/* The shot list. Only shown once a take is a chain, because for a
+            single clip the prompt above already is the shot. Each line directs
+            one clip while still extending the one before it, which is the
+            difference between a story and one long camera move. */}
+        {state.mode === "video" && state.rounds > 1 && (
+          <div className="space-y-1.5 pt-1">
+            <p className="rule-cap">Shot list</p>
+            {state.shotPrompts.map((shot, index) => (
+              <div key={index} className="flex items-center gap-2">
+                <span className="val w-6 shrink-0 font-mono text-[11px] text-[var(--text-faint)]">
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+                <input
+                  type="text"
+                  value={shot}
+                  disabled={isBusy}
+                  maxLength={2000}
+                  onChange={(event) =>
+                    dispatch({
+                      type: "SET_SHOT_PROMPT",
+                      index,
+                      prompt: event.target.value,
+                    })
+                  }
+                  placeholder={
+                    index === 0
+                      ? "How it opens — leave the list blank to use the prompt above for every clip"
+                      : `What happens in clip ${index + 1}`
+                  }
+                  className="input-field !py-2 text-[13px]"
+                />
+              </div>
+            ))}
+          </div>
         )}
 
         {composedPrompt !== state.prompt && state.prompt.trim().length > 0 && (
