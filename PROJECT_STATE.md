@@ -122,6 +122,7 @@ a bug.
 - [ ] **Gallery:** Click "Index up to 20", then search library with a text query.
 - [ ] **Gallery:** Click "More like this" on an asset tile to test similarity ranking.
 - [ ] **Director:** Enter brief; verify global grade banner and per-shot camera + lens labels.
+- [ ] **Director:** Rewrite a shot's text, then hover "Generate this shot" — the tooltip shows the composed prompt and must contain your new words, with the same camera/lens/grade behind them. (HR asked for this on 2026-09-01: shots must be editable before generating.)
 - [ ] **Director:** Cast character identity and attach reference image.
 - [ ] **Marketing:** Enter product URL; verify direction line (style, camera, lens, look), cast, and attach.
 - [ ] **Gallery:** Tick "Index new generations automatically", generate one image, and confirm the unindexed count does not grow (worker embeds it on completion).

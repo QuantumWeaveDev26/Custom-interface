@@ -1,5 +1,7 @@
 "use client";
 
+import type { LookPresetId } from "@creative-ai/prompt-library";
+
 import { AttachButton, type Attachment } from "../attach-button";
 import { EmptyState } from "../empty-state";
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
@@ -80,11 +82,12 @@ export function DirectorClient({
         return;
       }
 
-      const { shots, lookLabel } = (await response.json()) as {
+      const { shots, lookLabel, lookPreset } = (await response.json()) as {
         shots: DirectorShot[];
         lookLabel: string;
+        lookPreset: LookPresetId;
       };
-      dispatch({ type: "PLAN_SUCCESS", shots, lookLabel });
+      dispatch({ type: "PLAN_SUCCESS", shots, lookLabel, lookPreset });
     },
     [state.brief, state.phase],
   );
@@ -329,7 +332,29 @@ export function DirectorClient({
                       {shot.durationSeconds}s
                     </span>
                   </div>
-                  <p className="mt-2.5 text-sm text-[var(--text)]">{shot.description}</p>
+                  {/* The shot is editable in place. A plan you cannot change is
+                      a suggestion you have to accept, and the model's fourth
+                      shot is rarely the one you wanted. Rewriting recomposes
+                      the prompt with this shot's own camera and lens and the
+                      film's grade, so what changes here is what gets made. */}
+                  <label htmlFor={`shot-${index}`} className="sr-only">
+                    Shot {index + 1} description
+                  </label>
+                  <textarea
+                    id={`shot-${index}`}
+                    value={shot.description}
+                    disabled={busy}
+                    rows={4}
+                    maxLength={1000}
+                    onChange={(event) =>
+                      dispatch({
+                        type: "EDIT_SHOT",
+                        index,
+                        description: event.target.value,
+                      })
+                    }
+                    className="input-field mt-2.5 resize-none !py-2 text-sm"
+                  />
 
                   {/* Carries the signal because it spends credits, which is the
                       one thing DESIGN.md reserves the signal for. As a
@@ -337,6 +362,7 @@ export function DirectorClient({
                   <button
                     type="button"
                     onClick={() => generateShot(index, shot)}
+                    title={shot.prompt}
                     disabled={busy}
                     className="btn-primary mt-4 w-full gap-2 !py-2 text-xs"
                   >
