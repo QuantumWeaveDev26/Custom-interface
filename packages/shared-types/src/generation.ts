@@ -95,12 +95,15 @@ export type GenerationParams =
       ratio: VideoRatio;
       durationSeconds: number;
       /**
-       * Ask the model for a soundtrack as well as pictures.
+       * Whether the model returns a soundtrack with the pictures.
        *
-       * Off by default. The endpoint documents `generate_audio` but not what it
-       * costs, and every video this project has produced so far has been
-       * silent, so defaulting it on would change what an existing take costs
-       * without anyone asking for sound. Confirm the surcharge, then revisit.
+       * On by default, because that is what the provider already does. Verified
+       * live on 2026-09-01: a clip generated before this field existed carries
+       * an AAC track at mean -28 dB — real sound, not a silent stream — and the
+       * request never mentioned audio. Defaulting this to false would have
+       * turned off a feature the product already shipped with.
+       *
+       * The chip therefore turns sound *off*, for a take that does not want it.
        */
       withAudio: boolean;
     }
@@ -235,7 +238,7 @@ export const DEFAULT_VIDEO_PARAMS: Extract<GenerationParams, { type: "video" }> 
     resolution: "720p",
     ratio: "21:9",
     durationSeconds: 5,
-    withAudio: false,
+    withAudio: true,
   });
 
 export const DEFAULT_VOICE_PARAMS: Extract<GenerationParams, { type: "voice" }> =

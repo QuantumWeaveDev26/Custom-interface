@@ -31,7 +31,9 @@ test("omitting params yields the previous hardcoded profile values", () => {
     resolution: "720p",
     ratio: "21:9",
     durationSeconds: 5,
-      withAudio: false,
+    // Sound is on unless a take asks for silence — the provider returns audio
+    // whether or not the request mentions it.
+    withAudio: true,
   });
 
   const voice = parseSubmitJobRequest({ type: "voice", prompt: "hello" });
@@ -116,7 +118,7 @@ test("accepts valid video params and preserves them", () => {
     resolution: "1080p",
     ratio: "16:9",
     durationSeconds: 12,
-      withAudio: false,
+    withAudio: true,
   });
 });
 
@@ -131,7 +133,7 @@ test("video params fill only the omitted fields from defaults", () => {
     resolution: "720p",
     ratio: "21:9",
     durationSeconds: 9,
-      withAudio: false,
+    withAudio: true,
   });
 });
 
@@ -434,7 +436,7 @@ test("accepts ratio adaptive when a keyframe is supplied", () => {
     resolution: "720p",
     ratio: "adaptive",
     durationSeconds: 5,
-      withAudio: false,
+    withAudio: true,
   });
 });
 

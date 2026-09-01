@@ -38,7 +38,7 @@ export interface StudioState {
   voiceStyle: VoiceStyle;
   imageSize: ImageSize;
   resolution: VideoResolution;
-  /** Ask the model for sound as well as pictures. Off by default. */
+  /** Whether the take comes back with sound. On, matching the provider. */
   withAudio: boolean;
   ratio: VideoRatio;
   durationSeconds: number;
@@ -94,7 +94,7 @@ export const INITIAL_STUDIO_STATE: StudioState = {
   imageCount: 1,
   model3dQuality: "standard",
   resolution: "720p",
-  withAudio: false,
+  withAudio: true,
   ratio: "21:9",
   durationSeconds: 5,
   firstFrameAssetId: null,

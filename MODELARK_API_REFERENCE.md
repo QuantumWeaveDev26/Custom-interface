@@ -195,6 +195,35 @@ Console → ModelArk → Model list and look for an "Access"/"API" tab or code s
 it usually shows the literal model ID string used in the `model` field. Confirm rather
 than trust the derived pattern.
 
+## Live probe results, 2026-09-01 — extend and 4K on Seedance 2.5
+
+Two questions settled with one script against the real account. Cost: one 4s
+720p extend, ~23 credits (~$0.92). The create call is where validation happens,
+so a rejection costs nothing.
+
+**4K on `dreamina-seedance-2-5-260628`: NO.** Verbatim:
+
+```
+HTTP 400 InvalidParameter: the parameter resolution specified in the request
+is not valid for model dreamina-seedance-2-5 in t2v
+```
+
+The registry in `generation.ts` was right to cap 2.5 at 1080p, and the
+third-party listing claiming 4K on 2.5 extend does not match this account. The
+resolution-routing to 2.0 for 4K stands.
+
+**Video extend on 2.5 via ModelArk: YES — confirmed live, not from docs.** A
+create with one `role: "reference_video"` item was accepted, ran, and succeeded:
+4s, 720p, 1470x630, h264 + AAC.
+
+**A running task cannot be cancelled.** `deleteVideoTask` on an in-flight task
+returns `409 InvalidAction.RunningTaskDeletion`. A probe that is accepted will be
+paid for in full — budget for that rather than planning to cancel.
+
+**Generation time:** this 4s extend completed in about three minutes.
+
+---
+
 ## Long-form by chaining clips — proof in progress, 2026-09-01
 
 **The question:** can 8 minutes be assembled from 30s clips (16 of them), and
@@ -249,16 +278,17 @@ produced before today was silent because the field was never sent.
 It is now wired end to end: a `Sound` chip in the Studio composer, `withAudio` on
 the video params, `generate_audio` on the create-task request.
 
-**UNCONFIRMED: what sound costs.** The docs list the field but no surcharge, and
-credits are still charged per second of video with no audio component. That is
-why the default is silent — turning it on by default would have changed the
-price of an existing take without anyone asking for it. Confirm the real cost
-against a live job, then decide whether the default flips and whether the credit
-formula needs an audio term.
+**CORRECTED 2026-09-01, same day.** The claim above that our video was silent was
+wrong, and it was mine. `ffprobe` on a clip generated *before* this field existed
+shows an AAC track at mean -28 dB / max -11.8 dB — real sound, not a silent
+stream — from a request that never mentioned audio. **ModelArk returns audio by
+default.** Shipping `withAudio: false` as the default therefore switched off
+something the product already had. The default is now `true`, and the chip is how
+a take is made silent.
 
-**UNCONFIRMED: whether `dreamina-seedance-2-5-260628` supports it.** The support
-matrix on record is for `dreamina-seedance-2-0-fast-260128`. 2.5 is today's
-default model.
+**Cost is still UNCONFIRMED**, but it is no longer a reason to default to silence:
+audio was already being produced and already being paid for at the current
+per-second rate.
 
 ---
 

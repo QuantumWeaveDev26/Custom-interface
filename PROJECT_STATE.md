@@ -131,7 +131,7 @@ a bug.
 - [ ] **Feed:** Click "Share" again on that asset in the Gallery; it leaves the Feed.
 - [ ] **Gallery (3D):** Click "Preview in 3D" on a mesh; the viewer loads only on that click.
 - [ ] **Accessibility:** Press Tab key through all controls; verify 2px signal focus ring on every element.
-- [ ] **Studio (Video):** Set the Sound chip to `sound`, generate, and play the result with the volume up — confirm the model actually returns an audio track on seedance-2.5, and note what it cost.
+- [ ] **Studio (Video):** Set the Sound chip to `silent`, generate, and confirm the result really has no audio track — the provider returns sound by default, so this chip is the only thing that turns it off.
 - [ ] **Gallery:** Click Similar on a library tile; results load from the URL and the back button returns to the library.
 - [ ] **Accessibility:** Press Tab on a fresh page load; the first stop is "Skip to content".
 - [ ] **Accessibility (Studio):** Tab to the results column and scroll it with the arrow keys — it is a focus stop of its own because a column of images has nothing tabbable in it.

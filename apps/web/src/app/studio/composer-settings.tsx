@@ -111,8 +111,9 @@ export function ComposerSettings({
             onPick={(ratio) => dispatch({ type: "SET_RATIO", ratio })}
           />
           {/* Sound is a two-state chip rather than a checkbox so it sits in
-              the same row as the other per-take settings and reads at a
-              glance. Off by default — see withAudio in shared-types. */}
+              the same row as the other per-take settings and reads at a glance.
+              It starts on, because the provider returns audio whether or not it
+              is asked; this chip is how a take is made silent. */}
           <Cycle
             label="Sound"
             icon={<SoundIcon />}
