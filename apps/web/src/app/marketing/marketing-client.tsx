@@ -267,7 +267,25 @@ export function MarketingClient({
       )}
 
       {state.phase === "planned" && state.product && state.direction && (
-        <div className="card mt-8 p-5">
+        <div className="card mt-8 overflow-hidden">
+          {/* The finished ad leads, flush and full width. It was the last
+              element inside the padding, below the controls that made it — the
+              product page's own photo was larger on screen than the ad. */}
+          {generation.phase === "complete" && generation.assetUrl && (
+            adType === "image" ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={generation.assetUrl} alt="Generated ad" className="w-full" />
+            ) : (
+              <video
+                src={generation.assetUrl}
+                controls
+                preload="metadata"
+                className="w-full"
+              />
+            )
+          )}
+
+          <div className="p-5">
           <div className="flex gap-4">
             {state.product.imageUrl && (
               // eslint-disable-next-line @next/next/no-img-element
@@ -312,39 +330,32 @@ export function MarketingClient({
                 </button>
               ))}
             </div>
+            {/* The signal, because this is the control that spends credits. */}
             <button
               type="button"
               onClick={() => generateAd(state.direction!.composedPrompt)}
               disabled={busy}
-              className="btn-secondary gap-2 !px-3 !py-1.5 text-xs"
+              className="btn-primary ml-auto gap-2 !px-4 !py-2 text-xs"
             >
               {busy && <span className="spinner h-3 w-3" aria-hidden="true" />}
-              {busy ? "Working..." : "Generate This Ad"}
+              {busy
+                ? "Working..."
+                : generation.phase === "complete"
+                  ? "Run it again"
+                  : "Generate this ad"}
             </button>
           </div>
 
           {(generation.phase === "queued" || generation.phase === "processing") && (
             <p className="mt-3 flex items-center gap-1.5 text-xs text-[var(--text-muted)]">
-              <span className="spinner h-3 w-3 text-[var(--accent-via)]" aria-hidden="true" />
+              <span className="spinner h-3 w-3 text-[var(--text-muted)]" aria-hidden="true" />
               {generation.phase === "queued" ? "Queued..." : "Rendering..."}
             </p>
           )}
           {generation.phase === "failed" && (
             <p className="mt-3 text-xs text-[var(--danger)]">{generation.errorMessage}</p>
           )}
-          {generation.phase === "complete" && generation.assetUrl && (
-            adType === "image" ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={generation.assetUrl} alt="Generated ad" className="mt-4 w-full rounded-[10px]" />
-            ) : (
-              <video
-                src={generation.assetUrl}
-                controls
-                preload="metadata"
-                className="mt-4 w-full rounded-[10px]"
-              />
-            )
-          )}
+          </div>
         </div>
       )}
     </div>

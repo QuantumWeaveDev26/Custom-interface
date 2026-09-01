@@ -305,45 +305,65 @@ export function DirectorClient({
               shotGeneration.phase === "processing";
 
             return (
-              <div key={index} className="card p-4">
-                <div className="flex items-center justify-between">
-                  <span className="rounded-[10px] bg-[var(--surface-hover)] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">
-                    Shot {index + 1}
-                  </span>
-                  <span className="text-xs text-[var(--text-faint)]">
-                    {shot.cameraLabel} &middot; {shot.lensLabel} &middot;{" "}
-                    {shot.durationSeconds}s
-                  </span>
-                </div>
-                <p className="mt-3 text-sm text-[var(--text)]">{shot.description}</p>
-
-                <button
-                  type="button"
-                  onClick={() => generateShot(index, shot)}
-                  disabled={busy}
-                  className="btn-secondary mt-4 w-full gap-2 !py-2 text-xs"
-                >
-                  {busy && <span className="spinner h-3 w-3" aria-hidden="true" />}
-                  {busy ? "Working..." : "Generate This Shot"}
-                </button>
-
-                {(shotGeneration.phase === "queued" || shotGeneration.phase === "processing") && (
-                  <p className="mt-2 flex items-center gap-1.5 text-xs text-[var(--text-muted)]">
-                    <span className="spinner h-3 w-3 text-[var(--accent-via)]" aria-hidden="true" />
-                    {shotGeneration.phase === "queued" ? "Queued..." : "Rendering..."}
-                  </p>
-                )}
-                {shotGeneration.phase === "failed" && (
-                  <p className="mt-2 text-xs text-[var(--danger)]">{shotGeneration.errorMessage}</p>
-                )}
+              <div key={index} className="card overflow-hidden">
+                {/* The finished shot sits flush at the top of the card, the
+                    way an asset fills a gallery tile. Inset in the padding
+                    below the text, it read as an attachment to the plan
+                    rather than as the thing the plan was for. */}
                 {shotGeneration.phase === "complete" && shotGeneration.assetUrl && (
                   <video
                     src={shotGeneration.assetUrl}
                     controls
                     preload="metadata"
-                    className="mt-3 w-full rounded-[10px]"
+                    className="w-full"
                   />
                 )}
+
+                <div className="p-4">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <span className="val font-mono text-[11px] text-[var(--text-faint)]">
+                      {String(index + 1).padStart(2, "0")}
+                    </span>
+                    <span className="text-xs text-[var(--text-faint)]">
+                      {shot.cameraLabel} &middot; {shot.lensLabel} &middot;{" "}
+                      {shot.durationSeconds}s
+                    </span>
+                  </div>
+                  <p className="mt-2.5 text-sm text-[var(--text)]">{shot.description}</p>
+
+                  {/* Carries the signal because it spends credits, which is the
+                      one thing DESIGN.md reserves the signal for. As a
+                      secondary it was indistinguishable from Clear. */}
+                  <button
+                    type="button"
+                    onClick={() => generateShot(index, shot)}
+                    disabled={busy}
+                    className="btn-primary mt-4 w-full gap-2 !py-2 text-xs"
+                  >
+                    {busy && <span className="spinner h-3 w-3" aria-hidden="true" />}
+                    {busy
+                      ? "Working..."
+                      : shotGeneration.phase === "complete"
+                        ? "Shoot it again"
+                        : "Generate this shot"}
+                  </button>
+
+                  {(shotGeneration.phase === "queued" ||
+                    shotGeneration.phase === "processing") && (
+                    <p className="mt-2 flex items-center gap-1.5 text-xs text-[var(--text-muted)]">
+                      <span
+                        className="spinner h-3 w-3 text-[var(--text-muted)]"
+                        aria-hidden="true"
+                      />
+                      {shotGeneration.phase === "queued" ? "Queued..." : "Rendering..."}
+                    </p>
+                  )}
+                  {shotGeneration.phase === "failed" && (
+                    <p className="mt-2 text-xs text-[var(--danger)]">
+                      {shotGeneration.errorMessage}
+                    </p>
+                  )}
+                </div>
               </div>
             );
           })}
