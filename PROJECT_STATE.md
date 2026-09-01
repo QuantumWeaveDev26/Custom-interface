@@ -388,6 +388,13 @@ automatic.
 
 ### Windows-specific operational gotchas
 
+- **After any `prisma migrate`, restart the dev server and the worker.** Both
+  hold the generated client in memory, so a schema change mid-session leaves a
+  process that cannot see the new column or model — it fails at request time
+  with `Unknown field` or `Cannot read properties of undefined (reading
+  'findMany')`, while the migration and the generated client on disk are both
+  perfectly fine. This bit three times on 2026-09-01 (`publishedAt`, `kind`,
+  then the knowledge tables). The fix is always the same and never the code.
 - Stale `node` worker processes survive rebuilds and silently serve old compiled
   code. This caused a multi-hour false diagnosis. Before concluding a worker fix
   didn't work, verify no stale process:

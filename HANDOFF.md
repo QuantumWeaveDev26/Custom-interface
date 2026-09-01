@@ -127,6 +127,11 @@ reports were this.** Hard-reload (`Ctrl+Shift+R`) after any CSS change.
 
 ---
 
+**A migration invalidates every running process.** The dev server and the
+worker each hold a generated Prisma client in memory; after `prisma migrate`,
+restart both or the next request fails with `Unknown field` while everything on
+disk is correct. Cost three separate debugging detours on 2026-09-01.
+
 ## 4. How to run it
 
 ```bash
