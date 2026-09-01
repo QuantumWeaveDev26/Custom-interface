@@ -145,6 +145,7 @@ a bug.
 - [ ] **Gallery:** Click Similar on a library tile; results load from the URL and the back button returns to the library.
 - [ ] **Assistant:** Ask "how do I make an eight-minute film?" — the answer should state the 16-clip limit and the hours it takes, not promise it in minutes.
 - [ ] **Assistant:** Ask for something specific ("a slow dolly across a harbour at dawn") — an action appears, and pressing it lands in Studio with the prompt already typed and the department selected. Nothing is charged until Generate is pressed there.
+- [ ] **Assistant:** Ask "what lens for a close-up on hands?" — the answer should reflect the loaded knowledge base (100mm macro), not generic advice.
 - [ ] **Assistant:** Add a document under "What the house knows", then ask a question it answers. The reply should use it. (HR's ask, 2026-09-01: the agent must know our own film knowledge, gathered from their GPTs.)
 - [ ] **Accessibility:** Press Tab on a fresh page load; the first stop is "Skip to content".
 - [ ] **Accessibility (Studio):** Tab to the results column and scroll it with the arrow keys — it is a focus stop of its own because a column of images has nothing tabbable in it.

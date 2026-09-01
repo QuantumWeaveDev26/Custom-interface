@@ -222,6 +222,24 @@ Two things worth keeping from how this was found:
 
 ---
 
+## Text embedding — CONFIRMED live 2026-09-01
+
+`skylark-embedding-vision-250615` embeds text as well as images. The multimodal
+endpoint takes `input: [{ "type": "text", "text": "..." }]` and returns a vector
+of the requested width like any other input.
+
+Proven by loading a real 9-page document: 26 passages, every one back at 2048
+dimensions, and retrieval returns the right section — a question about executing
+actions ranked the document's own "assistant to action contract" section first
+(0.530), a question about lenses for hands ranked the macro-lens passage first
+(0.555).
+
+Typical similarity for related text sits around 0.45-0.55 on this model, not the
+0.8+ that image-to-image comparisons reach. Judge relevance by ranking, not by an
+absolute threshold.
+
+---
+
 ## Model inventory endpoint, found 2026-09-01
 
 `GET {ARK_BASE_URL}/models` with the normal Bearer key returns 200 and a JSON
