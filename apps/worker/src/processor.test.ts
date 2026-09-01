@@ -2085,3 +2085,37 @@ test("each clip of a film is generated at its own length", async () => {
     [7, 4, 5],
   );
 });
+
+test("the cut and its parts are labelled, so the gallery need not guess", async () => {
+  const harness = createVideoHarness(chainJob(3));
+  harness.dependencies.stitchClips = async (clips) => {
+    for await (const _clip of clips) void _clip;
+    return { body: new Uint8Array([1]), contentType: "video/mp4" };
+  };
+  const kinds: (string | undefined)[] = [];
+  const realComplete = harness.dependencies.completeJobWithAssets;
+  harness.dependencies.completeJobWithAssets = async (jobId, assets, rounds) => {
+    kinds.push(...assets.map((asset) => asset.kind));
+    return realComplete(jobId, assets, rounds);
+  };
+
+  await createGenerationProcessor(harness.dependencies)("video-job");
+
+  // Deciding which of seventeen videos is the finished piece by its position in
+  // a list will eventually be wrong, and the finished piece is the whole point.
+  assert.deepEqual(kinds, ["film", "clip", "clip", "clip", undefined]);
+});
+
+test("a single take carries no part label, because it has no parts", async () => {
+  const harness = createVideoHarness(videoJob());
+  const kinds: (string | undefined)[] = [];
+  const realComplete = harness.dependencies.completeJobWithAssets;
+  harness.dependencies.completeJobWithAssets = async (jobId, assets, rounds) => {
+    kinds.push(...assets.map((asset) => asset.kind));
+    return realComplete(jobId, assets, rounds);
+  };
+
+  await createGenerationProcessor(harness.dependencies)("video-job");
+
+  assert.deepEqual(kinds, [undefined, undefined]);
+});

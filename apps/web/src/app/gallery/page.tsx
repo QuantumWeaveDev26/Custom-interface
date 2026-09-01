@@ -6,6 +6,7 @@ import Link from "next/link";
 import { AssetTile } from "./asset-tile";
 import { GallerySearch } from "./gallery-search";
 import {
+  filmOf,
   groupAssets,
   parseGalleryFilter,
   toGalleryRows,
@@ -42,7 +43,14 @@ export default async function GalleryPage({
       ...(filter === "all" ? {} : { type: filter }),
     },
     orderBy: { createdAt: "desc" },
-    select: { id: true, type: true, jobId: true, createdAt: true, publishedAt: true },
+    select: {
+      id: true,
+      type: true,
+      jobId: true,
+      createdAt: true,
+      publishedAt: true,
+      kind: true,
+    },
   });
 
   // Counted unfiltered, so an empty filtered view can say "no video yet"
@@ -156,16 +164,18 @@ export default async function GalleryPage({
                 {/* Tiles sit flush inside the band: the band is already the
                     frame that says these belong together, and framing each
                     member again is a border inside a border. */}
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
-                  {row.assets.map((asset, index) => (
-                    <AssetTile
-                      key={asset.id}
-                      asset={asset}
-                      badge={String(index + 1)}
-                      similar
-                    />
-                  ))}
-                </div>
+                {filmOf({ key: row.key, assets: row.assets }) === null && (
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+                    {row.assets.map((asset, index) => (
+                      <AssetTile
+                        key={asset.id}
+                        asset={asset}
+                        badge={String(index + 1)}
+                        similar
+                      />
+                    ))}
+                  </div>
+                )}
               </section>
             ) : (
               // Unframed and tight: a library of work reads as a body of

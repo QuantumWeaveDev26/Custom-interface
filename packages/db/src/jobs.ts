@@ -293,6 +293,7 @@ export async function completeJobWithAssets(
             ...(assetInput.thumbnailUrl === undefined
               ? {}
               : { thumbnailUrl: assetInput.thumbnailUrl }),
+            ...(assetInput.kind === undefined ? {} : { kind: assetInput.kind }),
           },
         }),
       );

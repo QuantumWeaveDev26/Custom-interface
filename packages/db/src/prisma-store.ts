@@ -10,6 +10,7 @@ import {
 } from "@creative-ai/shared-types";
 
 import type {
+  AssetKind,
   AssetType,
   ChainProgress,
   DatabaseStore,
@@ -38,6 +39,11 @@ type PrismaDelegateClient = Prisma.TransactionClient | PrismaClient;
  * correct. Silently trusting a malformed value would resume a chain from a
  * clip that may not exist.
  */
+/** Anything that is not a kind we write reads as no kind. */
+function assetKindOf(value: string | null): AssetKind | null {
+  return value === "film" || value === "clip" ? value : null;
+}
+
 function chainProgressOf(value: unknown): ChainProgress | null {
   if (value === null || typeof value !== "object" || Array.isArray(value)) {
     return null;
@@ -217,11 +223,13 @@ function toDatabaseTransaction(
             ...(data.thumbnailUrl === undefined
               ? {}
               : { thumbnailUrl: data.thumbnailUrl }),
+            ...(data.kind === undefined ? {} : { kind: data.kind }),
           },
         });
         return {
           ...asset,
           type: asset.type as AssetType,
+          kind: assetKindOf(asset.kind),
         };
       },
       findMany: async ({ where }) => {
@@ -231,6 +239,7 @@ function toDatabaseTransaction(
         return assets.map((asset) => ({
           ...asset,
           type: asset.type as AssetType,
+          kind: assetKindOf(asset.kind),
         }));
       },
       createUploaded: async ({ data }) => {
@@ -241,7 +250,7 @@ function toDatabaseTransaction(
             storageUrl: data.storageUrl,
           },
         });
-        return { ...asset, type: asset.type as AssetType };
+        return { ...asset, type: asset.type as AssetType, kind: assetKindOf(asset.kind) };
       },
     },
     jobInputAsset: {

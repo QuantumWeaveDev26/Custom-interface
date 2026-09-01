@@ -669,12 +669,23 @@ async function processVideo(
   }
 
   const completed = await dependencies.completeJobWithAssets(job.id, [
+    // Labelled rather than left to ordering: a gallery that decides which of
+    // seventeen videos is the finished piece by looking at position will
+    // eventually get it wrong, and the finished piece is the whole point.
     ...(stitchedStorageUrl === null
       ? []
-      : [{ type: "video" as const, storageUrl: stitchedStorageUrl }]),
+      : [
+          {
+            type: "video" as const,
+            storageUrl: stitchedStorageUrl,
+            kind: "film" as const,
+          },
+        ]),
     ...clipStorageUrls.map((storageUrl) => ({
       type: "video" as const,
       storageUrl,
+      // Only a chain has parts. A single take is simply itself.
+      ...(params.rounds > 1 ? { kind: "clip" as const } : {}),
     })),
     ...(lastFrameStorageUrl === null
       ? []

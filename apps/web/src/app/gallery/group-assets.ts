@@ -4,6 +4,8 @@ export interface GalleryAsset {
   jobId: string | null;
   createdAt: Date;
   published: boolean;
+  /** "film" is a chain's finished cut, "clip" one of its parts. */
+  kind: string | null;
 }
 
 export interface AssetGroup {
@@ -69,6 +71,25 @@ export type GalleryRow =
  * asset its own grid would put one tile on each row, and letting a set flow
  * inline would hide the fact that its members belong together.
  */
+/**
+ * The finished cut of a chain, if this group is one.
+ *
+ * A film and its clips arrive as one job, so they group together — but they are
+ * not peers. Showing seventeen equal tiles buries the only one the user asked
+ * for, so the group is split into the piece and the parts it was made from.
+ */
+export function filmOf(group: AssetGroup): {
+  film: GalleryAsset;
+  clips: GalleryAsset[];
+} | null {
+  const film = group.assets.find((asset) => asset.kind === "film");
+  if (film === undefined) return null;
+  return {
+    film,
+    clips: group.assets.filter((asset) => asset.kind === "clip"),
+  };
+}
+
 export function toGalleryRows(groups: readonly AssetGroup[]): GalleryRow[] {
   const rows: GalleryRow[] = [];
   let run: GalleryAsset[] = [];

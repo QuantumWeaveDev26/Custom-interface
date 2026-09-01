@@ -111,6 +111,11 @@ model Asset {
   type         String // "image" | "video" | "audio"
   storageUrl   String
   thumbnailUrl String?
+  // "film" for the joined cut of a chain, "clip" for the parts it was made
+  // from. Null for everything else, which is every asset that is simply itself.
+  // Stored rather than inferred from ordering: a gallery that guesses which of
+  // seventeen videos is the finished piece will eventually guess wrong.
+  kind         String?
   createdAt    DateTime @default(now())
   // Null means private, which is every asset until its owner says otherwise.
   // A timestamp rather than a boolean because the feed is ordered by when a

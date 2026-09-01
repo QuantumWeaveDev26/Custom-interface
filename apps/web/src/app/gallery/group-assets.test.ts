@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   groupAssets,
+  filmOf,
   parseGalleryFilter,
   toGalleryRows,
   type GalleryAsset,
@@ -11,7 +12,7 @@ import {
 const AT = new Date("2026-08-29T00:00:00.000Z");
 
 function asset(id: string, jobId: string | null, type = "image"): GalleryAsset {
-  return { id, type, jobId, createdAt: AT, published: false };
+  return { id, type, jobId, createdAt: AT, published: false, kind: null };
 }
 
 test("assets from one job become one set", () => {
@@ -89,4 +90,32 @@ test("a library of only singles is one grid, not many", () => {
   const rows = toGalleryRows(groupAssets([asset("a", null), asset("b", null)]));
   assert.equal(rows.length, 1);
   assert.equal(rows[0]?.kind, "grid");
+});
+
+test("a film is separated from the clips it was made from", () => {
+  const group = {
+    key: "job-1",
+    assets: [
+      { ...asset("cut", "job-1", "video"), kind: "film" },
+      { ...asset("a", "job-1", "video"), kind: "clip" },
+      { ...asset("b", "job-1", "video"), kind: "clip" },
+      { ...asset("frame", "job-1", "image"), kind: null },
+    ],
+  };
+
+  const film = filmOf(group);
+
+  // The cut and its parts arrive as one job, but they are not peers. Showing
+  // them as equal tiles buries the only one that was asked for.
+  assert.equal(film?.film.id, "cut");
+  assert.deepEqual(film?.clips.map((clip) => clip.id), ["a", "b"]);
+});
+
+test("an ordinary batch is not a film", () => {
+  // A set of images shares a job too. Without a labelled cut there is nothing
+  // to promote, and guessing from position would promote the first image.
+  assert.equal(
+    filmOf({ key: "job-2", assets: [asset("x", "job-2"), asset("y", "job-2")] }),
+    null,
+  );
 });

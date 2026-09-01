@@ -100,6 +100,7 @@ export interface ChainProgress {
 }
 
 export interface AssetRecord {
+  kind?: AssetKind | null;
   id: string;
   /** Null for user-uploaded assets — they have no generating job. */
   jobId: string | null;
@@ -146,10 +147,19 @@ export interface SubmitJobCommand {
   maxInFlight: number;
 }
 
+/**
+ * What an asset is within its job.
+ *
+ * Only chains need this: "film" is the joined cut, "clip" is one of the pieces
+ * it was made from. Everything else is simply itself and carries no kind.
+ */
+export type AssetKind = "film" | "clip";
+
 export interface CreateAssetInput {
   type: AssetType;
   storageUrl: string;
   thumbnailUrl?: string | null;
+  kind?: AssetKind;
 }
 
 export interface CountResult {
@@ -222,6 +232,7 @@ export interface DatabaseTransaction extends WelcomeGrantTransaction {
         type: AssetType;
         storageUrl: string;
         thumbnailUrl?: string | null;
+        kind?: AssetKind;
       };
     }): Promise<AssetRecord>;
     // Ownership filter is part of the query, not an afterthought: a caller
