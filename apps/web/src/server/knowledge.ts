@@ -19,6 +19,41 @@ import {
 export const MAX_DOCUMENT_LENGTH = 200_000;
 export const MAX_RETRIEVED_CHUNKS = 6;
 
+/**
+ * The libraries knowledge is kept in, and why they are kept apart.
+ *
+ * The question decides which one to read. What an 85mm lens does is craft; what
+ * shirt a character wears is this film's own record; whether an asset may be
+ * sold is policy. Answering a project question out of the craft library is how
+ * an assistant invents facts about somebody's film.
+ */
+export const KNOWLEDGE_COLLECTIONS = [
+  "filmmaking",
+  "platform",
+  "project",
+  "policy",
+] as const;
+
+export type KnowledgeCollection = (typeof KNOWLEDGE_COLLECTIONS)[number];
+
+/** Anything unrecognised reads as craft, the least authoritative library. */
+export function parseCollection(value: unknown): KnowledgeCollection {
+  return KNOWLEDGE_COLLECTIONS.includes(value as KnowledgeCollection)
+    ? (value as KnowledgeCollection)
+    : "filmmaking";
+}
+
+/**
+ * How much each library counts when passages compete for the same slot.
+ * A thumb on the scale, not a filter.
+ */
+const COLLECTION_WEIGHT: Record<KnowledgeCollection, number> = {
+  project: 1.15,
+  policy: 1.1,
+  platform: 1.05,
+  filmmaking: 1,
+};
+
 export class KnowledgeError extends Error {
   constructor(message: string) {
     super(message);
@@ -50,6 +85,7 @@ async function embedText(text: string): Promise<number[]> {
 export interface StoredDocument {
   id: string;
   title: string;
+  collection: KnowledgeCollection;
   chunks: number;
   createdAt: Date;
 }
@@ -66,6 +102,7 @@ export async function addDocument(
   userId: string,
   title: string,
   text: string,
+  collection: KnowledgeCollection = "filmmaking",
 ): Promise<StoredDocument> {
   const trimmedTitle = title.trim();
   if (trimmedTitle.length === 0) throw new KnowledgeError("Give the document a title");
@@ -86,12 +123,13 @@ export async function addDocument(
 
   const doc = await prisma.$transaction(async (tx) => {
     const created = await tx.knowledgeDoc.create({
-      data: { userId, title: trimmedTitle },
+      data: { userId, title: trimmedTitle, collection },
     });
     await tx.knowledgeChunk.createMany({
       data: pieces.map((piece, ordinal) => ({
         docId: created.id,
         userId,
+        collection,
         ordinal,
         text: piece,
         model: EMBEDDING_MODEL,
@@ -105,6 +143,7 @@ export async function addDocument(
   return {
     id: doc.id,
     title: doc.title,
+    collection,
     chunks: pieces.length,
     createdAt: doc.createdAt,
   };
@@ -119,6 +158,7 @@ export async function listDocuments(userId: string): Promise<StoredDocument[]> {
   return docs.map((doc) => ({
     id: doc.id,
     title: doc.title,
+    collection: parseCollection(doc.collection),
     chunks: doc._count.chunks,
     createdAt: doc.createdAt,
   }));
@@ -148,18 +188,30 @@ export async function retrieveKnowledge(
 ): Promise<string> {
   const stored = await prisma.knowledgeChunk.findMany({
     where: { userId, model: EMBEDDING_MODEL, dimensions: EMBEDDING_DIMENSIONS },
-    select: { text: true, vector: true },
+    select: { text: true, vector: true, collection: true },
   });
   if (stored.length === 0) return "";
 
   const queryVector = await embedText(question);
+
+  // Weighted rather than filtered. A project question may still be best served
+  // by a craft passage, and filtering would hide it — but where both fit, this
+  // film's own decisions beat the textbook. If the visual bible says the night
+  // interiors are cyan, no amount of general practice about warm practicals is
+  // the right answer.
   return stored
-    .map((chunk) => ({
-      text: chunk.text,
-      score: cosineSimilarity(queryVector, chunk.vector),
-    }))
+    .map((chunk) => {
+      const collection = parseCollection(chunk.collection);
+      return {
+        text: chunk.text,
+        collection,
+        score:
+          cosineSimilarity(queryVector, chunk.vector) *
+          COLLECTION_WEIGHT[collection],
+      };
+    })
     .sort((a, b) => b.score - a.score)
     .slice(0, MAX_RETRIEVED_CHUNKS)
-    .map((chunk) => chunk.text)
+    .map((chunk) => `[${chunk.collection}] ${chunk.text}`)
     .join("\n\n");
 }

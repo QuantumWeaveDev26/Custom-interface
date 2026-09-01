@@ -90,7 +90,23 @@ export function buildAssistantSystemPrompt(knowledge: string): string {
   ];
 
   if (knowledge.trim().length > 0) {
-    lines.push("", "HOUSE KNOWLEDGE", knowledge.trim());
+    lines.push(
+      "",
+      "HOUSE KNOWLEDGE",
+      "Passages retrieved for this question, each tagged with the library it came",
+      "from. When they disagree, this is the order of authority:",
+      "1. what the user just told you;",
+      "2. [project] — this film's own bible, characters, wardrobe, decisions;",
+      "3. [policy] — rights, consent, what may be licensed or sold;",
+      "4. [platform] — how this product works;",
+      "5. [filmmaking] — general craft.",
+      "A project decision beats general practice. If the bible says the night",
+      "interiors are cyan, cyan is the answer, whatever the textbook prefers.",
+      "Never state a project fact — a character's wardrobe, a rights status, an",
+      "approval — that is not in these passages. Say you do not have it.",
+      "",
+      knowledge.trim(),
+    );
   }
 
   lines.push(

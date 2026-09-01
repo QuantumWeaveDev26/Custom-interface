@@ -5,8 +5,20 @@ import { useCallback, useState } from "react";
 export interface KnowledgeDocument {
   id: string;
   title: string;
+  collection: string;
   chunks: number;
 }
+
+/**
+ * Four libraries, kept apart because the question decides which one to read.
+ * Craft is general; a project's own bible outranks it for that film.
+ */
+const COLLECTIONS = [
+  { id: "filmmaking", label: "Craft", hint: "How film works, in general" },
+  { id: "platform", label: "Platform", hint: "How this product works" },
+  { id: "project", label: "This film", hint: "Bible, characters, decisions" },
+  { id: "policy", label: "Rights", hint: "Consent, licensing, what may be sold" },
+] as const;
 
 /**
  * What the house knows.
@@ -24,6 +36,7 @@ export function KnowledgePanel({
   const [documents, setDocuments] = useState<readonly KnowledgeDocument[]>(
     initialDocuments,
   );
+  const [collection, setCollection] = useState<string>("filmmaking");
   const [title, setTitle] = useState("");
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
@@ -37,12 +50,13 @@ export function KnowledgePanel({
       const response = await fetch("/api/knowledge", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, text }),
+        body: JSON.stringify({ title, text, collection }),
       });
       const body = (await response.json().catch(() => ({}))) as {
         error?: string;
         id?: string;
         title?: string;
+        collection?: string;
         chunks?: number;
       };
       if (!response.ok) {
@@ -50,7 +64,12 @@ export function KnowledgePanel({
         return;
       }
       setDocuments((previous) => [
-        { id: body.id!, title: body.title!, chunks: body.chunks! },
+        {
+          id: body.id!,
+          title: body.title!,
+          collection: body.collection ?? collection,
+          chunks: body.chunks!,
+        },
         ...previous,
       ]);
       setTitle("");
@@ -60,7 +79,55 @@ export function KnowledgePanel({
     } finally {
       setBusy(false);
     }
-  }, [title, text]);
+  }, [title, text, collection]);
+
+  /**
+   * A PDF is sent as it is and read on the server.
+   *
+   * Text files are read here because the browser can; a PDF cannot be, and
+   * requiring someone to convert every export before it counts as knowledge is
+   * requiring them not to bother.
+   */
+  const addPdf = useCallback(
+    async (file: File) => {
+      setBusy(true);
+      setError(null);
+      try {
+        const form = new FormData();
+        form.set("file", file);
+        form.set("title", title.trim().length > 0 ? title : file.name);
+        form.set("collection", collection);
+        const response = await fetch("/api/knowledge", { method: "POST", body: form });
+        const body = (await response.json().catch(() => ({}))) as {
+          error?: string;
+          id?: string;
+          title?: string;
+          collection?: string;
+          chunks?: number;
+        };
+        if (!response.ok) {
+          setError(body.error ?? "Could not read that PDF.");
+          return;
+        }
+        setDocuments((previous) => [
+          {
+            id: body.id!,
+            title: body.title!,
+            collection: body.collection ?? collection,
+            chunks: body.chunks!,
+          },
+          ...previous,
+        ]);
+        setTitle("");
+        setText("");
+      } catch {
+        setError("Could not reach the server.");
+      } finally {
+        setBusy(false);
+      }
+    },
+    [title, collection],
+  );
 
   const remove = useCallback(async (id: string) => {
     // Optimistic, then restored if the server refuses: the list is a local
@@ -95,6 +162,21 @@ export function KnowledgePanel({
 
       {open && (
         <div className="mt-3 space-y-2">
+          <div className="flex flex-wrap gap-1.5">
+            {COLLECTIONS.map((option) => (
+              <button
+                key={option.id}
+                type="button"
+                onClick={() => setCollection(option.id)}
+                data-active={collection === option.id}
+                title={option.hint}
+                className="opt !py-1 text-[11px]"
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+
           <input
             type="text"
             value={title}
@@ -115,15 +197,19 @@ export function KnowledgePanel({
 
           <div className="composer-footer">
             <label className="btn-secondary cursor-pointer !px-3 !py-1.5 text-xs">
-              Read a file
+              Read a file or PDF
               <input
                 type="file"
-                accept=".txt,.md,.markdown,text/plain,text/markdown"
+                accept=".txt,.md,.markdown,.pdf,text/plain,text/markdown,application/pdf"
                 className="sr-only"
                 disabled={busy}
                 onChange={async (event) => {
                   const file = event.target.files?.[0];
                   if (file === undefined) return;
+                  if (file.type === "application/pdf" || file.name.endsWith(".pdf")) {
+                    await addPdf(file);
+                    return;
+                  }
                   setText(await file.text());
                   if (title.trim().length === 0) setTitle(file.name);
                 }}
@@ -151,6 +237,9 @@ export function KnowledgePanel({
               className="flex items-center justify-between gap-3 text-xs text-[var(--text-muted)]"
             >
               <span className="truncate">
+                <span className="val mr-1.5 text-[var(--text-faint)]">
+                  {doc.collection}
+                </span>
                 {doc.title}{" "}
                 <span className="val text-[var(--text-faint)]">
                   {doc.chunks} passage{doc.chunks === 1 ? "" : "s"}

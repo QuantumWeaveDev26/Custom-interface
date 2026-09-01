@@ -47,7 +47,7 @@ test("house knowledge is included when there is some, and skipped when there is 
   assert.doesNotMatch(buildAssistantSystemPrompt("   "), /HOUSE KNOWLEDGE/);
   assert.match(
     buildAssistantSystemPrompt("Anamorphic flares belong to the 1970s look."),
-    /HOUSE KNOWLEDGE\nAnamorphic flares/,
+    /HOUSE KNOWLEDGE[\s\S]*Anamorphic flares/,
   );
 });
 
@@ -113,4 +113,15 @@ test("malformed model output fails loudly rather than reaching the interface", a
     askAssistant(clientReturning(JSON.stringify({ action: { type: "none" } })), "hello"),
     AssistantError,
   );
+});
+
+test("house knowledge arrives with an order of authority", () => {
+  const prompt = buildAssistantSystemPrompt("[project] Arjun wears an olive shirt.");
+
+  // The failure this prevents: answering "what is he wearing" out of general
+  // filmmaking knowledge, which is how an assistant invents facts about
+  // somebody's film. A project decision beats the textbook.
+  assert.match(prompt, /A project decision beats general practice/);
+  assert.match(prompt, /Never state a project fact/);
+  assert.match(prompt, /Arjun wears an olive shirt/);
 });

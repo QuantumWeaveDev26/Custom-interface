@@ -4,7 +4,10 @@ import {
   addDocument,
   deleteDocument,
   listDocuments,
+  parseCollection,
+  type KnowledgeCollection,
 } from "@/server/knowledge";
+import { extractPdfText, MAX_PDF_BYTES } from "@/server/pdf-text";
 import { NextResponse } from "next/server";
 
 export async function GET() {
@@ -27,21 +30,59 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = (await request.json().catch(() => null)) as {
-    title?: unknown;
-    text?: unknown;
-  } | null;
+  // Two shapes: JSON for pasted text, multipart for a PDF. PDFs are accepted
+  // because that is what comes out of the tools this knowledge is gathered in —
+  // asking someone to convert every export to text first is asking them not to
+  // bother.
+  let title: string;
+  let text: string;
+  let collection: KnowledgeCollection;
 
-  if (typeof body?.title !== "string" || typeof body?.text !== "string") {
-    return NextResponse.json(
-      { error: "A title and the text are both required" },
-      { status: 400 },
-    );
+  if (request.headers.get("content-type")?.includes("multipart/form-data")) {
+    const form = await request.formData();
+    const file = form.get("file");
+    if (!(file instanceof File)) {
+      return NextResponse.json({ error: "No file was sent" }, { status: 400 });
+    }
+    if (file.size > MAX_PDF_BYTES) {
+      return NextResponse.json(
+        { error: `PDFs are limited to ${MAX_PDF_BYTES / 1_000_000}MB` },
+        { status: 400 },
+      );
+    }
+
+    try {
+      text = await extractPdfText(await file.arrayBuffer());
+    } catch (error) {
+      console.error("PDF extraction failed:", error);
+      return NextResponse.json(
+        { error: "That PDF could not be read as text. Is it a scan?" },
+        { status: 400 },
+      );
+    }
+    title = String(form.get("title") ?? file.name);
+    collection = parseCollection(form.get("collection"));
+  } else {
+    const body = (await request.json().catch(() => null)) as {
+      title?: unknown;
+      text?: unknown;
+      collection?: unknown;
+    } | null;
+
+    if (typeof body?.title !== "string" || typeof body?.text !== "string") {
+      return NextResponse.json(
+        { error: "A title and the text are both required" },
+        { status: 400 },
+      );
+    }
+    title = body.title;
+    text = body.text;
+    collection = parseCollection(body.collection);
   }
 
   try {
     return NextResponse.json(
-      await addDocument(session.user.id, body.title, body.text),
+      await addDocument(session.user.id, title, text, collection),
     );
   } catch (error) {
     if (error instanceof KnowledgeError) {

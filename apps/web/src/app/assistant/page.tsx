@@ -11,6 +11,7 @@ export default async function AssistantPage() {
   const documents = (await listDocuments(session.user.id)).map((doc) => ({
     id: doc.id,
     title: doc.title,
+    collection: doc.collection,
     chunks: doc.chunks,
   }));
 

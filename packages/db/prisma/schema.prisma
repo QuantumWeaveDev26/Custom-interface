@@ -142,6 +142,12 @@ model KnowledgeDoc {
   id        String            @id @default(cuid())
   userId    String
   title     String
+  // Which library this belongs to: "filmmaking" (craft), "platform" (how this
+  // product works), "project" (this film's own bible), "policy" (rights and
+  // consent). Kept apart because the question decides which one to read: what
+  // an 85mm lens does is craft, what shirt the character wears is project, and
+  // answering one from the other is how an assistant invents facts about a film.
+  collection String           @default("filmmaking")
   createdAt DateTime          @default(now())
   chunks    KnowledgeChunk[]
 
@@ -158,6 +164,8 @@ model KnowledgeChunk {
   userId     String
   ordinal    Int
   text       String
+  /// Copied from the document so retrieval can filter without a join.
+  collection String   @default("filmmaking")
   // Same reasoning as AssetEmbedding: a vector is only comparable to vectors of
   // the same model and width, so both travel with it.
   model      String
