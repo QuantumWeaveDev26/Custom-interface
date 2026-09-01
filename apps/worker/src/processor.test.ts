@@ -1917,3 +1917,46 @@ test("a single take is never sent to the stitcher", async () => {
 
   assert.equal(called, false, "one clip is already the cut");
 });
+
+test("the cast reaches every clip of a chain, not just the first", async () => {
+  const harness = createVideoHarness(chainJob(3));
+  harness.dependencies.loadInputAssets = async () => [
+    {
+      assetId: "face-1",
+      position: 0,
+      type: "image",
+      role: "reference",
+      storageUrl: "tos://bucket/face.png",
+    },
+    // A keyframe belongs to the opening clip alone: applying it to round three
+    // would drag the piece back to where it started.
+    {
+      assetId: "frame-1",
+      position: 1,
+      type: "image",
+      role: "first_frame",
+      storageUrl: "tos://bucket/open.png",
+    },
+  ];
+
+  await createGenerationProcessor(harness.dependencies)("video-job");
+
+  for (const [index, request] of harness.createRequests.entries()) {
+    const references = request.content.filter(
+      (item) => (item as { role?: string }).role === "reference_image",
+    );
+    assert.equal(
+      references.length,
+      1,
+      `round ${index + 1} lost the character it was supposed to keep`,
+    );
+  }
+
+  // Only the opening clip is pinned to the keyframe.
+  const keyframed = harness.createRequests.filter((request) =>
+    request.content.some(
+      (item) => (item as { role?: string }).role === "first_frame",
+    ),
+  );
+  assert.equal(keyframed.length, 1);
+});

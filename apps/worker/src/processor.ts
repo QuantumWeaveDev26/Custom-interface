@@ -429,6 +429,37 @@ async function buildVideoContent(
   return content;
 }
 
+/**
+ * The character references a chain must carry into every round.
+ *
+ * Extend rounds send the previous clip plus the direction for this one. Without
+ * this they send nothing else — and the cast, attached to the job, would reach
+ * only the first clip. A chain whose character changes face at the first join
+ * is not a chain of one character.
+ *
+ * Keyframes are deliberately excluded: a first or last frame describes where
+ * one clip starts and ends, and applying it to round seven would drag the piece
+ * back to where it began.
+ */
+async function referenceImagesFor(
+  dependencies: GenerationProcessorDependencies,
+  job: JobRecord,
+): Promise<CreateContentGenerationContentItem[]> {
+  const inputAssets = await dependencies.loadInputAssets(job.id, job.userId);
+  const references: CreateContentGenerationContentItem[] = [];
+
+  for (const asset of inputAssets) {
+    if (asset.type !== "image" || asset.role !== "reference") continue;
+    references.push({
+      type: "image_url",
+      image_url: { url: await dependencies.signAssetUrl(asset.storageUrl) },
+      role: WIRE_ROLE.reference,
+    });
+  }
+
+  return references;
+}
+
 async function processVideo(
   dependencies: GenerationProcessorDependencies,
   job: JobRecord,
@@ -479,6 +510,10 @@ async function processVideo(
                 video_url: { url: await dependencies.signAssetUrl(previousClip) },
                 role: "reference_video",
               },
+              // The cast travels with every round. Combined image + video
+              // reference is documented as supported on this endpoint
+              // (MODELARK_API_REFERENCE.md, R4).
+              ...(await referenceImagesFor(dependencies, job)),
             ] as CreateContentGenerationContentItem[]);
 
       const createdTask = await dependencies.modelArk.createVideoTask({
