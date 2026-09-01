@@ -42,6 +42,8 @@ export interface StudioState {
   withAudio: boolean;
   /** Clips chained into one continuous piece. 1 is an ordinary take. */
   rounds: number;
+  /** How many clips of a chain are done. Null until the first one lands. */
+  progress: { completedRounds: number; totalRounds: number } | null;
   /**
    * What happens in each clip. Grows and shrinks with `rounds`, so the list and
    * the clip count cannot disagree — the server rejects a shot list that does.
@@ -104,6 +106,7 @@ export const INITIAL_STUDIO_STATE: StudioState = {
   resolution: "720p",
   withAudio: true,
   rounds: 1,
+  progress: null,
   shotPrompts: [],
   ratio: "21:9",
   durationSeconds: 5,
@@ -150,6 +153,7 @@ export type StudioAction =
       status: "processing" | "complete" | "failed";
       errorMessage?: string;
       assets?: readonly StudioAsset[];
+      progress?: { completedRounds: number; totalRounds: number };
     };
 
 /**
@@ -269,7 +273,15 @@ export function studioReducer(
       });
     }
     case "SUBMIT_START":
-      return { ...state, phase: "submitting", errorMessage: null, assets: [] };
+      // Cleared here as well as on completion: a second chain that reused the
+      // last one's count would read as already half-finished.
+      return {
+        ...state,
+        phase: "submitting",
+        errorMessage: null,
+        assets: [],
+        progress: null,
+      };
     case "SUBMIT_ERROR":
       return { ...state, phase: "idle", errorMessage: action.message };
     case "JOB_QUEUED":
@@ -281,7 +293,13 @@ export function studioReducer(
       };
     case "STATUS_EVENT":
       if (action.status === "processing") {
-        return { ...state, phase: "processing" };
+        // A chain reports after every clip. Without it, an hour-long job shows
+        // the same spinner throughout and reads as a hung worker.
+        return {
+          ...state,
+          phase: "processing",
+          ...(action.progress === undefined ? {} : { progress: action.progress }),
+        };
       }
       if (action.status === "complete") {
         const assets = action.assets ?? [];

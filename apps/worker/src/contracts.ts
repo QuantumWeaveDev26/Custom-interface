@@ -65,7 +65,7 @@ export interface GenerationProcessorDependencies {
    * chain is still correct — the user simply gets the pieces rather than the
    * cut.
    */
-  stitchClips?(clips: readonly Uint8Array[]): Promise<DownloadedMedia>;
+  stitchClips?(clips: AsyncIterable<Uint8Array>): Promise<DownloadedMedia>;
   /**
    * Embeds the assets a finished job produced, if the owner has asked for it.
    *

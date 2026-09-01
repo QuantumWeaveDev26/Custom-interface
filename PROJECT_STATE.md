@@ -178,6 +178,23 @@ all work end to end.
    while the provider had already rendered and charged for round 1. Still open —
    it needs a policy decision, see below.
 
+**Prepared for the 16 x 30s demo (2026-09-01, built not tested):**
+
+- Poll window scales with clip length — 10 min for a 5s take, 30 min for a 30s
+  one. The old fixed 10 minutes was set when every clip was five seconds; a 30s
+  round that outran it would have failed the whole chain and refunded rounds the
+  provider had already charged for.
+- The stitcher writes each clip to disk as it arrives instead of collecting them
+  all first. Sixteen 30s clips is around 560 MB, which is a way to run the worker
+  out of heap for nothing. Re-verified on the three real clips from the live run:
+  same 15.072673s output, byte-identical.
+- Studio reports "Clip N of 16" with a progress bar, published after every round.
+  An hour of unchanging spinner is indistinguishable from a dead worker.
+
+**Not tested at 30s or 16 rounds — deliberately.** The owner is demonstrating it
+live. What is known: 8 min at 720p needs 2,770 credits, and rounds cannot run in
+parallel, so budget hours not minutes.
+
 **Still unmeasured: drift.** Three clips exist; whether the piece holds together
 across the two joins is a human judgement nobody has made yet. Watch
 `asset-0.mp4` before promising eight minutes to anyone.

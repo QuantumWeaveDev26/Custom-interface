@@ -27,19 +27,22 @@ import type { DownloadedMedia } from "./contracts.js";
  */
 export function createFfmpegStitcher(ffmpegPath: string) {
   return async function stitchClips(
-    clips: readonly Uint8Array[],
+    clips: AsyncIterable<Uint8Array>,
   ): Promise<DownloadedMedia> {
-    if (clips.length < 2) {
-      throw new Error("Stitching needs at least two clips");
-    }
-
     const workspace = await mkdtemp(join(tmpdir(), "creative-ai-stitch-"));
     try {
+      // Written to disk as each clip arrives, rather than collected into an
+      // array first. Sixteen 30-second clips are around 560 MB; holding them all
+      // in memory to hand ffmpeg a list of files it will read from disk anyway
+      // is a way to run a worker out of heap for nothing.
       const names: string[] = [];
-      for (const [index, clip] of clips.entries()) {
-        const name = `${String(index).padStart(3, "0")}.mp4`;
+      for await (const clip of clips) {
+        const name = `${String(names.length).padStart(3, "0")}.mp4`;
         await writeFile(join(workspace, name), clip);
         names.push(name);
+      }
+      if (names.length < 2) {
+        throw new Error("Stitching needs at least two clips");
       }
 
       // Single quotes doubled per ffmpeg's concat list escaping. The names are

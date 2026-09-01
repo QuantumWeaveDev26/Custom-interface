@@ -60,6 +60,15 @@ export type JobStatusEvent = {
   status: JobStatus;
   errorMessage?: string;
   assets?: readonly JobAssetSummary[];
+  /**
+   * How far a chained job has got, published after each clip.
+   *
+   * Absent for ordinary takes. A sixteen-round chain is most of an hour, and
+   * without this the interface shows the same spinner from start to finish —
+   * indistinguishable from a hung worker at exactly the moment the user is
+   * least able to tell.
+   */
+  progress?: { completedRounds: number; totalRounds: number };
 };
 
 // Output settings that are NOT client-selectable. Size moved into

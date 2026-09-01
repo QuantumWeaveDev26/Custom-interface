@@ -65,6 +65,7 @@ interface JobStatusMessage {
   status: "queued" | "processing" | "complete" | "failed";
   errorMessage?: string;
   assets?: StudioAsset[];
+  progress?: { completedRounds: number; totalRounds: number };
 }
 
 const MODES: StudioMode[] = ["image", "video", "voice", "model3d"];
@@ -438,6 +439,7 @@ export function StudioClient({
           status: parsed.status,
           ...(parsed.errorMessage === undefined ? {} : { errorMessage: parsed.errorMessage }),
           ...(parsed.assets === undefined ? {} : { assets: parsed.assets }),
+          ...(parsed.progress === undefined ? {} : { progress: parsed.progress }),
         });
         if (parsed.status === "complete" || parsed.status === "failed") {
           source.close();
@@ -1044,12 +1046,35 @@ export function StudioClient({
               {/* State is stamped in its own words, so it reads without colour
                   and survives a monochrome print. */}
               <span className="stamp text-[var(--text-faint)]">
-                {state.phase === "queued" ? "Slated" : "Rolling"}
+                {state.phase === "queued"
+                  ? "Slated"
+                  : state.progress === null
+                    ? "Rolling"
+                    : `Clip ${state.progress.completedRounds + 1} of ${state.progress.totalRounds}`}
               </span>
+              {/* A chain reports after every clip. Sixteen rounds is most of an
+                  hour, and one unchanging spinner for that long is
+                  indistinguishable from a worker that has died. */}
+              {state.progress !== null && state.phase === "processing" && (
+                <div
+                  className="mt-2 h-1 w-40 overflow-hidden rounded-[10px]"
+                  style={{ background: "var(--bg-elevated)" }}
+                >
+                  <div
+                    className="h-full rounded-[10px] transition-[width] duration-300"
+                    style={{
+                      width: `${(state.progress.completedRounds / state.progress.totalRounds) * 100}%`,
+                      background: "var(--signal)",
+                    }}
+                  />
+                </div>
+              )}
               <p className="mt-1.5 text-xs text-[var(--text-muted)]">
                 {state.phase === "queued"
                   ? "Queued behind other takes."
-                  : "The provider is generating. This can take a couple of minutes."}
+                  : state.progress === null
+                    ? "The provider is generating. This can take a couple of minutes."
+                    : `${state.progress.completedRounds} clip${state.progress.completedRounds === 1 ? "" : "s"} done. Each one takes a few minutes, and they cannot run in parallel — every clip continues the one before it.`}
               </p>
             </div>
           </div>

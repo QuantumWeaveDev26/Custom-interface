@@ -1865,7 +1865,12 @@ test("a chain is delivered as one cut, with the clips kept behind it", async () 
   const harness = createVideoHarness(chainJob(3));
   const stitched: number[] = [];
   harness.dependencies.stitchClips = async (clips) => {
-    stitched.push(clips.length);
+    // Consumed as a stream, exactly as the real stitcher does — counting them
+    // here also proves the processor actually yields every clip rather than
+    // handing over an iterable nobody drains.
+    let count = 0;
+    for await (const _clip of clips) count += 1;
+    stitched.push(count);
     return { body: new Uint8Array([1, 2, 3]), contentType: "video/mp4" };
   };
 
@@ -1972,4 +1977,34 @@ test("an extension asks for the ratio of the clip it continues, not the job's", 
   assert.equal(harness.createRequests[0]?.ratio, "21:9");
   assert.equal(harness.createRequests[1]?.ratio, "adaptive");
   assert.equal(harness.createRequests[2]?.ratio, "adaptive");
+});
+
+test("a chain announces each clip as it lands", async () => {
+  const harness = createVideoHarness(chainJob(3));
+
+  await createGenerationProcessor(harness.dependencies)("video-job");
+
+  // Sixteen rounds is most of an hour. Without these the interface shows one
+  // unchanging spinner throughout, which reads as a dead worker.
+  assert.deepEqual(
+    harness.events
+      .filter((event) => event.progress !== undefined)
+      .map((event) => event.progress),
+    [
+      { completedRounds: 1, totalRounds: 3 },
+      { completedRounds: 2, totalRounds: 3 },
+      { completedRounds: 3, totalRounds: 3 },
+    ],
+  );
+});
+
+test("a single take announces no clip count", async () => {
+  const harness = createVideoHarness(videoJob());
+
+  await createGenerationProcessor(harness.dependencies)("video-job");
+
+  assert.equal(
+    harness.events.some((event) => event.progress !== undefined),
+    false,
+  );
 });

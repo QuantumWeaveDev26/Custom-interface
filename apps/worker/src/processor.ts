@@ -430,6 +430,19 @@ async function buildVideoContent(
 }
 
 /**
+ * How long to wait for one clip.
+ *
+ * A minute of wall clock per second of footage, floored at the ten minutes that
+ * five-second takes have always used. 30s of video therefore gets 30 minutes
+ * rather than timing out at ten — measured render time for 5s was around three
+ * minutes, so this is deliberately generous: abandoning a clip the provider is
+ * still rendering costs the whole job.
+ */
+export function pollTimeoutMsFor(durationSeconds: number): number {
+  return Math.max(10 * 60_000, durationSeconds * 60_000);
+}
+
+/**
  * The character references a chain must carry into every round.
  *
  * Extend rounds send the previous clip plus the direction for this one. Without
@@ -546,6 +559,12 @@ async function processVideo(
 
     const task = await dependencies.modelArk.pollVideoTaskUntilDone(
       externalTaskId,
+      // The default ten minutes was set when every clip was five seconds. A 30s
+      // clip is six times the footage, and a round that outruns the window
+      // throws — failing a chain, and refunding rounds the provider has already
+      // charged for. Scaled off the duration with a floor, so short takes keep
+      // giving up quickly and long ones are given room.
+      { timeoutMs: pollTimeoutMsFor(params.durationSeconds) },
     );
     const videoUrl = assertSucceededVideo(task);
     const media = await dependencies.download(videoUrl);
@@ -587,6 +606,11 @@ async function processVideo(
         completedRounds: round + 1,
         clipStorageUrls,
       });
+      await dependencies.publish({
+        jobId: job.id,
+        status: JobStatus.Processing,
+        progress: { completedRounds: round + 1, totalRounds: params.rounds },
+      });
     }
   }
 
@@ -600,12 +624,16 @@ async function processVideo(
   let stitchedStorageUrl: string | null = null;
   if (clipStorageUrls.length > 1 && dependencies.stitchClips !== undefined) {
     try {
-      const clips: Uint8Array[] = [];
-      for (const storageUrl of clipStorageUrls) {
-        const signed = await dependencies.signAssetUrl(storageUrl);
-        clips.push((await dependencies.download(signed)).body);
-      }
-      const stitched = await dependencies.stitchClips(clips);
+      // Downloaded one at a time and handed straight over, so only one clip is
+      // ever in memory — a sixteen-round chain is around 560 MB of video.
+      const stitched = await dependencies.stitchClips(
+        (async function* clips() {
+          for (const storageUrl of clipStorageUrls) {
+            const signed = await dependencies.signAssetUrl(storageUrl);
+            yield (await dependencies.download(signed)).body;
+          }
+        })(),
+      );
       stitchedStorageUrl = await dependencies.storage.upload({
         userId: job.userId,
         jobId: job.id,

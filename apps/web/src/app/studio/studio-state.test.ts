@@ -644,3 +644,23 @@ test("a chain of clips costs what all of its rounds cost", () => {
 
   assert.equal(chained, single * 4);
 });
+
+test("a chain's progress is shown, and does not leak into the next take", () => {
+  const rolling = studioReducer(
+    { ...INITIAL_STUDIO_STATE, phase: "processing" },
+    { type: "STATUS_EVENT", status: "processing", progress: { completedRounds: 7, totalRounds: 16 } },
+  );
+  assert.deepEqual(rolling.progress, { completedRounds: 7, totalRounds: 16 });
+
+  // A second chain starting at "7 of 16" would read as already half done.
+  const restarted = studioReducer(rolling, { type: "SUBMIT_START" });
+  assert.equal(restarted.progress, null);
+});
+
+test("an ordinary take reports no clip count", () => {
+  const rolling = studioReducer(
+    { ...INITIAL_STUDIO_STATE, phase: "queued" },
+    { type: "STATUS_EVENT", status: "processing" },
+  );
+  assert.equal(rolling.progress, null);
+});
