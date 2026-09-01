@@ -26,6 +26,7 @@ import Redis from "ioredis";
 type RedisType = any;
 
 import { createGenerationProcessor } from "./processor.js";
+import { createFfmpegStitcher } from "./stitch.js";
 import { createTosStorage } from "./storage.js";
 import { runQueuedJobRecovery } from "./recovery.js";
 
@@ -52,6 +53,8 @@ export interface WorkerRuntimeConfig {
   // under one model name. Vectors stored under a name search does not query for
   // are invisible rather than wrong, which is harder to notice.
   embeddingModel: string;
+  /** ffmpeg, used to join a chain's clips into one file. */
+  ffmpegPath: string;
 }
 
 export interface WorkerRuntime {
@@ -196,6 +199,7 @@ export async function createWorkerRuntime(
     signAssetUrl,
     saveChainProgress: async (jobId, progress) =>
       saveChainProgress(prismaStore, jobId, progress),
+    stitchClips: createFfmpegStitcher(config.ffmpegPath),
     indexCompletedAssets: async (jobId, assets) => {
       // Only images and video carry a vector; audio and meshes are not
       // embeddable by this model, and asking would spend tokens on a rejection.

@@ -1860,3 +1860,60 @@ test("a chain with no shot list repeats the one prompt it was given", async () =
   assert.equal(texts[0], "orbital sunrise");
   assert.equal(texts[1], "Continue seamlessly from [Video 1]. orbital sunrise");
 });
+
+test("a chain is delivered as one cut, with the clips kept behind it", async () => {
+  const harness = createVideoHarness(chainJob(3));
+  const stitched: number[] = [];
+  harness.dependencies.stitchClips = async (clips) => {
+    stitched.push(clips.length);
+    return { body: new Uint8Array([1, 2, 3]), contentType: "video/mp4" };
+  };
+
+  await createGenerationProcessor(harness.dependencies)("video-job");
+
+  // Every clip goes into the cut, in order.
+  assert.deepEqual(stitched, [3]);
+
+  // Five assets: the cut, the three clips behind it, and the still the last
+  // clip ends on. The cut leads, because eight minutes delivered as sixteen
+  // files is not what was asked for.
+  const event = harness.events.at(-1);
+  assert.equal(event?.assets?.length, 5);
+  assert.equal(event?.assets?.[0]?.id, "video-asset-1");
+  assert.equal(
+    event?.assets?.filter((asset) => asset.type === "video").length,
+    4,
+  );
+});
+
+test("a failed stitch still hands over the clips", async () => {
+  const harness = createVideoHarness(chainJob(2));
+  harness.dependencies.stitchClips = async () => {
+    throw new Error("ffmpeg is not installed");
+  };
+
+  await createGenerationProcessor(harness.dependencies)("video-job");
+
+  // The clips are rendered and paid for. Losing them because the join failed
+  // would be throwing away the expensive half of the work.
+  assert.deepEqual(harness.refunds, []);
+  assert.equal(harness.events.at(-1)?.status, JobStatus.Complete);
+  // Two clips and the closing still — everything except the cut that failed.
+  assert.equal(
+    harness.events.at(-1)?.assets?.filter((asset) => asset.type === "video").length,
+    2,
+  );
+});
+
+test("a single take is never sent to the stitcher", async () => {
+  const harness = createVideoHarness(videoJob());
+  let called = false;
+  harness.dependencies.stitchClips = async () => {
+    called = true;
+    return { body: new Uint8Array(), contentType: "video/mp4" };
+  };
+
+  await createGenerationProcessor(harness.dependencies)("video-job");
+
+  assert.equal(called, false, "one clip is already the cut");
+});

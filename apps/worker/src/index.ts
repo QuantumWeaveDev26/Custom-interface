@@ -14,6 +14,7 @@ async function main() {
     imageModel: process.env.MODELARK_IMAGE_MODEL || "seedream-5-0-lite-260128",
     videoModel:
       process.env.MODELARK_VIDEO_MODEL || "dreamina-seedance-2-0-fast-260128",
+    ffmpegPath: process.env.FFMPEG_PATH || "ffmpeg",
     embeddingModel:
       process.env.MODELARK_EMBEDDING_MODEL || "skylark-embedding-vision-250615",
     voiceApiKey: process.env.BYTEPLUS_VOICE_API_KEY || "",

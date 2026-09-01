@@ -547,7 +547,37 @@ async function processVideo(
     }
   }
 
+  // The cut. Eight minutes delivered as sixteen files is not what anyone asked
+  // for, so the clips are joined into one video and that is what leads.
+  //
+  // Best effort, deliberately: the clips exist and are paid for, and a stitch
+  // that fails must hand over the footage rather than lose it. The pieces are
+  // kept either way — a chain is worth having in parts if someone wants to
+  // recut it.
+  let stitchedStorageUrl: string | null = null;
+  if (clipStorageUrls.length > 1 && dependencies.stitchClips !== undefined) {
+    try {
+      const clips: Uint8Array[] = [];
+      for (const storageUrl of clipStorageUrls) {
+        const signed = await dependencies.signAssetUrl(storageUrl);
+        clips.push((await dependencies.download(signed)).body);
+      }
+      const stitched = await dependencies.stitchClips(clips);
+      stitchedStorageUrl = await dependencies.storage.upload({
+        userId: job.userId,
+        jobId: job.id,
+        type: "video",
+        ...stitched,
+      });
+    } catch (error) {
+      console.error(`Failed to stitch chain for job ${job.id}:`, error);
+    }
+  }
+
   const completed = await dependencies.completeJobWithAssets(job.id, [
+    ...(stitchedStorageUrl === null
+      ? []
+      : [{ type: "video" as const, storageUrl: stitchedStorageUrl }]),
     ...clipStorageUrls.map((storageUrl) => ({
       type: "video" as const,
       storageUrl,

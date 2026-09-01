@@ -16,6 +16,7 @@ test("WorkerRuntimeConfig type is valid", () => {
     imageModel: "seedream-5-0-lite-260128",
     videoModel: "dreamina-seedance-2-0-fast-260128",
     embeddingModel: "skylark-embedding-vision-250615",
+    ffmpegPath: "ffmpeg",
     voiceApiKey: "test-voice-key",
     voiceBaseUrl: "https://voice.test.example/api/v3",
   };

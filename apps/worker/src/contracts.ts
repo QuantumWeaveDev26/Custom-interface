@@ -59,6 +59,14 @@ export interface GenerationProcessorDependencies {
    */
   saveChainProgress(jobId: string, progress: ChainProgress): Promise<void>;
   /**
+   * Joins a chain's clips into one file.
+   *
+   * Optional: a worker wired without it still produces every clip, and the
+   * chain is still correct — the user simply gets the pieces rather than the
+   * cut.
+   */
+  stitchClips?(clips: readonly Uint8Array[]): Promise<DownloadedMedia>;
+  /**
    * Embeds the assets a finished job produced, if the owner has asked for it.
    *
    * Optional because indexing is not part of generating: a worker wired without

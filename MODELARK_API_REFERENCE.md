@@ -255,6 +255,21 @@ bill. Settle them with one 15s 4K job before committing to 4K long-form.
 still, so face, lighting and grade wander over 16 hops (32 for 4K). No amount of
 engineering fixes that if it is bad; it has to be measured.
 
+**Built 2026-09-01, the whole path:** `rounds` on video params (up to
+MAX_CHAIN_ROUNDS = 16), per-clip `shotPrompts`, resumable progress in
+`Job.chainProgress`, and an ffmpeg stitcher that delivers the cut with the clips
+kept behind it. What remains unmeasured is drift across joins — that needs a
+real run, not more code.
+
+**ffmpeg notes, measured not assumed:**
+
+- Concat with `-c copy` joins same-model clips losslessly. Verified: 2s + 3s in,
+  5.02s out, audio intact.
+- `-c copy` does **not** reject mismatched inputs. A 320x240 clip and a 640x480
+  clip concat "successfully" into a file at the first clip's dimensions whose
+  second half plays wrong. Single-resolution-per-job is what keeps a chain
+  correct; the re-encode fallback only catches hard failures.
+
 **How to run the proof** (~$21 at 720p):
 
 1. Studio, video mode, 720p, 30s. Generate clip 1.
