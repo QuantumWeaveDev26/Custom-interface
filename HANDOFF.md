@@ -239,7 +239,8 @@ The non-obvious ones:
 |---|---|---|
 | 1 | 🔴 **Rotate `ARK_API_KEY` and `BYTEPLUS_VOICE_API_KEY`** | Console. They appeared in shared screenshots and bill real spend. Open since day one. |
 | 2 | **Voice cloning** returns `55000000` at the BytePlus gateway | Support ticket. Four hypotheses ruled out; draft in `BUILD_PLAN.md`. Not our bug. |
-| 3 | **Lipsync / OmniHuman** | Same ticket: ask about the digital-character library, given the real-face rule. |
+| 3 | **Lipsync / OmniHuman** | Same ticket. `GET /models` (2026-09-01) lists nothing lipsync-shaped on this account; the list is not exhaustive, so an ID from BytePlus is still the way in. A create call with a candidate ID is free when rejected. |
+| 3b | **Other model families** (Kling, Veo, Sora, Wan) | Vendor accounts and keys. Not a code problem — the account calls BytePlus models only. |
 | 4 | **Deployment (F4)** | Hosting spend decision. |
 
 Resolved 2026-08-31, all three by choosing the narrow option rather than

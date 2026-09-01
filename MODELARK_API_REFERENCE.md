@@ -195,6 +195,41 @@ Console → ModelArk → Model list and look for an "Access"/"API" tab or code s
 it usually shows the literal model ID string used in the `model` field. Confirm rather
 than trust the derived pattern.
 
+## Model inventory endpoint, found 2026-09-01
+
+`GET {ARK_BASE_URL}/models` with the normal Bearer key returns 200 and a JSON
+list of models with an `id` and a `domain`. This was never used by this project;
+it answers "what can this account call" without guessing IDs.
+
+55 entries on this account: 21 LLM, 13 VLM, 3 embedding, 7 ImageGeneration,
+9 VideoGeneration, 2 3DGeneration.
+
+VideoGeneration: `seedance-1-0-lite-i2v-250428`, `seedance-1-0-lite-t2v-250428`,
+`seedance-1-0-pro-250528`, `seedance-1-0-pro-fast-251015`,
+`seedance-1-5-pro-251215`, `dreamina-seedance-2-0-260128`,
+`dreamina-seedance-2-0-fast-260128`, `dreamina-seedance-2-0-mini-260615`,
+`dreamina-seedance-2-5-260628`.
+
+3DGeneration: `hyper3d-gen2-260112`, `hitem3d-2-0-251223`.
+
+**The list is NOT exhaustive — do not treat absence as unavailability.** Proof:
+`seedream-5-0-lite-260128`, the image model this project runs, has 11 completed
+jobs and does not appear in it. Something (lite variants, or endpoint-specific
+models) is omitted.
+
+**Nothing lipsync-shaped is listed.** No OmniHuman, no avatar, no talking-head
+model, under any name matching omni/human/lip/speech/avatar. Given the list is
+incomplete this is strong evidence rather than proof, but it is the best
+evidence available without a model ID from BytePlus, and it is consistent with
+the support ticket still being unanswered. Voice TTS is absent for a different
+and known reason: Seed Speech is a separate product on a different host.
+
+**No third-party families.** Everything here is ByteDance/BytePlus plus a few
+third-party LLMs (deepseek, kimi, glm). There is no Kling, Veo, Sora, or Wan on
+this account, and no amount of code adds one — that needs a vendor account.
+
+---
+
 ## Live probe results, 2026-09-01 — extend and 4K on Seedance 2.5
 
 Two questions settled with one script against the real account. Cost: one 4s

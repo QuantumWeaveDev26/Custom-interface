@@ -225,11 +225,20 @@ only (moderate confidence it reuses the existing `/contents/generations/tasks`
 video endpoint via an undocumented `OmniReferenceTaskType` field found in the Go
 SDK; ~$0.12/sec; image + audio inputs).
 
-**Next action:** user to check BytePlus Console → ModelArk → Model Square for an
-OmniHuman model card and report the exact model ID string. Do not write Avatar
-code before this — the project has already lost time to unconfirmed model IDs
-(`seed-2-1-260628` was a placeholder that 404'd; the real one turned out to be
-`dola-seed-2-1-turbo-260628`).
+**Checked 2026-09-01 against `GET /models`** — the account's own inventory, found
+that day and recorded in `MODELARK_API_REFERENCE.md`. 55 models: LLM, VLM,
+embedding, image, video, 3D. Nothing matching omni/human/lip/avatar under any
+name.
+
+That list is not exhaustive — `seedream-5-0-lite-260128` runs 11 completed jobs
+here and is missing from it — so this is strong evidence, not proof. But it is
+the best evidence obtainable without a model ID, and it agrees with the
+unanswered support ticket.
+
+**Next action unchanged, and now cheaper to settle:** if the user gets a model
+ID from BytePlus, a create call with it costs nothing when rejected — validation
+happens before any rendering is charged (proven 2026-09-01). Do not write Avatar
+code before there is an ID that a create call accepts.
 
 ### 3.4 Scope correction (2026-08-28) — read this before planning work
 
