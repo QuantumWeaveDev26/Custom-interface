@@ -5,6 +5,7 @@ import {
   IMAGE_SIZES,
   INPUT_ASSET_ROLES,
   DEFAULT_MODEL3D_PARAMS,
+  DEFAULT_NARRATION_PARAMS,
   MAX_BATCH_IMAGES,
   MAX_CHAIN_ROUNDS,
   MODEL3D_QUALITIES,
@@ -24,7 +25,7 @@ import {
   type VoiceStyle,
 } from "./generation.js";
 
-export type JobType = "image" | "video" | "voice" | "model3d";
+export type JobType = "image" | "video" | "voice" | "model3d" | "narration";
 
 export type SubmitJobRequest = {
   type: JobType;
@@ -297,6 +298,36 @@ function parseShotDurations(raw: unknown, rounds: number): number[] | null {
   });
 }
 
+/**
+ * Narration has one setting: how far the film's own sound is pulled down.
+ *
+ * Bounded because the two ends are both mistakes — at 0 the ambience is gone
+ * and the result sounds like a slideshow, and above 1 the bed is louder than
+ * the voice it is supposed to sit under.
+ */
+function parseNarrationParams(raw: unknown): GenerationParams {
+  if (raw === undefined) return DEFAULT_NARRATION_PARAMS;
+  if (!isPlainObject(raw)) {
+    throw new InvalidJobRequest("params must be an object");
+  }
+  assertNoUnknownFields(raw, ["duckOriginalTo"], "narration params");
+
+  const duckOriginalTo =
+    raw.duckOriginalTo === undefined
+      ? DEFAULT_NARRATION_PARAMS.duckOriginalTo
+      : raw.duckOriginalTo;
+  if (
+    typeof duckOriginalTo !== "number" ||
+    !Number.isFinite(duckOriginalTo) ||
+    duckOriginalTo < 0 ||
+    duckOriginalTo > 1
+  ) {
+    throw new InvalidJobRequest("duckOriginalTo must be between 0 and 1");
+  }
+
+  return { type: "narration", duckOriginalTo };
+}
+
 function parseVoiceParams(raw: unknown): GenerationParams {
   if (raw === undefined) return DEFAULT_VOICE_PARAMS;
   if (!isPlainObject(raw)) {
@@ -386,9 +417,12 @@ export function parseSubmitJobRequest(value: unknown): SubmitJobRequest {
     value.type !== "image" &&
     value.type !== "video" &&
     value.type !== "voice" &&
-    value.type !== "model3d"
+    value.type !== "model3d" &&
+    value.type !== "narration"
   ) {
-    throw new InvalidJobRequest("Type must be image, video, voice, or model3d");
+    throw new InvalidJobRequest(
+      "Type must be image, video, voice, model3d, or narration",
+    );
   }
 
   if (typeof value.prompt !== "string") {
@@ -406,19 +440,33 @@ export function parseSubmitJobRequest(value: unknown): SubmitJobRequest {
         ? parseVideoParams(value.params)
         : value.type === "model3d"
           ? parseModel3dParams(value.params)
-          : parseVoiceParams(value.params);
+          : value.type === "narration"
+            ? parseNarrationParams(value.params)
+            : parseVoiceParams(value.params);
 
   const inputAssets = parseInputAssets(value.inputAssets);
 
   // Guard the roles that only make sense for a video job, so a nonsensical
   // combination is rejected at the edge rather than confusing the worker.
-  if (value.type !== "video") {
+  if (value.type !== "video" && value.type !== "narration") {
     const videoOnly = inputAssets.filter(
       (asset) => asset.role === "first_frame" || asset.role === "last_frame" || asset.role === "source_video",
     );
     if (videoOnly.length > 0) {
       throw new InvalidJobRequest(
         "first_frame, last_frame, and source_video input assets are only valid for video jobs",
+      );
+    }
+  }
+
+  // Narration is speech laid over a film, so the film is the whole point: a
+  // narration job with nothing to narrate would reach the worker and fail there
+  // rather than here, after the credits were taken.
+  if (value.type === "narration") {
+    const sources = inputAssets.filter((asset) => asset.role === "source_video");
+    if (sources.length !== 1) {
+      throw new InvalidJobRequest(
+        "A narration job needs exactly one source_video: the film to speak over",
       );
     }
   }

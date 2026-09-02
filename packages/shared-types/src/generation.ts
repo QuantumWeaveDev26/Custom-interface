@@ -144,6 +144,15 @@ export type GenerationParams =
       shotDurations?: readonly number[];
     }
   | { type: "voice"; style: VoiceStyle }
+  /**
+   * Narration laid over a film the user already has.
+   *
+   * No settings of its own: the text is the prompt and the film is the input
+   * asset. It exists as its own type rather than as a voice job with a flag
+   * because what comes back is a video, not an audio file, and the difference
+   * decides where it lands in the gallery.
+   */
+  | { type: "narration"; duckOriginalTo: number }
   | { type: "model3d"; quality: Model3dQuality };
 
 /**
@@ -299,6 +308,16 @@ export const DEFAULT_VIDEO_PARAMS: Extract<GenerationParams, { type: "video" }> 
     rounds: 1,
   });
 
+/**
+ * How far the film's own sound is pulled down under the narration.
+ *
+ * Not silenced. The rain, the traffic and the room tone are most of what makes
+ * a clip feel real; a voice over dead air sounds like a slideshow. A third is
+ * the usual documentary relationship between bed and voice.
+ */
+export const DEFAULT_NARRATION_PARAMS: Extract<GenerationParams, { type: "narration" }> =
+  Object.freeze({ type: "narration", duckOriginalTo: 0.35 });
+
 export const DEFAULT_VOICE_PARAMS: Extract<GenerationParams, { type: "voice" }> =
   Object.freeze({ type: "voice", style: "standard" });
 
@@ -421,6 +440,12 @@ export function creditCostFor(
     const budget = MODEL3D_QUALITY_PRESETS[params.quality];
     const multiplier = budget / MODEL3D_QUALITY_PRESETS.standard;
     return Math.max(1, Math.ceil(pricing.model3dCredits * multiplier));
+  }
+
+  if (params.type === "narration") {
+    // Priced as the speech it is. The film already exists and is already paid
+    // for; laying a voice over it costs one text-to-speech call and some ffmpeg.
+    return Math.max(1, Math.ceil(pricing.voiceCredits));
   }
 
   // The rate comes from whichever model will actually serve this resolution,

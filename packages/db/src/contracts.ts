@@ -49,7 +49,12 @@ export interface WelcomeGrantTransaction {
   };
 }
 
-export type PhaseOneJobType = "image" | "video" | "voice" | "model3d";
+export type PhaseOneJobType =
+  | "image"
+  | "video"
+  | "voice"
+  | "model3d"
+  | "narration";
 export type JobStatus = "queued" | "processing" | "complete" | "failed";
 // A voice job produces an "audio" asset, not a "voice" one -- the job describes the
 // generation type, the asset describes the resulting media format. Genuinely different

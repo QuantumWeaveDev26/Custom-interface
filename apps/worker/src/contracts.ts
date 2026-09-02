@@ -69,6 +69,17 @@ export interface GenerationProcessorDependencies {
    */
   stitchClips?(clips: AsyncIterable<Uint8Array>): Promise<DownloadedMedia>;
   /**
+   * Lays speech over a film, with the film's own sound ducked beneath it.
+   *
+   * Optional for the same reason as stitching: a worker without it still runs
+   * every other kind of job correctly.
+   */
+  narrate?(
+    video: Uint8Array,
+    speech: Uint8Array,
+    duckOriginalTo: number,
+  ): Promise<DownloadedMedia>;
+  /**
    * Embeds the assets a finished job produced, if the owner has asked for it.
    *
    * Optional because indexing is not part of generating: a worker wired without

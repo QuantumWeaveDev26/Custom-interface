@@ -5,11 +5,13 @@ import Link from "next/link";
 
 import { AssetTile } from "./asset-tile";
 import { GallerySearch } from "./gallery-search";
+import { NarrateButton } from "./narrate-button";
 import {
   filmOf,
   groupAssets,
   parseGalleryFilter,
   toGalleryRows,
+  type GalleryAsset,
   type GalleryFilter,
 } from "./group-assets";
 
@@ -153,30 +155,7 @@ export default async function GalleryPage({
               // A batch is one answer to one prompt, so it is framed as one
               // result rather than scattered through the grid as N unrelated
               // ones.
-              <section
-                key={row.key}
-                className="panel p-3"
-                aria-label={`Set of ${row.assets.length}`}
-              >
-                <p className="rule-cap mb-2 px-1">
-                  Set of {row.assets.length}
-                </p>
-                {/* Tiles sit flush inside the band: the band is already the
-                    frame that says these belong together, and framing each
-                    member again is a border inside a border. */}
-                {filmOf({ key: row.key, assets: row.assets }) === null && (
-                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
-                    {row.assets.map((asset, index) => (
-                      <AssetTile
-                        key={asset.id}
-                        asset={asset}
-                        badge={String(index + 1)}
-                        similar
-                      />
-                    ))}
-                  </div>
-                )}
-              </section>
+              <SetSection key={row.key} row={row} />
             ) : (
               // Unframed and tight: a library of work reads as a body of
               // work, not as a filing cabinet of separately mounted items.
@@ -194,5 +173,71 @@ export default async function GalleryPage({
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * A set: either a film with the clips it was made from, or an ordinary batch.
+ *
+ * Two shapes in one place because they arrive as one job. A film leads at full
+ * width with its parts underneath, since sixteen equal tiles bury the only one
+ * anyone asked for; a batch of images has no finished piece to promote and
+ * stays an even grid.
+ */
+function SetSection({
+  row,
+}: {
+  row: { key: string; assets: GalleryAsset[] };
+}) {
+  const film = filmOf({ key: row.key, assets: row.assets });
+
+  if (film === null) {
+    return (
+      <section className="panel p-3" aria-label={`Set of ${row.assets.length}`}>
+        <p className="rule-cap mb-2 px-1">Set of {row.assets.length}</p>
+        {/* Tiles sit flush inside the band: the band is already the frame that
+            says these belong together, and framing each member again is a
+            border inside a border. */}
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+          {row.assets.map((asset, index) => (
+            <AssetTile
+              key={asset.id}
+              asset={asset}
+              badge={String(index + 1)}
+              similar
+            />
+          ))}
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="panel p-3" aria-label="Film and its clips">
+      <p className="rule-cap mb-2 px-1">
+        Film{" "}
+        <span className="normal-case tracking-normal">
+          ({film.clips.length} clip{film.clips.length === 1 ? "" : "s"})
+        </span>
+      </p>
+      <AssetTile asset={film.film} similar />
+
+      {/* Narration belongs to the finished piece, not its parts: a voice over
+          one clip of a chain is a voice over a fragment nobody watches. */}
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <NarrateButton assetId={film.film.id} />
+      </div>
+
+      {film.clips.length > 0 && (
+        <>
+          <p className="rule-cap mb-2 mt-3 px-1">Clips</p>
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6">
+            {film.clips.map((asset, index) => (
+              <AssetTile key={asset.id} asset={asset} badge={String(index + 1)} />
+            ))}
+          </div>
+        </>
+      )}
+    </section>
   );
 }

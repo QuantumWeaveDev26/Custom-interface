@@ -141,6 +141,7 @@ a bug.
 - [ ] **Studio (Video):** After a 3-clip chain finishes, confirm the gallery shows one joined video first, the three clips behind it, and the closing still — and that the joined file actually plays end to end with sound.
 - [ ] **Studio (Video):** Confirm a chain reports "Clip N of M" with a bar while it runs, and that a second chain does not start at the previous count.
 - [ ] **Studio (Video):** While a 3-clip chain is running, restart the worker. It must resume at the round it reached, not regenerate the finished clips.
+- [ ] **Gallery:** A finished film shows its cut with the clips underneath, and a Narrate control. Write a line, press Speak it, and the narrated cut appears as a new film — the original ambience still audible under the voice.
 - [ ] **Gallery:** After filming a plan, the job shows as one film at full width with its clips small underneath — not seventeen equal tiles.
 - [ ] **Gallery:** Click Similar on a library tile; results load from the URL and the back button returns to the library.
 - [ ] **Assistant:** Ask "how do I make an eight-minute film?" — the answer should state the 16-clip limit and the hours it takes, not promise it in minutes.

@@ -46,7 +46,13 @@ export async function submitGenerationJob(
           parsedRequest.params.resolution,
           dependencies.pricing.videoModels,
         ) ?? dependencies.modelByType.video)
-      : dependencies.modelByType[parsedRequest.type];
+      : parsedRequest.type === "narration"
+        // Narration runs no generation model: it speaks text and mixes the
+        // result over a film that already exists. The voice model is recorded
+        // because a job row with an empty model is harder to read later than
+        // one naming the only model it actually used.
+        ? dependencies.modelByType.voice
+        : dependencies.modelByType[parsedRequest.type];
 
   // A resolution or duration the configured model does not support is rejected
   // before any credits move.

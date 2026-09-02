@@ -2119,3 +2119,68 @@ test("a single take carries no part label, because it has no parts", async () =>
 
   assert.deepEqual(kinds, [undefined, undefined]);
 });
+
+function narrationJob(): JobRecord {
+  return {
+    ...videoJob(),
+    type: "narration",
+    inputParams: {
+      prompt: "He had been coming to this market for twenty years.",
+      params: { type: "narration", duckOriginalTo: 0.35 },
+    },
+  };
+}
+
+test("narration speaks the text and mixes it over the film it was given", async () => {
+  const harness = createVideoHarness(narrationJob());
+  harness.dependencies.loadInputAssets = async () => [
+    {
+      assetId: "film-1",
+      position: 0,
+      type: "video",
+      role: "source_video",
+      storageUrl: "tos://bucket/film.mp4",
+    },
+  ];
+  // The video harness makes voice throw on purpose, because a video job calling
+  // it would be a bug. A narration job is the one video-shaped job that should.
+  harness.dependencies.voice.createSpeech = async () => ({
+    audio: new Uint8Array([1, 2]),
+    contentType: "audio/mpeg",
+  });
+  const mixes: number[] = [];
+  harness.dependencies.narrate = async (_video, _speech, duck) => {
+    mixes.push(duck);
+    return { body: new Uint8Array([9]), contentType: "video/mp4" };
+  };
+
+  await createGenerationProcessor(harness.dependencies)("video-job");
+
+  // The film's own sound is ducked, not replaced: rain and room tone are most
+  // of what makes a clip feel real, and a voice over dead air is a slideshow.
+  assert.deepEqual(mixes, [0.35]);
+
+  // What comes back is a film, not an audio file — it leads in the gallery the
+  // same way a chain's cut does.
+  const event = harness.events.at(-1);
+  assert.equal(event?.status, JobStatus.Complete);
+  assert.equal(event?.assets?.[0]?.type, "video");
+  assert.equal(
+    harness.operations.filter((op) => op === "storage:upload:video").length,
+    1,
+  );
+});
+
+test("a narration job with no film fails rather than inventing one", async () => {
+  const harness = createVideoHarness(narrationJob());
+  harness.dependencies.loadInputAssets = async () => [];
+  harness.dependencies.narrate = async () => ({
+    body: new Uint8Array(),
+    contentType: "video/mp4",
+  });
+
+  await createGenerationProcessor(harness.dependencies)("video-job");
+
+  assert.equal(harness.events.at(-1)?.status, JobStatus.Failed);
+  assert.equal(harness.refunds.length, 1);
+});

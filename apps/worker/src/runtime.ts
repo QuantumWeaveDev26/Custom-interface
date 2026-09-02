@@ -26,6 +26,7 @@ import Redis from "ioredis";
 type RedisType = any;
 
 import { createGenerationProcessor } from "./processor.js";
+import { createFfmpegNarrator } from "./narrate.js";
 import { createFfmpegStitcher } from "./stitch.js";
 import { createTosStorage } from "./storage.js";
 import { runQueuedJobRecovery } from "./recovery.js";
@@ -205,6 +206,7 @@ export async function createWorkerRuntime(
     saveChainProgress: async (jobId, progress) =>
       saveChainProgress(prismaStore, jobId, progress),
     stitchClips: createFfmpegStitcher(config.ffmpegPath),
+    narrate: createFfmpegNarrator(config.ffmpegPath),
     indexCompletedAssets: async (jobId, assets) => {
       // Only images and video carry a vector; audio and meshes are not
       // embeddable by this model, and asking would spend tokens on a rejection.
