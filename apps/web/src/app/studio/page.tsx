@@ -61,19 +61,26 @@ export default async function StudioPage({
   // Every resolution any configured model offers, and the duration ceiling of
   // each — the client needs both, because picking 4K changes which model serves
   // the job and therefore how long the clip may be.
-  const videoResolutionLimits: VideoResolutionLimits = Object.fromEntries(
-    VIDEO_MODELS.flatMap((model) => {
-      const caps = videoCapabilitiesFor(model);
-      return caps.resolutions.map((resolution) => [
-        resolution,
-        {
-          model,
-          minDurationSeconds: caps.minDurationSeconds,
-          maxDurationSeconds: caps.maxDurationSeconds,
-        },
-      ]);
-    }),
-  );
+  // First model that offers a resolution keeps it, which must match the
+  // server's own routing in videoModelForResolution — the first candidate wins
+  // there too.
+  //
+  // Built as a loop rather than Object.fromEntries because that let the *last*
+  // model overwrite every entry: the 4K model caps at 15s, so it silently
+  // capped 720p and 1080p at 15s as well and made 30s unreachable in the
+  // interface, while the server would have accepted it.
+  const videoResolutionLimits: VideoResolutionLimits = {} as VideoResolutionLimits;
+  for (const model of VIDEO_MODELS) {
+    const caps = videoCapabilitiesFor(model);
+    for (const resolution of caps.resolutions) {
+      if (videoResolutionLimits[resolution] !== undefined) continue;
+      videoResolutionLimits[resolution] = {
+        model,
+        minDurationSeconds: caps.minDurationSeconds,
+        maxDurationSeconds: caps.maxDurationSeconds,
+      };
+    }
+  }
 
   // Recent images the user owns, offered as first-frame candidates for
   // image-to-video. Scoped to this user — the API re-checks ownership at

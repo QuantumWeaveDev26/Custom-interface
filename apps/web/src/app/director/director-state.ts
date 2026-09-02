@@ -1,5 +1,7 @@
 import {
   composeShotPrompt,
+  getCameraPreset,
+  getLensPreset,
   type CameraPresetId,
   type LensPresetId,
   type LookPresetId,
@@ -48,6 +50,13 @@ export type DirectorAction =
       lookPreset: LookPresetId;
     }
   | { type: "EDIT_SHOT"; index: number; description: string }
+  | {
+      type: "EDIT_SHOT_CRAFT";
+      index: number;
+      cameraPreset?: CameraPresetId;
+      lensPreset?: LensPresetId;
+      durationSeconds?: number;
+    }
   | { type: "PLAN_ERROR"; message: string };
 
 export function directorReducer(
@@ -97,6 +106,33 @@ export function directorReducer(
               }),
             },
       );
+      return { ...state, shots };
+    }
+    case "EDIT_SHOT_CRAFT": {
+      // The lens and the move are the shot as much as the words are. Changing
+      // one recomposes the prompt through the same function the server planned
+      // with, so a lens picked here is a lens the model is actually told about
+      // — a label that did not reach the prompt would be a decoration.
+      const shots = state.shots.map((shot, index) => {
+        if (index !== action.index) return shot;
+
+        const cameraPreset = action.cameraPreset ?? shot.cameraPreset;
+        const lensPreset = action.lensPreset ?? shot.lensPreset;
+        return {
+          ...shot,
+          cameraPreset,
+          lensPreset,
+          cameraLabel: getCameraPreset(cameraPreset).label,
+          lensLabel: getLensPreset(lensPreset).label,
+          durationSeconds: action.durationSeconds ?? shot.durationSeconds,
+          prompt: composeShotPrompt({
+            description: shot.description,
+            cameraPresetIds: [cameraPreset],
+            lensPresetId: lensPreset,
+            ...(state.lookPreset === null ? {} : { lookPresetId: state.lookPreset }),
+          }),
+        };
+      });
       return { ...state, shots };
     }
     case "PLAN_ERROR":

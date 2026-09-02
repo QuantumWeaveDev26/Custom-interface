@@ -2,7 +2,13 @@
 
 import Link from "next/link";
 
-import type { LookPresetId } from "@creative-ai/prompt-library";
+import {
+  CAMERA_PRESETS,
+  LENS_PRESETS,
+  type CameraPresetId,
+  type LensPresetId,
+  type LookPresetId,
+} from "@creative-ai/prompt-library";
 
 import { AttachButton, type Attachment } from "../attach-button";
 import { EmptyState } from "../empty-state";
@@ -473,10 +479,86 @@ export function DirectorClient({
                     <span className="val font-mono text-[11px] text-[var(--text-faint)]">
                       {String(index + 1).padStart(2, "0")}
                     </span>
-                    <span className="text-xs text-[var(--text-faint)]">
-                      {shot.cameraLabel} &middot; {shot.lensLabel} &middot;{" "}
-                      {shot.durationSeconds}s
-                    </span>
+                    {/* The move, the lens and the length are the shot as much
+                        as the words are, and a plan you can only half change is
+                        still a plan you have to accept. Each one recomposes the
+                        prompt, so what is picked here is what the model is
+                        told. */}
+                    <div className="flex flex-wrap items-center justify-end gap-1.5">
+                      <select
+                        value={shot.cameraPreset}
+                        disabled={busy}
+                        aria-label={`Camera move for shot ${index + 1}`}
+                        onChange={(event) =>
+                          dispatch({
+                            type: "EDIT_SHOT_CRAFT",
+                            index,
+                            cameraPreset: event.target.value as CameraPresetId,
+                          })
+                        }
+                        className="opt !py-1 text-[11px]"
+                      >
+                        {CAMERA_PRESETS.map((preset) => (
+                          <option key={preset.id} value={preset.id}>
+                            {preset.label}
+                          </option>
+                        ))}
+                      </select>
+                      <select
+                        value={shot.lensPreset}
+                        disabled={busy}
+                        aria-label={`Lens for shot ${index + 1}`}
+                        onChange={(event) =>
+                          dispatch({
+                            type: "EDIT_SHOT_CRAFT",
+                            index,
+                            lensPreset: event.target.value as LensPresetId,
+                          })
+                        }
+                        className="opt !py-1 text-[11px]"
+                      >
+                        {LENS_PRESETS.map((preset) => (
+                          <option key={preset.id} value={preset.id}>
+                            {preset.label}
+                          </option>
+                        ))}
+                      </select>
+                      <span className="opt !px-2 !py-1" data-active="false">
+                        <button
+                          type="button"
+                          disabled={busy || shot.durationSeconds <= filmLimits.minDurationSeconds}
+                          onClick={() =>
+                            dispatch({
+                              type: "EDIT_SHOT_CRAFT",
+                              index,
+                              durationSeconds: shot.durationSeconds - 1,
+                            })
+                          }
+                          aria-label={`Shorten shot ${index + 1}`}
+                          className="px-1 text-[var(--text-muted)] hover:text-[var(--text)] disabled:opacity-30"
+                        >
+                          −
+                        </button>
+                        <span className="val min-w-[3ch] text-center text-[11px]">
+                          {shot.durationSeconds}s
+                        </span>
+                        <button
+                          type="button"
+                          disabled={busy || shot.durationSeconds >= filmLimits.maxDurationSeconds}
+                          onClick={() =>
+                            dispatch({
+                              type: "EDIT_SHOT_CRAFT",
+                              index,
+                              durationSeconds: shot.durationSeconds + 1,
+                            })
+                          }
+                          aria-label={`Lengthen shot ${index + 1}`}
+                          className="px-1 text-[var(--text-muted)] hover:text-[var(--text)] disabled:opacity-30"
+                        >
+                          +
+                        </button>
+                      </span>
+                    </div>
                   </div>
                   {/* The shot is editable in place. A plan you cannot change is
                       a suggestion you have to accept, and the model's fourth

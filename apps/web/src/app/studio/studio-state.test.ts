@@ -4,7 +4,13 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 
-import { creditCostFor, type CreditPricing } from "@creative-ai/shared-types";
+import {
+  creditCostFor,
+  videoCapabilitiesFor,
+  videoModelForResolution,
+  type CreditPricing,
+  type VideoResolution,
+} from "@creative-ai/shared-types";
 
 import {
   INITIAL_STUDIO_STATE,
@@ -663,4 +669,39 @@ test("an ordinary take reports no clip count", () => {
     { type: "STATUS_EVENT", status: "processing" },
   );
   assert.equal(rolling.progress, null);
+});
+
+test("a resolution keeps the limits of the model that will actually serve it", () => {
+  // The bug this pins: built with Object.fromEntries, the last configured model
+  // overwrote every entry. The 4K model caps at 15s, so 720p and 1080p were
+  // capped at 15s too and 30s was unreachable in the interface — while the
+  // server would have accepted it. First model wins, matching the server's own
+  // routing in videoModelForResolution.
+  const models = [
+    "dreamina-seedance-2-5-260628",
+    "dreamina-seedance-2-0-260128",
+  ] as const;
+
+  const limits: Record<string, { model: string; maxDurationSeconds: number }> = {};
+  for (const model of models) {
+    const caps = videoCapabilitiesFor(model);
+    for (const resolution of caps.resolutions) {
+      if (limits[resolution] !== undefined) continue;
+      limits[resolution] = { model, maxDurationSeconds: caps.maxDurationSeconds };
+    }
+  }
+
+  assert.equal(limits["1080p"]?.maxDurationSeconds, 30);
+  assert.equal(limits["720p"]?.maxDurationSeconds, 30);
+  // 4K is only offered by the older model, so it keeps that model's ceiling.
+  assert.equal(limits["4K"]?.maxDurationSeconds, 15);
+
+  // And the resolution routes to the same model the server would pick.
+  for (const [resolution, limit] of Object.entries(limits)) {
+    assert.equal(
+      videoModelForResolution(resolution as VideoResolution, models),
+      limit.model,
+      `${resolution} would be served by a different model than the UI shows`,
+    );
+  }
 });
