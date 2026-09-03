@@ -1,10 +1,11 @@
 # Project State
 
 **The single source of truth for "where is this project right now."**
-Last verified: 2026-08-29
+Last verified: 2026-09-03
 
 If you are an AI agent (Claude, Codex, Antigravity, or otherwise) picking this
-project up, **read this file first**, then the doc map below. Do not trust your
+project up, read **`AGENTS.md`** first — it is the cold-start context and the
+rules of working here — then this file, then the doc map below. Do not trust your
 own memory of this project, and do not trust `README.md`'s feature list over
 this file — this file is updated deliberately at the end of each work session.
 
@@ -80,6 +81,27 @@ batched browser-test pass rather than being verified one at a time.
 ---
 
 ## 2b. Next session — start here
+
+### The current task is deployment (2026-09-03)
+
+HR has asked for the platform to be deployed properly and to run 24 hours a
+day. The runbook is **`DEPLOY.md`** — read it before touching anything else.
+
+The groundwork landed today and is listed in `AGENTS.md` § 5.2. Two things
+about it must not be glossed over:
+
+- **The Docker images have never been built.** There is no Docker on this
+  Windows machine. `infra/Dockerfile` is written from the project's known build
+  steps, not from a successful run. Expect the first
+  `docker compose up -d --build` to need corrections.
+- **The sign-in allowlist has never refused a real sign-in.** Nine unit tests
+  cover the rule; the NextAuth callback wiring has only been reasoned about.
+  `DEPLOY.md` § 2.6 is the live test, and it is the one manual step that must
+  not be skipped — before it, an open door bills real ModelArk money.
+
+Naveen is moving to Antigravity to continue this work.
+
+### Still outstanding from before
 
 **Twelve features are built, tested, and never opened in a browser.** That is
 now the project's largest risk, larger than any missing feature. Everything that
@@ -437,7 +459,7 @@ previous agent (this project has been burned by an agent self-reporting
 
 ```bash
 pnpm typecheck   # all 8 packages
-pnpm test        # 353 tests, all must pass
+pnpm test        # 419 tests, all must pass (2026-09-03)
 pnpm build       # full monorepo build
 ```
 

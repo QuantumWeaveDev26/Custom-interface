@@ -1,0 +1,24 @@
+# Host build output must never reach the image. node_modules in particular is
+# built for this Windows machine; copying it over the one pnpm just installed
+# inside the image replaces working Linux binaries with unusable ones, and the
+# failure appears much later as a native module that will not load.
+node_modules
+**/node_modules
+.next
+**/.next
+dist
+**/dist
+dist-test
+**/dist-test
+.turbo
+**/.turbo
+
+# Secrets stay out of the image. They arrive at run time from the environment.
+.env
+.env.*
+!.env.example
+infra/.env.production
+
+.git
+.gitignore
+*.log

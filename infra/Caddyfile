@@ -1,0 +1,20 @@
+# TLS is automatic: Caddy asks Let's Encrypt for a certificate for SITE_DOMAIN
+# the first time it starts and renews it on its own thereafter. That is the
+# whole reason it is here rather than nginx — nobody has to remember a renewal.
+#
+# It requires two things to be true before it will work: the domain's A record
+# points at this machine, and ports 80 and 443 reach it from the open internet.
+
+{$SITE_DOMAIN} {
+	encode zstd gzip
+
+	# Job progress arrives as a stream of server-sent events. A proxy that
+	# buffers turns a live progress bar into a page that sits still and then
+	# jumps to "done", so this path is passed through unbuffered.
+	@stream path_regexp ^/api/jobs/[^/]+/stream$
+	reverse_proxy @stream web:3000 {
+		flush_interval -1
+	}
+
+	reverse_proxy web:3000
+}

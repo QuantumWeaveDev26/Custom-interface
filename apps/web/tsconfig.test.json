@@ -32,6 +32,8 @@
     "src/app/gallery/group-assets.ts",
     "src/app/gallery/group-assets.test.ts",
     "src/server/route-auth.test.ts",
+    "src/server/sign-in-allowlist.ts",
+    "src/server/sign-in-allowlist.test.ts",
     "src/app/design-canon.test.ts",
     "src/server/transcribe.ts",
     "src/server/transcribe.test.ts",

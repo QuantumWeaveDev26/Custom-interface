@@ -6,6 +6,8 @@ import Resend from "next-auth/providers/resend";
 
 import { prisma, createUserWithWelcomeGrant } from "@creative-ai/db";
 
+import { isAllowedToSignIn } from "@/server/sign-in-allowlist";
+
 const adapter = PrismaAdapter(prisma);
 
 const INITIAL_CREDITS = parseInt(process.env.INITIAL_CREDITS || "100", 10);
@@ -45,6 +47,10 @@ const createUserWithWelcomeGrantAdapter = {
 
 const config: NextAuthConfig = {
   adapter: createUserWithWelcomeGrantAdapter,
+  // Behind a reverse proxy the request host arrives in a header rather than on
+  // the socket. Without this, every callback on the deployed domain is refused
+  // as an untrusted host.
+  trustHost: true,
   secret: process.env.NEXTAUTH_SECRET ?? "",
   session: { strategy: "database" },
   providers: [
@@ -78,6 +84,15 @@ const config: NextAuthConfig = {
     }),
   ],
   callbacks: {
+    // The gate. A refused sign-in never reaches createUser, so no account and
+    // no welcome grant are created for someone who was not invited.
+    signIn({ user }) {
+      return isAllowedToSignIn(
+        user.email,
+        process.env.ALLOWED_SIGN_IN,
+        process.env.NODE_ENV === "production",
+      );
+    },
     async redirect({ baseUrl, url }) {
       // Allow relative urls
       if (url.startsWith("/")) {

@@ -29,7 +29,9 @@ Repo: `https://github.com/QuantumWeaveDev26/Custom-interface` (branch `main`).
 
 | File | What it is | Trust |
 |---|---|---|
+| **`AGENTS.md`** | Cold start for any agent: rules, current state, traps | **Read first** |
 | **`HANDOFF.md`** (this) | Entry point, environment, how to run | Authoritative on getting started |
+| `DEPLOY.md` | Production deployment runbook | **Authoritative on deployment** |
 | `PROJECT_STATE.md` | Current status, blockers, verification state | **Authoritative on status** |
 | `BUILD_PLAN.md` | Block-by-block plan, what is done and open | Authoritative on what to build |
 | `MODELARK_API_REFERENCE.md` | Image/video/3D/embedding contracts | **Authoritative on those APIs** |

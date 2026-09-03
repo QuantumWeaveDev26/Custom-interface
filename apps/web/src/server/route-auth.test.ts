@@ -36,7 +36,10 @@ function routeFiles(directory: string): string[] {
 
 // NextAuth owns these; they have no session to check because they are how a
 // session is established in the first place.
-const PUBLIC_ROUTES = [join("api", "auth")];
+// The health check is the other one. What asks it is a load balancer or an
+// uptime monitor, neither of which can hold a session, and it answers with a
+// status code and nothing else — so there is nothing behind it to guard.
+const PUBLIC_ROUTES = [join("api", "auth"), join("api", "health")];
 
 test("every API route checks authentication and returns 401", () => {
   const files = routeFiles(API_ROOT);
