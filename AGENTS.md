@@ -159,6 +159,8 @@ locations, props).
 | `infra/backup.sh` — nightly `pg_dump`, 14-day rotation | Never run; restore never rehearsed |
 | `DEPLOY.md` — the runbook | Complete |
 | `.dockerignore` | Complete |
+| Video model decoupled from env templates (`89f33c9`) | Removed pinned model/rates to protect capabilities; regression guard verified via deliberate breakage |
+| Dead test coverage restored (`ddc0870`) | Added 4 compiled test files to `apps/web/package.json`; all 17 tests executed and passed |
 
 **The single most important change** is the allowlist. Before it, anyone on the
 internet with a Google account could sign in, receive a welcome grant, and
@@ -204,7 +206,7 @@ pnpm typecheck
 pnpm test
 ```
 
-As of 2026-09-03: **419 tests, 0 failures**, across 14 tasks. If you see a
+As of 2026-09-03: **438 tests, 0 failures**, across 14 tasks. If you see a
 lower total, something stopped being compiled — check the explicit `include`
 list in `apps/web/tsconfig.test.json` and the explicit file list in the `test`
 script of `apps/web/package.json`. Both are hand-maintained, and a test file
@@ -253,13 +255,16 @@ Read this section before debugging anything. Every item below was paid for.
 
 `apps/web/tsconfig.test.json` and the `test` script in `apps/web/package.json`
 are two hand-maintained lists, and a test file must be in **both** to run. If
-it is missing from the tsconfig it is never compiled, and `node --test` then
-prints "Could not find" and **still exits zero**.
+it is missing from the tsconfig it is never compiled, and if it is missing from
+the run list it is never invoked. Crucially, `node --test` prints "Could not find"
+on a missing target and **still exits zero** — which is why dead coverage is
+invisible to CI unless someone watches the test count.
 
-Known dead coverage right now: `design-canon.test.ts`, `knowledge.test.ts`,
-`character-trust.test.ts` and `project-record-text.test.ts` are compiled but
-absent from the run list, so they never execute. Pre-existing; not fixed today
-because it was outside the task. Worth fixing.
+The previous dead coverage (`design-canon.test.ts`, `knowledge.test.ts`,
+`character-trust.test.ts` and `project-record-text.test.ts`) was closed on
+2026-09-03 (commit `ddc0870`); all seventeen tests ran and passed immediately.
+The trap itself remains live whenever a new test file is created: register it
+in both lists or it does not exist.
 
 ### 7.4 ModelArk
 
