@@ -42,6 +42,7 @@
     "src/server/semantic-search.ts",
     "src/server/semantic-search.test.ts",
     "src/server/uploads.ts",
-    "src/server/uploads.test.ts"
+    "src/server/uploads.test.ts",
+    "src/server/production-config.test.ts"
   ]
 }
