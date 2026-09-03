@@ -9,7 +9,7 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "tsc -p tsconfig.test.json && node --test dist-test/app/studio/studio-state.test.js dist-test/app/director/director-state.test.js dist-test/app/marketing/marketing-state.test.js dist-test/app/transcribe/transcribe-state.test.js dist-test/app/voice-clone/voice-clone-state.test.js dist-test/server/jobs.test.js dist-test/server/assets.test.js dist-test/server/uploads.test.js dist-test/server/characters.test.js dist-test/server/semantic-search.test.js dist-test/server/transcribe.test.js dist-test/server/voice-clone.test.js dist-test/server/route-auth.test.js dist-test/server/sign-in-allowlist.test.js dist-test/app/gallery/group-assets.test.js dist-test/server/production-config.test.js"
+    "test": "tsc -p tsconfig.test.json && node --test dist-test/app/studio/studio-state.test.js dist-test/app/director/director-state.test.js dist-test/app/marketing/marketing-state.test.js dist-test/app/transcribe/transcribe-state.test.js dist-test/app/voice-clone/voice-clone-state.test.js dist-test/server/jobs.test.js dist-test/server/assets.test.js dist-test/server/uploads.test.js dist-test/server/characters.test.js dist-test/server/semantic-search.test.js dist-test/server/transcribe.test.js dist-test/server/voice-clone.test.js dist-test/server/route-auth.test.js dist-test/server/sign-in-allowlist.test.js dist-test/app/gallery/group-assets.test.js dist-test/server/production-config.test.js dist-test/app/design-canon.test.js dist-test/server/knowledge.test.js dist-test/server/character-trust.test.js dist-test/server/project-record-text.test.js"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.4.1",
